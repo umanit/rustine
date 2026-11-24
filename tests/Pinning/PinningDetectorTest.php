@@ -138,6 +138,7 @@ final class PinningDetectorTest extends TestCase
         $this->write('package.json', '{"volta":{"extends":"../nope/package.json"}}');
 
         $this->expectException(PinningException::class);
+        $this->expectExceptionMessage('not found (volta.extends)');
 
         (new PinningDetector())->detect($this->dir);
     }

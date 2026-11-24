@@ -81,7 +81,7 @@ final class PinningDetector
     {
         $real = realpath($packageJson);
         if (false === $real) {
-            throw new PinningException(sprintf('Fichier "%s" introuvable (volta.extends)', $packageJson));
+            throw new PinningException(sprintf('"%s" not found (volta.extends).', $packageJson));
         }
         if (\in_array($real, $visited, true)) {
             throw new PinningException(sprintf('Cycle detected in volta.extends around "%s".', $real));

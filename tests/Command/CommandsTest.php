@@ -246,6 +246,22 @@ final class CommandsTest extends TestCase
     }
 
     #[Test]
+    public function runFailsWhenTheReportFileCannotBeWritten(): void
+    {
+        $tester = $this->tester('run');
+        $tester->execute([
+            '--report' => self::REPORT,
+            '--group' => ['others'],
+            '--report-file' => sys_get_temp_dir() . '/rustine-missing-' . bin2hex(random_bytes(4)) . '/report.md',
+            '--dry-run' => true,
+            '--project' => sys_get_temp_dir(),
+        ]);
+
+        self::assertSame(Command::FAILURE, $tester->getStatusCode());
+        self::assertStringContainsString('Unable to write the report', $tester->getDisplay());
+    }
+
+    #[Test]
     public function runRejectsAnUnknownLocale(): void
     {
         // Exit code 2 means "manual action required" for `run`: a usage error must be a plain failure (1).

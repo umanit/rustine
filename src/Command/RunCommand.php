@@ -216,7 +216,11 @@ final class RunCommand
 
         $summary = new RunSummary($outcomes);
         if (null !== $reportFile) {
-            file_put_contents($reportFile, $summary->toMarkdown());
+            if (false === @file_put_contents($reportFile, $summary->toMarkdown())) {
+                $io->error(sprintf('Unable to write the report to %s.', $reportFile));
+
+                return RunSummary::EXIT_FAILURE;
+            }
             $io->writeln(sprintf('Report written to %s', $reportFile));
         }
 
@@ -276,7 +280,11 @@ final class RunCommand
         }
 
         if (null !== $reportFile) {
-            file_put_contents($reportFile, implode("\n", $files));
+            if (false === @file_put_contents($reportFile, implode("\n", $files))) {
+                $io->error(sprintf('Unable to write the report to %s.', $reportFile));
+
+                return Command::FAILURE;
+            }
             $io->success(sprintf('Report written to %s', $reportFile));
         }
 
