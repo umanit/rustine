@@ -16,6 +16,7 @@ final readonly class MergeRequest
         public string $webUrl,
         public string $sourceBranch,
         public array $labels,
+        public bool $hasConflicts = false,
     ) {
     }
 }

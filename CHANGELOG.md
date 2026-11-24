@@ -29,6 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The branch of an open merge request is no longer force-pushed (with a "rebuilt" note and a new pipeline) at every
+  run once the default branch has moved: when the fingerprint in its description is the one of the new run and it has no
+  conflict, it is left as it is.
 - Only the lockfiles at the root of the project are handled: a CVE Trivy reports in `tools/*/composer.lock`, a
   sub-project or `node_modules/` is no longer planned as a dependency of the root project.
 - A fix is no longer reported as failed because another major version of the same package carries the same CVE.

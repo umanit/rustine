@@ -55,12 +55,15 @@ The branch name is stable, so a run is a reconciliation of what the branch shoul
 |---------------------------------------------|-----------------------------------------------------------------------|
 | No merge request, at least one fix          | Pushes the branch, opens the merge request                            |
 | Open merge request, identical result        | Nothing (the texts and labels are refreshed if they are out of date)  |
-| Open merge request, different result        | Force-pushes the branch, updates the description, leaves a note       |
+| Open merge request, same fixes, no conflict | Nothing, even if the default branch moved on (no force-push)          |
+| Open merge request, different fixes         | Force-pushes the branch, updates the description, leaves a note       |
 | Open merge request, nothing fixable anymore | Closes it with a note                                                 |
 | Branch carries commits Rustine did not make | Leaves it untouched, posts a note **once**, asks for a manual action  |
 | Limit of open merge requests reached        | Does not open a *new* merge request (existing ones are still updated) |
 
-The branch is always rebuilt from the default branch, so it carries exactly one Rustine commit. A merge request that
+The branch is rebuilt from the default branch whenever it has to be pushed, so it carries exactly one Rustine commit.
+"Same fixes" means the fingerprint written in the description of the merge request (packages, versions, strategies) is the
+one of the new run; a merge request with conflicts is rebuilt anyway. A merge request that
 was closed by hand is opened again at the next run.
 
 ### Fix strategies

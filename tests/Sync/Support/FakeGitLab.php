@@ -67,7 +67,7 @@ final class FakeGitLab implements GitLabClient
         $old = $this->open[$iid];
         $labels = array_values(array_diff([...$old->labels, ...$addLabels], $removeLabels));
 
-        return $this->open[$iid] = new MergeRequest($iid, $title, $description, $old->webUrl, $old->sourceBranch, $labels);
+        return $this->open[$iid] = new MergeRequest($iid, $title, $description, $old->webUrl, $old->sourceBranch, $labels, $old->hasConflicts);
     }
 
     public function closeMergeRequest(int $iid): void

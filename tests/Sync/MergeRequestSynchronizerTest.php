@@ -81,12 +81,53 @@ final class MergeRequestSynchronizerTest extends TestCase
         $this->sync();
         $this->applier->lock = "lock v3\n";
 
-        $outcome = $this->sync();
+        $outcome = $this->sync(plan: Fixtures::plan(Fixtures::fix(target: '4.26.0')));
 
         self::assertSame(PlanAction::Updated, $outcome->action);
         self::assertSame("lock v3\n", $this->sandbox->remoteFile(self::BRANCH, 'yarn.lock'));
         self::assertSame(['update 1', 'note 1'], array_slice($this->gitlab->writes, -2));
         self::assertStringContainsString('rebuilt by a new Rustine run', $this->gitlab->notes[1][0]);
+    }
+
+    #[Test]
+    public function theDefaultBranchMovingOnDoesNotRebuildTheBranchForTheSameFixes(): void
+    {
+        $this->sync();
+        $pushed = $this->sandbox->remoteSha(self::BRANCH);
+        $this->defaultBranchMovesOn();
+        $this->gitlab->writes = [];
+
+        $outcome = $this->sync();
+
+        self::assertSame(PlanAction::Unchanged, $outcome->action);
+        self::assertSame([], $this->gitlab->writes, 'no note, no update');
+        self::assertSame($pushed, $this->sandbox->remoteSha(self::BRANCH), 'no force-push');
+    }
+
+    #[Test]
+    public function aMergeRequestInConflictIsRebuiltEvenForTheSameFixes(): void
+    {
+        $this->sync();
+        $this->defaultBranchMovesOn();
+        $mr = $this->gitlab->open[1];
+        $this->gitlab->open[1] = new \Rustine\GitLab\MergeRequest($mr->iid, $mr->title, $mr->description, $mr->webUrl, $mr->sourceBranch, $mr->labels, true);
+        $pushed = $this->sandbox->remoteSha(self::BRANCH);
+
+        $outcome = $this->sync();
+
+        self::assertSame(PlanAction::Updated, $outcome->action);
+        self::assertNotSame($pushed, $this->sandbox->remoteSha(self::BRANCH));
+    }
+
+    #[Test]
+    public function aMergeRequestWithoutFingerprintIsRebuilt(): void
+    {
+        $this->sync();
+        $this->defaultBranchMovesOn();
+        $mr = $this->gitlab->open[1];
+        $this->gitlab->open[1] = new \Rustine\GitLab\MergeRequest($mr->iid, $mr->title, 'Edited by hand', $mr->webUrl, $mr->sourceBranch, $mr->labels);
+
+        self::assertSame(PlanAction::Updated, $this->sync()->action);
     }
 
     #[Test]
@@ -167,7 +208,7 @@ final class MergeRequestSynchronizerTest extends TestCase
         $this->sync();
         $this->applier->lock = "lock v3\n";
 
-        $outcome = $this->sync(settings: new SyncSettings('main', ['security'], maxOpenMergeRequests: 1));
+        $outcome = $this->sync(settings: new SyncSettings('main', ['security'], maxOpenMergeRequests: 1), plan: Fixtures::plan(Fixtures::fix(target: '4.26.0')));
 
         self::assertSame(PlanAction::Updated, $outcome->action);
     }
@@ -244,6 +285,15 @@ final class MergeRequestSynchronizerTest extends TestCase
 
         self::assertSame('Sécurité : corriger les dépendances Yarn (sévérité moyenne, basse et inconnue)', $this->gitlab->lastCreated?->title);
         self::assertSame(PlanAction::Created, $outcome->action);
+    }
+
+    private function defaultBranchMovesOn(): void
+    {
+        $other = $this->sandbox->otherClone();
+        file_put_contents($other . '/CHANGELOG.md', "moved on\n");
+        $this->sandbox->exec(['git', 'add', '.'], $other);
+        $this->sandbox->exec(['git', 'commit', '--quiet', '-m', 'feat: something else'], $other);
+        $this->sandbox->exec(['git', 'push', '--quiet', 'origin', 'HEAD:main'], $other);
     }
 
     private function sync(?SyncSettings $settings = null, ?\Rustine\Plan\GroupPlan $plan = null, string $locale = 'en'): \Rustine\Sync\PlanOutcome

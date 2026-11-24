@@ -214,6 +214,7 @@ final readonly class HttpGitLabClient implements GitLabClient
             $this->string($data, 'web_url'),
             $this->string($data, 'source_branch'),
             $labels,
+            true === ($data['has_conflicts'] ?? null),
         );
     }
 

@@ -49,6 +49,7 @@ final class HttpGitLabClientTest extends TestCase
 
         self::assertSame(12, $mr?->iid);
         self::assertSame(['security'], $mr->labels);
+        self::assertTrue($mr->hasConflicts);
         self::assertStringContainsString('/projects/42/merge_requests?state=opened&source_branch=security/rustine-yarn-others', urldecode($this->requests[0]['url']));
     }
 
@@ -200,6 +201,6 @@ final class HttpGitLabClientTest extends TestCase
      */
     private function mr(int $iid, string $branch): array
     {
-        return ['iid' => $iid, 'title' => 'T', 'description' => 'D', 'web_url' => 'https://gitlab.example.com/g/p/-/merge_requests/' . $iid, 'source_branch' => $branch, 'labels' => ['security']];
+        return ['iid' => $iid, 'title' => 'T', 'description' => 'D', 'web_url' => 'https://gitlab.example.com/g/p/-/merge_requests/' . $iid, 'source_branch' => $branch, 'labels' => ['security'], 'has_conflicts' => 12 === $iid];
     }
 }

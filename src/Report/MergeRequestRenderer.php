@@ -28,6 +28,15 @@ final readonly class MergeRequestRenderer
     /** Marks the descriptions written by Rustine and carries the fingerprint used for idempotency. */
     public const MARKER = 'rustine:v1';
 
+    /**
+     * Fingerprint written by a previous run in a description, or null when the description is not (or no longer) one
+     * of Rustine's.
+     */
+    public static function fingerprintOf(string $description): ?string
+    {
+        return 1 === preg_match('/<!-- ' . preg_quote(self::MARKER, '/') . ' fingerprint=([0-9a-f]+) -->/', $description, $m) ? $m[1] : null;
+    }
+
     public function __construct(
         private TranslatorInterface $translator,
         private string $version,

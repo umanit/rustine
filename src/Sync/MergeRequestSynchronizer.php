@@ -13,6 +13,7 @@ use Rustine\Apply\UnsupportedProjectException;
 use Rustine\Git\BranchPublisher;
 use Rustine\Git\GitException;
 use Rustine\Git\PushResult;
+use Rustine\Git\RemoteBranch;
 use Rustine\Git\RemoteBranchState;
 use Rustine\GitLab\GitLabClient;
 use Rustine\GitLab\GitLabException;
@@ -28,7 +29,8 @@ use Rustine\Trivy\TrivyReport;
  *
  * A merge request exists if and only if at least one fix was applied:
  *  - no open merge request and a fix → push the branch, open the merge request;
- *  - an open merge request and the same tree → nothing (the texts are refreshed if they are out of date);
+ *  - an open merge request and the same tree, or the same fingerprint without conflicts → nothing (the texts are
+ *    refreshed if they are out of date);
  *  - an open merge request and a different tree → force-push, refresh the texts, leave a note;
  *  - an open merge request and no fix anymore → close it with a note.
  * The limit of open merge requests only prevents opening new ones.
@@ -96,7 +98,7 @@ final readonly class MergeRequestSynchronizer
             }
 
             $push = $applied->result->hasChanges() && $this->git->commit($content->commitMessage)
-                ? $this->git->push($branch, $remote)
+                ? ($this->canKeepBranch($existing, $remote, $content) ? PushResult::Unchanged : $this->git->push($branch, $remote))
                 : null;
         } finally {
             $this->git->finish();
@@ -105,6 +107,19 @@ final readonly class MergeRequestSynchronizer
         return null === $push
             ? $this->nothingToFix($plan, $existing, $content)
             : $this->syncMergeRequest($branch, $existing, $content, $push);
+    }
+
+    /**
+     * The branch is kept as it is when the open merge request was written for the very same fixes and still merges:
+     * the default branch moving on changes the tree of a rebuilt branch, but not what the merge request does, and
+     * rebuilding it every day would restart its pipeline and may reset its approvals.
+     */
+    private function canKeepBranch(?MergeRequest $existing, RemoteBranch $remote, MergeRequestContent $content): bool
+    {
+        return null !== $existing
+            && null !== $remote->sha
+            && !$existing->hasConflicts
+            && $content->fingerprint === MergeRequestRenderer::fingerprintOf($existing->description);
     }
 
     private function syncMergeRequest(string $branch, ?MergeRequest $existing, MergeRequestContent $content, PushResult $push): PlanOutcome
