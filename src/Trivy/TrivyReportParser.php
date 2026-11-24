@@ -49,7 +49,9 @@ final class TrivyReportParser
 
             $target = \is_string($result['Target'] ?? null) ? $result['Target'] : '?';
             $ecosystem = Ecosystem::fromTrivyType(\is_string($result['Type'] ?? null) ? $result['Type'] : '');
-            if (null === $ecosystem) {
+            // Only the lockfile at the root of the project is handled: a lockfile found deeper (`tools/*/`,
+            // `vendor-bin/`, a sub-project, a package of `node_modules/`…) is not the one the fixes would change.
+            if (null === $ecosystem || !$this->isRootLockfile($target, $ecosystem)) {
                 $ignored[] = $target;
 
                 continue;
@@ -72,6 +74,11 @@ final class TrivyReportParser
         }
 
         return new TrivyReport(array_values($vulnerabilities), $packages, array_values(array_unique($ignored)));
+    }
+
+    private function isRootLockfile(string $target, Ecosystem $ecosystem): bool
+    {
+        return $ecosystem->lockFile() === (str_starts_with($target, './') ? substr($target, 2) : $target);
     }
 
     /**

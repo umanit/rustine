@@ -99,6 +99,25 @@ final class TrivyReportParserTest extends TestCase
     }
 
     #[Test]
+    public function itOnlyKeepsTheLockfilesAtTheRootOfTheProject(): void
+    {
+        $vuln = ['VulnerabilityID' => 'CVE-1', 'PkgName' => 'x', 'InstalledVersion' => '1.0.0', 'FixedVersion' => '1.0.1'];
+        $json = json_encode([
+            'Results' => [
+                ['Target' => 'tools/php-cs-fixer/composer.lock', 'Type' => 'composer', 'Vulnerabilities' => [$vuln]],
+                ['Target' => 'node_modules/some-package/yarn.lock', 'Type' => 'yarn', 'Vulnerabilities' => [$vuln]],
+                ['Target' => './composer.lock', 'Type' => 'composer', 'Vulnerabilities' => [[...$vuln, 'PkgName' => 'root/pkg']]],
+                ['Target' => 'yarn.lock', 'Type' => 'yarn', 'Vulnerabilities' => [[...$vuln, 'PkgName' => 'root-pkg']]],
+            ],
+        ], \JSON_THROW_ON_ERROR);
+
+        $report = (new TrivyReportParser())->parse($json);
+
+        self::assertSame(['root/pkg', 'root-pkg'], array_map(static fn ($v): string => $v->packageName, $report->vulnerabilities));
+        self::assertSame(['tools/php-cs-fixer/composer.lock', 'node_modules/some-package/yarn.lock'], $report->ignoredTargets);
+    }
+
+    #[Test]
     public function itAcceptsAReportWithoutResults(): void
     {
         $report = (new TrivyReportParser())->parse('{"SchemaVersion":2}');

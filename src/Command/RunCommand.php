@@ -181,6 +181,10 @@ final class RunCommand
             return Command::FAILURE;
         }
 
+        if ([] !== $parsedReport->ignoredTargets) {
+            $io->writeln(sprintf('Trivy targets ignored (unsupported type, or not at the project root): %s', implode(', ', $parsedReport->ignoredTargets)));
+        }
+
         $plans = $this->plans($parsedReport, $groups, $wanted);
         if ([] === $plans) {
             $io->success('Nothing to fix in this group: no merge request to open.');
