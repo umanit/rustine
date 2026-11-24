@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Only the lockfiles at the root of the project are handled: a CVE Trivy reports in `tools/*/composer.lock`, a
+  sub-project or `node_modules/` is no longer planned as a dependency of the root project.
+- A fix is no longer reported as failed because another major version of the same package carries the same CVE.
+- Below 1.0, a new minor version is treated as a major bump (`0.3.x` → `0.4.x` is a breaking change in semver).
+- The GitLab token (`RUSTINE_GITLAB_TOKEN`, `GITLAB_TOKEN`) is removed from the environment of Yarn, Composer, mise, git
+  and Trivy.
+- `run` fails when the `--report-file` cannot be written, instead of ignoring it.
+
+### Documentation
+
+- The example job hides the caches kept in the project directory from git, so that a fix does not take their new files
+  for unexpected changes.
+
 ## [0.1.0] - 2026-11-24
 
 First release.

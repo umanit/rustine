@@ -77,7 +77,9 @@ before anything is pushed.
 
 ### Safety guarantees
 
-- Only `composer.json`, `composer.lock`, `package.json` and `yarn.lock` can change. Any other change abandons the fix.
+- Only `composer.json`, `composer.lock`, `package.json` and `yarn.lock` can change. Any other change abandons the fix,
+  untracked files included: anything a fix may create in the project directory (tool installs, caches) must be ignored
+  by git (`.gitignore` or `.git/info/exclude`).
 - Only branches named `security/rustine-*` are ever written; the default branch is never pushed.
 - Pushes use `--force-with-lease` on the commit seen at the beginning of the run.
 - The token is never put in a URL, a command line or a log: it travels in an environment variable read by git
@@ -220,6 +222,9 @@ security-bot:critical-high:
         TRIVY_CACHE_DIR: $CI_PROJECT_DIR/.trivy-cache
         MISE_DATA_DIR: $CI_PROJECT_DIR/.mise
     script:
+        # The caches live in the project directory (GitLab only caches paths there): hide them from git, otherwise the
+        # files they gain during a fix (e.g. a Node version installed by `mise exec`) abandon it as an unexpected change.
+        - printf '%s\n' .mise/ .trivy-cache/ trivy-report.json rustine-report.md >> .git/info/exclude
         - mise install
         - eval "$(mise env -s bash)"
         - rustine run --group=critical-high --report-file=rustine-report.md
@@ -245,7 +250,8 @@ English.
 
 ## Known limitations
 
-- **Monorepos** are out of scope for now: one `composer.json`/`package.json` at the project root.
+- **Monorepos** are out of scope for now: one `composer.json`/`package.json` at the project root. Lockfiles found
+  elsewhere by Trivy (`tools/*/composer.lock`, a sub-project, `node_modules/`…) are ignored and listed in the job log.
 - **Yarn Berry in PnP mode or with a committed cache** (`.pnp.cjs`, `.yarn/cache`) is refused rather than half-handled.
 - A Berry `resolutions` key written with a descriptor (`pkg@npm:^1`) is not recognized as equivalent to `pkg`.
 - A `resolutions` entry is refused when the package is installed in several major versions (it would override all of
