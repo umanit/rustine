@@ -28,7 +28,8 @@ final readonly class YarnClassicStrategy implements FixStrategy
         $attempts = [new Attempt(AttemptKind::LockfileRefresh, [['yarn', 'install', ...self::FLAGS]], null, $name)];
 
         $attempts[] = DependencyKind::Direct === $fix->dependencyKind
-            ? new Attempt(AttemptKind::DirectBump, [['yarn', 'upgrade', $name . '@' . $range, ...self::FLAGS]])
+            // `yarn upgrade pkg@range` would also re-sort `package.json`: edit the range in place instead.
+            ? new Attempt(AttemptKind::DirectBump, [['yarn', 'install', ...self::FLAGS]], null, null, [$name, $range])
             : new Attempt(AttemptKind::Resolution, [['yarn', 'install', ...self::FLAGS]], ['**/' . $name, $range]);
 
         return $attempts;

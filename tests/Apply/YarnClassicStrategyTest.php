@@ -27,12 +27,13 @@ final class YarnClassicStrategyTest extends TestCase
     }
 
     #[Test]
-    public function aDirectDependencyIsUpgradedToTheRange(): void
+    public function aDirectDependencyHasItsRangeEditedInPlace(): void
     {
         $attempts = (new YarnClassicStrategy())->attempts(Fixtures::fix('ckeditor4', '4.22.1', '4.25.0'));
 
         self::assertSame(AttemptKind::DirectBump, $attempts[1]->kind);
-        self::assertSame([['yarn', 'upgrade', 'ckeditor4@^4.25.0', '--non-interactive', '--ignore-scripts']], $attempts[1]->commands);
+        self::assertSame(['ckeditor4', '^4.25.0'], $attempts[1]->rangeEdit);
+        self::assertSame([['yarn', 'install', '--non-interactive', '--ignore-scripts']], $attempts[1]->commands);
     }
 
     #[Test]

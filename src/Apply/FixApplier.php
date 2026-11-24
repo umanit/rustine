@@ -174,6 +174,10 @@ final class FixApplier
             file_put_contents($lockfile, (new YarnClassicLockfile())->withoutPackage((string) file_get_contents($lockfile), $attempt->pruneLockfile));
         }
 
+        if (null !== $attempt->rangeEdit) {
+            $this->editor->setDependencyRange($this->projectDir . '/package.json', ...$attempt->rangeEdit);
+        }
+
         if (null !== $attempt->resolutionEdit) {
             $this->editor->setResolution($this->projectDir . '/package.json', ...$attempt->resolutionEdit);
         }

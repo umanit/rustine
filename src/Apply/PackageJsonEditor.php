@@ -9,10 +9,50 @@ namespace Rustine\Apply;
  */
 final class PackageJsonEditor
 {
+    private const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'];
+
     /**
-     * Adds or updates `resolutions[$package]`. An existing entry for the package is updated, never duplicated.
+     * Adds or updates a `resolutions` entry. An existing entry for the same package is updated, never duplicated:
+     * `pkg` and `**\/pkg` (Yarn Classic) designate the same package, so either one is reused if present.
      */
-    public function setResolution(string $path, string $package, string $range): void
+    public function setResolution(string $path, string $key, string $range): void
+    {
+        $this->edit($path, static function (\stdClass $data) use ($key, $range): void {
+            if (!($data->resolutions ?? null) instanceof \stdClass) {
+                $data->resolutions = new \stdClass();
+            }
+
+            $base = str_starts_with($key, '**/') ? substr($key, 3) : $key;
+            foreach ([$key, $base, '**/' . $base] as $candidate) {
+                if (isset($data->resolutions->{$candidate})) {
+                    $key = $candidate;
+                    break;
+                }
+            }
+
+            $data->resolutions->{$key} = $range;
+        });
+    }
+
+    /**
+     * Changes the range of a dependency in place, in the field(s) where it is declared (order and formatting kept).
+     */
+    public function setDependencyRange(string $path, string $package, string $range): void
+    {
+        $this->edit($path, static function (\stdClass $data) use ($package, $range): void {
+            foreach (self::DEPENDENCY_FIELDS as $field) {
+                $block = $data->{$field} ?? null;
+                if ($block instanceof \stdClass && isset($block->{$package})) {
+                    $block->{$package} = $range;
+                }
+            }
+        });
+    }
+
+    /**
+     * @param \Closure(\stdClass): void $change
+     */
+    private function edit(string $path, \Closure $change): void
     {
         $content = @file_get_contents($path);
         if (false === $content) {
@@ -28,10 +68,7 @@ final class PackageJsonEditor
             throw new \RuntimeException(sprintf('"%s" must contain a JSON object.', $path));
         }
 
-        if (!($data->resolutions ?? null) instanceof \stdClass) {
-            $data->resolutions = new \stdClass();
-        }
-        $data->resolutions->{$package} = $range;
+        $change($data);
 
         $json = json_encode($data, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE | \JSON_THROW_ON_ERROR);
         $indent = $this->detectIndent($content);
@@ -59,7 +96,7 @@ final class PackageJsonEditor
             return null;
         }
 
-        foreach (['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'] as $field) {
+        foreach (self::DEPENDENCY_FIELDS as $field) {
             $block = $data->{$field} ?? null;
             if ($block instanceof \stdClass && isset($block->{$package}) && \is_string($block->{$package})) {
                 return $block->{$package};
