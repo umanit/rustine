@@ -1,0 +1,950 @@
+{
+  "SchemaVersion": 2,
+  "ArtifactType": "filesystem",
+  "Results": [
+    {
+      "Target": "yarn.lock",
+      "Class": "lang-pkgs",
+      "Type": "yarn",
+      "Packages": [
+        {
+          "ID": "@babel/core@7.28.4",
+          "Name": "@babel/core",
+          "Version": "7.28.4",
+          "Relationship": "direct",
+          "DependsOn": [
+            "@babel/helper-compilation-targets@7.27.2"
+          ]
+        },
+        {
+          "ID": "@babel/helper-compilation-targets@7.27.2",
+          "Name": "@babel/helper-compilation-targets",
+          "Version": "7.27.2",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "browserslist@4.26.3"
+          ]
+        },
+        {
+          "ID": "@babel/helper-define-polyfill-provider@0.6.5",
+          "Name": "@babel/helper-define-polyfill-provider",
+          "Version": "0.6.5",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "@babel/helper-compilation-targets@7.27.2"
+          ]
+        },
+        {
+          "ID": "@babel/plugin-transform-classes@7.28.4",
+          "Name": "@babel/plugin-transform-classes",
+          "Version": "7.28.4",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "@babel/helper-compilation-targets@7.27.2"
+          ]
+        },
+        {
+          "ID": "@babel/plugin-transform-function-name@7.27.1",
+          "Name": "@babel/plugin-transform-function-name",
+          "Version": "7.27.1",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "@babel/helper-compilation-targets@7.27.2"
+          ]
+        },
+        {
+          "ID": "@babel/plugin-transform-modules-systemjs@7.27.1",
+          "Name": "@babel/plugin-transform-modules-systemjs",
+          "Version": "7.27.1",
+          "Relationship": "indirect",
+          "DependsOn": [ ]
+        },
+        {
+          "ID": "@babel/plugin-transform-object-rest-spread@7.28.4",
+          "Name": "@babel/plugin-transform-object-rest-spread",
+          "Version": "7.28.4",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "@babel/helper-compilation-targets@7.27.2"
+          ]
+        },
+        {
+          "ID": "@babel/preset-env@7.28.3",
+          "Name": "@babel/preset-env",
+          "Version": "7.28.3",
+          "Relationship": "direct",
+          "DependsOn": [
+            "@babel/helper-compilation-targets@7.27.2",
+            "@babel/plugin-transform-classes@7.28.4",
+            "@babel/plugin-transform-function-name@7.27.1",
+            "@babel/plugin-transform-modules-systemjs@7.27.1",
+            "@babel/plugin-transform-object-rest-spread@7.28.4",
+            "babel-plugin-polyfill-corejs2@0.4.14",
+            "babel-plugin-polyfill-corejs3@0.13.0",
+            "babel-plugin-polyfill-regenerator@0.6.5",
+            "core-js-compat@3.46.0"
+          ]
+        },
+        {
+          "ID": "@eslint/config-array@0.21.1",
+          "Name": "@eslint/config-array",
+          "Version": "0.21.1",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "minimatch@3.1.2"
+          ]
+        },
+        {
+          "ID": "@eslint/eslintrc@3.3.1",
+          "Name": "@eslint/eslintrc",
+          "Version": "3.3.1",
+          "Relationship": "direct",
+          "DependsOn": [
+            "minimatch@3.1.2"
+          ]
+        },
+        {
+          "ID": "@parcel/watcher@2.5.1",
+          "Name": "@parcel/watcher",
+          "Version": "2.5.1",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "micromatch@4.0.8",
+            "node-addon-api@7.1.1",
+            "node-gyp@11.5.0"
+          ]
+        },
+        {
+          "ID": "@symfony/webpack-encore@5.2.0",
+          "Name": "@symfony/webpack-encore",
+          "Version": "5.2.0",
+          "Relationship": "direct",
+          "DependsOn": [
+            "css-minimizer-webpack-plugin@7.0.2"
+          ]
+        },
+        {
+          "ID": "autoprefixer@10.4.21",
+          "Name": "autoprefixer",
+          "Version": "10.4.21",
+          "Relationship": "direct",
+          "DependsOn": [
+            "browserslist@4.26.3"
+          ]
+        },
+        {
+          "ID": "babel-plugin-polyfill-corejs2@0.4.14",
+          "Name": "babel-plugin-polyfill-corejs2",
+          "Version": "0.4.14",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "@babel/helper-define-polyfill-provider@0.6.5"
+          ]
+        },
+        {
+          "ID": "babel-plugin-polyfill-corejs3@0.13.0",
+          "Name": "babel-plugin-polyfill-corejs3",
+          "Version": "0.13.0",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "@babel/helper-define-polyfill-provider@0.6.5",
+            "core-js-compat@3.46.0"
+          ]
+        },
+        {
+          "ID": "babel-plugin-polyfill-regenerator@0.6.5",
+          "Name": "babel-plugin-polyfill-regenerator",
+          "Version": "0.6.5",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "@babel/helper-define-polyfill-provider@0.6.5"
+          ]
+        },
+        {
+          "ID": "brace-expansion@1.1.12",
+          "Name": "brace-expansion",
+          "Version": "1.1.12",
+          "Relationship": "indirect",
+          "DependsOn": [ ]
+        },
+        {
+          "ID": "brace-expansion@2.0.2",
+          "Name": "brace-expansion",
+          "Version": "2.0.2",
+          "Relationship": "indirect",
+          "DependsOn": [ ]
+        },
+        {
+          "ID": "braces@3.0.3",
+          "Name": "braces",
+          "Version": "3.0.3",
+          "Relationship": "indirect",
+          "DependsOn": [ ]
+        },
+        {
+          "ID": "browserslist@4.26.3",
+          "Name": "browserslist",
+          "Version": "4.26.3",
+          "Relationship": "indirect",
+          "DependsOn": [ ]
+        },
+        {
+          "ID": "cacache@19.0.1",
+          "Name": "cacache",
+          "Version": "19.0.1",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "glob@10.4.5"
+          ]
+        },
+        {
+          "ID": "caniuse-api@3.0.0",
+          "Name": "caniuse-api",
+          "Version": "3.0.0",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "browserslist@4.26.3"
+          ]
+        },
+        {
+          "ID": "ckeditor4@4.22.1",
+          "Name": "ckeditor4",
+          "Version": "4.22.1",
+          "Relationship": "direct"
+        },
+        {
+          "ID": "colord@2.9.3",
+          "Name": "colord",
+          "Version": "2.9.3",
+          "Relationship": "indirect"
+        },
+        {
+          "ID": "copy-webpack-plugin@12.0.2",
+          "Name": "copy-webpack-plugin",
+          "Version": "12.0.2",
+          "Relationship": "direct",
+          "DependsOn": [
+            "fast-glob@3.3.3",
+            "globby@14.1.0"
+          ]
+        },
+        {
+          "ID": "core-js-compat@3.46.0",
+          "Name": "core-js-compat",
+          "Version": "3.46.0",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "browserslist@4.26.3"
+          ]
+        },
+        {
+          "ID": "css-minimizer-webpack-plugin@7.0.2",
+          "Name": "css-minimizer-webpack-plugin",
+          "Version": "7.0.2",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "cssnano@7.1.1"
+          ]
+        },
+        {
+          "ID": "cssnano-preset-default@4.0.8",
+          "Name": "cssnano-preset-default",
+          "Version": "4.0.8",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "postcss-colormin@4.0.3",
+            "postcss-merge-longhand@4.0.11",
+            "postcss-merge-rules@4.0.3",
+            "postcss-minify-params@4.0.2",
+            "postcss-normalize-unicode@4.0.1",
+            "postcss-reduce-initial@4.0.3"
+          ]
+        },
+        {
+          "ID": "cssnano-preset-default@7.0.9",
+          "Name": "cssnano-preset-default",
+          "Version": "7.0.9",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "browserslist@4.26.3",
+            "postcss-colormin@7.0.4",
+            "postcss-convert-values@7.0.7",
+            "postcss-merge-longhand@7.0.5",
+            "postcss-merge-rules@7.0.6",
+            "postcss-minify-gradients@7.0.1",
+            "postcss-minify-params@7.0.4",
+            "postcss-normalize-unicode@7.0.4",
+            "postcss-reduce-initial@7.0.4"
+          ]
+        },
+        {
+          "ID": "cssnano@4.1.10",
+          "Name": "cssnano",
+          "Version": "4.1.10",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "cssnano-preset-default@4.0.8"
+          ]
+        },
+        {
+          "ID": "cssnano@7.1.1",
+          "Name": "cssnano",
+          "Version": "7.1.1",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "cssnano-preset-default@7.0.9"
+          ]
+        },
+        {
+          "ID": "eslint-plugin-import@2.32.0",
+          "Name": "eslint-plugin-import",
+          "Version": "2.32.0",
+          "Relationship": "direct",
+          "DependsOn": [
+            "minimatch@3.1.2"
+          ]
+        },
+        {
+          "ID": "eslint@9.38.0",
+          "Name": "eslint",
+          "Version": "9.38.0",
+          "Relationship": "direct",
+          "DependsOn": [
+            "@eslint/config-array@0.21.1",
+            "@eslint/eslintrc@3.3.1",
+            "minimatch@3.1.2"
+          ]
+        },
+        {
+          "ID": "fast-glob@3.3.3",
+          "Name": "fast-glob",
+          "Version": "3.3.3",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "micromatch@4.0.8"
+          ]
+        },
+        {
+          "ID": "fsevents@2.3.3",
+          "Name": "fsevents",
+          "Version": "2.3.3",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "node-gyp@11.5.0"
+          ]
+        },
+        {
+          "ID": "glob-all@3.3.1",
+          "Name": "glob-all",
+          "Version": "3.3.1",
+          "Relationship": "direct",
+          "DependsOn": [
+            "glob@7.2.3"
+          ]
+        },
+        {
+          "ID": "glob@10.4.5",
+          "Name": "glob",
+          "Version": "10.4.5",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "minimatch@9.0.5"
+          ]
+        },
+        {
+          "ID": "glob@7.2.3",
+          "Name": "glob",
+          "Version": "7.2.3",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "minimatch@3.1.2"
+          ]
+        },
+        {
+          "ID": "globby@14.1.0",
+          "Name": "globby",
+          "Version": "14.1.0",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "fast-glob@3.3.3"
+          ]
+        },
+        {
+          "ID": "make-fetch-happen@14.0.3",
+          "Name": "make-fetch-happen",
+          "Version": "14.0.3",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "cacache@19.0.1"
+          ]
+        },
+        {
+          "ID": "micromatch@4.0.8",
+          "Name": "micromatch",
+          "Version": "4.0.8",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "braces@3.0.3"
+          ]
+        },
+        {
+          "ID": "minimatch@3.1.2",
+          "Name": "minimatch",
+          "Version": "3.1.2",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "brace-expansion@1.1.12"
+          ]
+        },
+        {
+          "ID": "minimatch@9.0.5",
+          "Name": "minimatch",
+          "Version": "9.0.5",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "brace-expansion@2.0.2"
+          ]
+        },
+        {
+          "ID": "node-addon-api@7.1.1",
+          "Name": "node-addon-api",
+          "Version": "7.1.1",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "node-gyp@11.5.0"
+          ]
+        },
+        {
+          "ID": "node-gyp@11.5.0",
+          "Name": "node-gyp",
+          "Version": "11.5.0",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "make-fetch-happen@14.0.3"
+          ]
+        },
+        {
+          "ID": "package.json",
+          "Name": "app",
+          "Version": "",
+          "Relationship": "root",
+          "DependsOn": [
+            "@babel/core@7.28.4",
+            "@babel/preset-env@7.28.3",
+            "@eslint/eslintrc@3.3.1",
+            "@symfony/webpack-encore@5.2.0",
+            "autoprefixer@10.4.21",
+            "ckeditor4@4.22.1",
+            "copy-webpack-plugin@12.0.2",
+            "eslint-plugin-import@2.32.0",
+            "eslint@9.38.0",
+            "glob-all@3.3.1",
+            "progressbar.js@1.1.1",
+            "puppeteer@2.1.1",
+            "purgecss-webpack-plugin@6.0.0",
+            "sass@1.93.2",
+            "webpack-rtl-plugin@2.0.0",
+            "webpack@5.102.1"
+          ]
+        },
+        {
+          "ID": "postcss-colormin@4.0.3",
+          "Name": "postcss-colormin",
+          "Version": "4.0.3",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "browserslist@4.26.3"
+          ]
+        },
+        {
+          "ID": "postcss-colormin@7.0.4",
+          "Name": "postcss-colormin",
+          "Version": "7.0.4",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "browserslist@4.26.3",
+            "caniuse-api@3.0.0",
+            "colord@2.9.3"
+          ]
+        },
+        {
+          "ID": "postcss-convert-values@7.0.7",
+          "Name": "postcss-convert-values",
+          "Version": "7.0.7",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "browserslist@4.26.3"
+          ]
+        },
+        {
+          "ID": "postcss-merge-longhand@4.0.11",
+          "Name": "postcss-merge-longhand",
+          "Version": "4.0.11",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "stylehacks@4.0.3"
+          ]
+        },
+        {
+          "ID": "postcss-merge-longhand@7.0.5",
+          "Name": "postcss-merge-longhand",
+          "Version": "7.0.5",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "stylehacks@7.0.6"
+          ]
+        },
+        {
+          "ID": "postcss-merge-rules@4.0.3",
+          "Name": "postcss-merge-rules",
+          "Version": "4.0.3",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "browserslist@4.26.3",
+            "caniuse-api@3.0.0"
+          ]
+        },
+        {
+          "ID": "postcss-merge-rules@7.0.6",
+          "Name": "postcss-merge-rules",
+          "Version": "7.0.6",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "browserslist@4.26.3",
+            "caniuse-api@3.0.0"
+          ]
+        },
+        {
+          "ID": "postcss-minify-gradients@7.0.1",
+          "Name": "postcss-minify-gradients",
+          "Version": "7.0.1",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "colord@2.9.3"
+          ]
+        },
+        {
+          "ID": "postcss-minify-params@4.0.2",
+          "Name": "postcss-minify-params",
+          "Version": "4.0.2",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "browserslist@4.26.3"
+          ]
+        },
+        {
+          "ID": "postcss-minify-params@7.0.4",
+          "Name": "postcss-minify-params",
+          "Version": "7.0.4",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "browserslist@4.26.3"
+          ]
+        },
+        {
+          "ID": "postcss-normalize-unicode@4.0.1",
+          "Name": "postcss-normalize-unicode",
+          "Version": "4.0.1",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "browserslist@4.26.3"
+          ]
+        },
+        {
+          "ID": "postcss-normalize-unicode@7.0.4",
+          "Name": "postcss-normalize-unicode",
+          "Version": "7.0.4",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "browserslist@4.26.3"
+          ]
+        },
+        {
+          "ID": "postcss-reduce-initial@4.0.3",
+          "Name": "postcss-reduce-initial",
+          "Version": "4.0.3",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "browserslist@4.26.3",
+            "caniuse-api@3.0.0"
+          ]
+        },
+        {
+          "ID": "postcss-reduce-initial@7.0.4",
+          "Name": "postcss-reduce-initial",
+          "Version": "7.0.4",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "browserslist@4.26.3",
+            "caniuse-api@3.0.0"
+          ]
+        },
+        {
+          "ID": "progressbar.js@1.1.1",
+          "Name": "progressbar.js",
+          "Version": "1.1.1",
+          "Relationship": "direct",
+          "DependsOn": [
+            "shifty@2.20.4"
+          ]
+        },
+        {
+          "ID": "puppeteer@2.1.1",
+          "Name": "puppeteer",
+          "Version": "2.1.1",
+          "Relationship": "direct",
+          "DependsOn": [
+            "rimraf@2.7.1"
+          ]
+        },
+        {
+          "ID": "purgecss-webpack-plugin@6.0.0",
+          "Name": "purgecss-webpack-plugin",
+          "Version": "6.0.0",
+          "Relationship": "direct",
+          "DependsOn": [
+            "purgecss@6.0.0",
+            "webpack@5.102.1"
+          ]
+        },
+        {
+          "ID": "purgecss@6.0.0",
+          "Name": "purgecss",
+          "Version": "6.0.0",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "glob@10.4.5"
+          ]
+        },
+        {
+          "ID": "rimraf@2.7.1",
+          "Name": "rimraf",
+          "Version": "2.7.1",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "glob@7.2.3"
+          ]
+        },
+        {
+          "ID": "sass@1.93.2",
+          "Name": "sass",
+          "Version": "1.93.2",
+          "Relationship": "direct",
+          "DependsOn": [
+            "@parcel/watcher@2.5.1"
+          ]
+        },
+        {
+          "ID": "shifty@2.20.4",
+          "Name": "shifty",
+          "Version": "2.20.4",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "fsevents@2.3.3"
+          ]
+        },
+        {
+          "ID": "stylehacks@4.0.3",
+          "Name": "stylehacks",
+          "Version": "4.0.3",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "browserslist@4.26.3"
+          ]
+        },
+        {
+          "ID": "stylehacks@7.0.6",
+          "Name": "stylehacks",
+          "Version": "7.0.6",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "browserslist@4.26.3"
+          ]
+        },
+        {
+          "ID": "webpack-rtl-plugin@2.0.0",
+          "Name": "webpack-rtl-plugin",
+          "Version": "2.0.0",
+          "Relationship": "direct",
+          "DependsOn": [
+            "cssnano@4.1.10"
+          ]
+        },
+        {
+          "ID": "webpack@5.102.1",
+          "Name": "webpack",
+          "Version": "5.102.1",
+          "Relationship": "direct",
+          "DependsOn": [
+            "browserslist@4.26.3"
+          ]
+        }
+      ],
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2026-44728",
+          "PkgID": "@babel/plugin-transform-modules-systemjs@7.27.1",
+          "PkgName": "@babel/plugin-transform-modules-systemjs",
+          "InstalledVersion": "7.27.1",
+          "FixedVersion": "7.29.4, 8.0.0-alpha.13",
+          "Status": "fixed",
+          "Severity": "HIGH",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-44728",
+          "Title": "Babel is a compiler for writing next generation JavaScript. From 7.12. ..."
+        },
+        {
+          "VulnerabilityID": "CVE-2026-102276",
+          "PkgID": "brace-expansion@1.1.12",
+          "PkgName": "brace-expansion",
+          "InstalledVersion": "1.1.12",
+          "FixedVersion": "5.0.10, 3.0.7, 2.1.5, 1.1.19",
+          "Status": "fixed",
+          "Severity": "HIGH",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-102276",
+          "Title": "brace-expansion: brace-expansion: Denial of Service via stack exhaustion from crafted brace patterns"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-102278",
+          "PkgID": "brace-expansion@1.1.12",
+          "PkgName": "brace-expansion",
+          "InstalledVersion": "1.1.12",
+          "FixedVersion": "5.0.11, 3.0.8, 2.1.6, 1.1.20",
+          "Status": "fixed",
+          "Severity": "HIGH",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-102278",
+          "Title": "brace-expansion: brace-expansion: Denial of Service via uncontrolled recursion in nested brace patterns"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-13149",
+          "PkgID": "brace-expansion@1.1.12",
+          "PkgName": "brace-expansion",
+          "InstalledVersion": "1.1.12",
+          "FixedVersion": "5.0.7, 1.1.16, 2.1.2",
+          "Status": "fixed",
+          "Severity": "HIGH",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-13149",
+          "Title": "brace-expansion: Brace-expansion: Denial of Service due to exponential-time complexity"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-14257",
+          "PkgID": "brace-expansion@1.1.12",
+          "PkgName": "brace-expansion",
+          "InstalledVersion": "1.1.12",
+          "FixedVersion": "5.0.8, 3.0.3, 2.1.3, 1.1.17",
+          "Status": "fixed",
+          "Severity": "HIGH",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-14257",
+          "Title": "brace-expansion: Brace-expansion: Denial of Service via memory exhaustion in expand() function"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-69152",
+          "PkgID": "brace-expansion@1.1.12",
+          "PkgName": "brace-expansion",
+          "InstalledVersion": "1.1.12",
+          "FixedVersion": "1.1.18, 2.1.4, 3.0.6, 5.0.9",
+          "Status": "fixed",
+          "Severity": "HIGH",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-69152",
+          "Title": "brace-expansion: DoS via unbounded intermediate arrays, bypassing the CVE-2026-14257 mitigation"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-102277",
+          "PkgID": "brace-expansion@1.1.12",
+          "PkgName": "brace-expansion",
+          "InstalledVersion": "1.1.12",
+          "FixedVersion": "5.0.12, 3.0.9, 2.1.7, 1.1.21",
+          "Status": "fixed",
+          "Severity": "MEDIUM",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-102277",
+          "Title": "brace-expansion: brace-expansion: Denial of Service via crafted brace patterns"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-33750",
+          "PkgID": "brace-expansion@1.1.12",
+          "PkgName": "brace-expansion",
+          "InstalledVersion": "1.1.12",
+          "FixedVersion": "5.0.5, 3.0.2, 2.0.3, 1.1.13",
+          "Status": "fixed",
+          "Severity": "MEDIUM",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-33750",
+          "Title": "brace-expansion: brace-expansion: Denial of Service via zero step value in brace pattern"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-102276",
+          "PkgID": "brace-expansion@2.0.2",
+          "PkgName": "brace-expansion",
+          "InstalledVersion": "2.0.2",
+          "FixedVersion": "5.0.10, 3.0.7, 2.1.5, 1.1.19",
+          "Status": "fixed",
+          "Severity": "HIGH",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-102276",
+          "Title": "brace-expansion: brace-expansion: Denial of Service via stack exhaustion from crafted brace patterns"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-102278",
+          "PkgID": "brace-expansion@2.0.2",
+          "PkgName": "brace-expansion",
+          "InstalledVersion": "2.0.2",
+          "FixedVersion": "5.0.11, 3.0.8, 2.1.6, 1.1.20",
+          "Status": "fixed",
+          "Severity": "HIGH",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-102278",
+          "Title": "brace-expansion: brace-expansion: Denial of Service via uncontrolled recursion in nested brace patterns"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-13149",
+          "PkgID": "brace-expansion@2.0.2",
+          "PkgName": "brace-expansion",
+          "InstalledVersion": "2.0.2",
+          "FixedVersion": "5.0.7, 1.1.16, 2.1.2",
+          "Status": "fixed",
+          "Severity": "HIGH",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-13149",
+          "Title": "brace-expansion: Brace-expansion: Denial of Service due to exponential-time complexity"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-14257",
+          "PkgID": "brace-expansion@2.0.2",
+          "PkgName": "brace-expansion",
+          "InstalledVersion": "2.0.2",
+          "FixedVersion": "5.0.8, 3.0.3, 2.1.3, 1.1.17",
+          "Status": "fixed",
+          "Severity": "HIGH",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-14257",
+          "Title": "brace-expansion: Brace-expansion: Denial of Service via memory exhaustion in expand() function"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-69152",
+          "PkgID": "brace-expansion@2.0.2",
+          "PkgName": "brace-expansion",
+          "InstalledVersion": "2.0.2",
+          "FixedVersion": "1.1.18, 2.1.4, 3.0.6, 5.0.9",
+          "Status": "fixed",
+          "Severity": "HIGH",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-69152",
+          "Title": "brace-expansion: DoS via unbounded intermediate arrays, bypassing the CVE-2026-14257 mitigation"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-102277",
+          "PkgID": "brace-expansion@2.0.2",
+          "PkgName": "brace-expansion",
+          "InstalledVersion": "2.0.2",
+          "FixedVersion": "5.0.12, 3.0.9, 2.1.7, 1.1.21",
+          "Status": "fixed",
+          "Severity": "MEDIUM",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-102277",
+          "Title": "brace-expansion: brace-expansion: Denial of Service via crafted brace patterns"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-33750",
+          "PkgID": "brace-expansion@2.0.2",
+          "PkgName": "brace-expansion",
+          "InstalledVersion": "2.0.2",
+          "FixedVersion": "5.0.5, 3.0.2, 2.0.3, 1.1.13",
+          "Status": "fixed",
+          "Severity": "MEDIUM",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-33750",
+          "Title": "brace-expansion: brace-expansion: Denial of Service via zero step value in brace pattern"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-93687",
+          "PkgID": "braces@3.0.3",
+          "PkgName": "braces",
+          "InstalledVersion": "3.0.3",
+          "Status": "affected",
+          "Severity": "HIGH",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-93687",
+          "Title": "braces: braces: Denial of Service via Stack Overflow from Deeply Nested Patterns"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-73088",
+          "PkgID": "browserslist@4.26.3",
+          "PkgName": "browserslist",
+          "InstalledVersion": "4.26.3",
+          "FixedVersion": "4.28.7",
+          "Status": "fixed",
+          "Severity": "HIGH",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-73088",
+          "Title": "browserslist: Browserslist: Prototype pollution leading to denial of service"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-73089",
+          "PkgID": "browserslist@4.26.3",
+          "PkgName": "browserslist",
+          "InstalledVersion": "4.26.3",
+          "FixedVersion": "4.28.7",
+          "Status": "fixed",
+          "Severity": "HIGH",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-73089",
+          "Title": "browserslist: Browserslist: Denial of Service via unbounded memory growth from distinct query results"
+        },
+        {
+          "VulnerabilityID": "CVE-2023-4771",
+          "PkgID": "ckeditor4@4.22.1",
+          "PkgName": "ckeditor4",
+          "InstalledVersion": "4.22.1",
+          "FixedVersion": "4.24.0-lts",
+          "Status": "fixed",
+          "Severity": "MEDIUM",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2023-4771",
+          "Title": "A Cross-Site scripting vulnerability has been found in CKSource CKEdit ..."
+        },
+        {
+          "VulnerabilityID": "CVE-2024-24815",
+          "PkgID": "ckeditor4@4.22.1",
+          "PkgName": "ckeditor4",
+          "InstalledVersion": "4.22.1",
+          "FixedVersion": "4.24.0-lts",
+          "Status": "fixed",
+          "Severity": "MEDIUM",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2024-24815",
+          "Title": "CKEditor4 is an open source what-you-see-is-what-you-get HTML editor.  ..."
+        },
+        {
+          "VulnerabilityID": "CVE-2024-24816",
+          "PkgID": "ckeditor4@4.22.1",
+          "PkgName": "ckeditor4",
+          "InstalledVersion": "4.22.1",
+          "FixedVersion": "4.24.0-lts",
+          "Status": "fixed",
+          "Severity": "MEDIUM",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2024-24816",
+          "Title": "CKEditor4 is an open source what-you-see-is-what-you-get HTML editor.  ..."
+        },
+        {
+          "VulnerabilityID": "CVE-2024-43407",
+          "PkgID": "ckeditor4@4.22.1",
+          "PkgName": "ckeditor4",
+          "InstalledVersion": "4.22.1",
+          "FixedVersion": "4.25.0",
+          "Status": "fixed",
+          "Severity": "MEDIUM",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2024-43407",
+          "Title": "CKEditor4 is an open source what-you-see-is-what-you-get HTML editor.  ..."
+        },
+        {
+          "VulnerabilityID": "CVE-2024-43411",
+          "PkgID": "ckeditor4@4.22.1",
+          "PkgName": "ckeditor4",
+          "InstalledVersion": "4.22.1",
+          "FixedVersion": "4.25.0",
+          "Status": "fixed",
+          "Severity": "MEDIUM",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2024-43411",
+          "Title": "CKEditor4 low-risk cross-site scripting (XSS) vulnerability linked to potential domain takeover"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-85062",
+          "PkgID": "colord@2.9.3",
+          "PkgName": "colord",
+          "InstalledVersion": "2.9.3",
+          "FixedVersion": "2.9.4",
+          "Status": "fixed",
+          "Severity": "MEDIUM",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-85062",
+          "Title": "colord: omgovich/colord: Colord: Denial of Service via oversized malformed color strings"
+        }
+      ]
+    }
+  ]
+}

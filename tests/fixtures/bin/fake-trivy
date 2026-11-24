@@ -1,0 +1,7 @@
+#!/bin/sh
+# Stand-in for Trivy: copies a fixture report to the --output path.
+while [ $# -gt 0 ]; do
+  if [ "$1" = "--output" ]; then out="$2"; fi
+  shift
+done
+cp "$(dirname "$0")/../trivy/yarn-report.json" "$out"

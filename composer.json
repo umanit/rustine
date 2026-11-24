@@ -1,0 +1,36 @@
+{
+  "name": "umanit/rustine",
+  "description": "Opens GitLab merge requests that fix only the Composer/Yarn packages affected by a CVE reported by Trivy",
+  "type": "project",
+  "license": "proprietary",
+  "bin": [
+    "bin/rustine"
+  ],
+  "require": {
+    "php": ">=8.4",
+    "ext-json": "*",
+    "composer/semver": "^3.4",
+    "devium/toml": "^1.1",
+    "symfony/console": "^8.1",
+    "symfony/http-client": "^8.1",
+    "symfony/process": "^8.1",
+    "symfony/yaml": "^8.1"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^12.0",
+    "phpstan/phpstan": "^2.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Rustine\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Rustine\\Tests\\": "tests/"
+    }
+  },
+  "config": {
+    "sort-packages": true
+  }
+}

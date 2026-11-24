@@ -1,0 +1,664 @@
+{
+  "SchemaVersion": 2,
+  "ArtifactType": "filesystem",
+  "Results": [
+    {
+      "Target": "composer.lock",
+      "Class": "lang-pkgs",
+      "Type": "composer",
+      "Packages": [
+        {
+          "ID": "acme-core/admin@4.3.14",
+          "Name": "acme-core/admin",
+          "Version": "4.3.14",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "acme-core/core@4.3.16"
+          ]
+        },
+        {
+          "ID": "acme-core/core@4.3.16",
+          "Name": "acme-core/core",
+          "Version": "4.3.16",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "acme-core/admin@4.3.14",
+            "acme-core/importexport@4.3.16",
+            "acme-core/user@4.3.16",
+            "artgris/filemanager-bundle@2.10.6",
+            "babdev/pagerfanta-bundle@v4.5.0",
+            "doctrine/doctrine-bundle@2.18.2",
+            "doctrine/doctrine-migrations-bundle@3.5.0",
+            "exercise/htmlpurifier-bundle@4.1.2",
+            "friendsofsymfony/ckeditor-bundle@2.4.0",
+            "knplabs/knp-menu-bundle@v3.6.0",
+            "knplabs/knp-snappy-bundle@v1.10.4",
+            "liip/imagine-bundle@2.15.0",
+            "litesaml/lightsaml@4.5.1",
+            "makinacorpus/db-tools-bundle@1.2.1",
+            "odolbeau/phone-number-bundle@v4.1.0",
+            "phpoffice/phpspreadsheet@1.30.0",
+            "scheb/2fa-bundle@v7.11.0",
+            "scheb/2fa-email@v7.11.0",
+            "scheb/2fa-totp@v7.11.0",
+            "scheb/2fa-trusted-device@v7.11.0",
+            "sentry/sentry-symfony@5.6.0",
+            "spatie/browsershot@3.61.0",
+            "symfony/cache@v7.4.5",
+            "symfony/expression-language@v6.4.32",
+            "symfony/framework-bundle@v6.4.33",
+            "symfony/monolog-bundle@v3.10.0",
+            "symfony/security-bundle@v6.4.26",
+            "symfony/stimulus-bundle@v2.30.0",
+            "symfony/twig-bundle@v6.4.24",
+            "symfony/webpack-encore-bundle@v1.17.2",
+            "twig/extra-bundle@v3.21.0",
+            "acme-bundle/2fa-sms@1.0.0",
+            "acme-bundle/emailing-bundle@3.5.3",
+            "acme-bundle/inactivity-bundle@2.0.10",
+            "acme-bundle/saml-bundle@1.0.31",
+            "acme-bundle/twig-image-extension@1.3.3"
+          ]
+        },
+        {
+          "ID": "acme/app@dev-main",
+          "Name": "acme/app",
+          "Version": "dev-feature/69902-matching-indexes",
+          "Relationship": "direct",
+          "DependsOn": [
+            "acme-core/core@4.3.16",
+            "nelmio/api-doc-bundle@v5.6.5",
+            "symfony/framework-bundle@v6.4.33"
+          ]
+        },
+        {
+          "ID": "acme-core/importexport@4.3.16",
+          "Name": "acme-core/importexport",
+          "Version": "4.3.16",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "acme-core/core@4.3.16"
+          ]
+        },
+        {
+          "ID": "acme-core/user@4.3.16",
+          "Name": "acme-core/user",
+          "Version": "4.3.16",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "acme-core/core@4.3.16"
+          ]
+        },
+        {
+          "ID": "artgris/filemanager-bundle@2.10.6",
+          "Name": "artgris/filemanager-bundle",
+          "Version": "2.10.6",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "symfony/expression-language@v6.4.32",
+            "symfony/framework-bundle@v6.4.33",
+            "symfony/twig-bundle@v6.4.24"
+          ]
+        },
+        {
+          "ID": "babdev/pagerfanta-bundle@v4.5.0",
+          "Name": "babdev/pagerfanta-bundle",
+          "Version": "v4.5.0",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "symfony/http-foundation@v6.4.33",
+            "symfony/http-kernel@v6.4.33"
+          ]
+        },
+        {
+          "ID": "doctrine/doctrine-bundle@2.18.2",
+          "Name": "doctrine/doctrine-bundle",
+          "Version": "2.18.2",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "symfony/cache@v7.4.5",
+            "symfony/framework-bundle@v6.4.33"
+          ]
+        },
+        {
+          "ID": "doctrine/doctrine-migrations-bundle@3.5.0",
+          "Name": "doctrine/doctrine-migrations-bundle",
+          "Version": "3.5.0",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "doctrine/doctrine-bundle@2.18.2",
+            "symfony/framework-bundle@v6.4.33"
+          ]
+        },
+        {
+          "ID": "exercise/htmlpurifier-bundle@4.1.2",
+          "Name": "exercise/htmlpurifier-bundle",
+          "Version": "4.1.2",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "symfony/http-kernel@v6.4.33"
+          ]
+        },
+        {
+          "ID": "friendsofsymfony/ckeditor-bundle@2.4.0",
+          "Name": "friendsofsymfony/ckeditor-bundle",
+          "Version": "2.4.0",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "symfony/expression-language@v6.4.32",
+            "symfony/framework-bundle@v6.4.33",
+            "symfony/http-foundation@v6.4.33",
+            "symfony/http-kernel@v6.4.33",
+            "symfony/twig-bundle@v6.4.24"
+          ]
+        },
+        {
+          "ID": "knplabs/knp-menu-bundle@v3.6.0",
+          "Name": "knplabs/knp-menu-bundle",
+          "Version": "v3.6.0",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "symfony/http-kernel@v6.4.33"
+          ]
+        },
+        {
+          "ID": "knplabs/knp-snappy-bundle@v1.10.4",
+          "Name": "knplabs/knp-snappy-bundle",
+          "Version": "v1.10.4",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "symfony/framework-bundle@v6.4.33"
+          ]
+        },
+        {
+          "ID": "liip/imagine-bundle@2.15.0",
+          "Name": "liip/imagine-bundle",
+          "Version": "2.15.0",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "symfony/framework-bundle@v6.4.33"
+          ]
+        },
+        {
+          "ID": "litesaml/lightsaml@4.5.1",
+          "Name": "litesaml/lightsaml",
+          "Version": "4.5.1",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "symfony/http-foundation@v6.4.33"
+          ]
+        },
+        {
+          "ID": "makinacorpus/db-tools-bundle@1.2.1",
+          "Name": "makinacorpus/db-tools-bundle",
+          "Version": "1.2.1",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "doctrine/doctrine-bundle@2.18.2"
+          ]
+        },
+        {
+          "ID": "nelmio/api-doc-bundle@v5.6.5",
+          "Name": "nelmio/api-doc-bundle",
+          "Version": "v5.6.5",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "symfony/framework-bundle@v6.4.33",
+            "symfony/http-foundation@v6.4.33",
+            "symfony/http-kernel@v6.4.33"
+          ]
+        },
+        {
+          "ID": "odolbeau/phone-number-bundle@v4.1.0",
+          "Name": "odolbeau/phone-number-bundle",
+          "Version": "v4.1.0",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "symfony/framework-bundle@v6.4.33"
+          ]
+        },
+        {
+          "ID": "phpoffice/phpspreadsheet@1.30.0",
+          "Name": "phpoffice/phpspreadsheet",
+          "Version": "1.30.0",
+          "Relationship": "indirect",
+          "DependsOn": [ ]
+        },
+        {
+          "ID": "scheb/2fa-bundle@v7.11.0",
+          "Name": "scheb/2fa-bundle",
+          "Version": "v7.11.0",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "symfony/framework-bundle@v6.4.33",
+            "symfony/http-foundation@v6.4.33",
+            "symfony/http-kernel@v6.4.33",
+            "symfony/security-bundle@v6.4.26",
+            "symfony/twig-bundle@v6.4.24"
+          ]
+        },
+        {
+          "ID": "scheb/2fa-email@v7.11.0",
+          "Name": "scheb/2fa-email",
+          "Version": "v7.11.0",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "scheb/2fa-bundle@v7.11.0"
+          ]
+        },
+        {
+          "ID": "scheb/2fa-totp@v7.11.0",
+          "Name": "scheb/2fa-totp",
+          "Version": "v7.11.0",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "scheb/2fa-bundle@v7.11.0"
+          ]
+        },
+        {
+          "ID": "scheb/2fa-trusted-device@v7.11.0",
+          "Name": "scheb/2fa-trusted-device",
+          "Version": "v7.11.0",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "scheb/2fa-bundle@v7.11.0"
+          ]
+        },
+        {
+          "ID": "sentry/sentry-symfony@5.6.0",
+          "Name": "sentry/sentry-symfony",
+          "Version": "5.6.0",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "symfony/http-kernel@v6.4.33",
+            "symfony/psr-http-message-bridge@v7.3.0"
+          ]
+        },
+        {
+          "ID": "spatie/browsershot@3.61.0",
+          "Name": "spatie/browsershot",
+          "Version": "3.61.0",
+          "Relationship": "indirect",
+          "DependsOn": [ ]
+        },
+        {
+          "ID": "symfony/cache@v7.4.5",
+          "Name": "symfony/cache",
+          "Version": "v7.4.5",
+          "Relationship": "indirect",
+          "DependsOn": [ ]
+        },
+        {
+          "ID": "symfony/expression-language@v6.4.32",
+          "Name": "symfony/expression-language",
+          "Version": "v6.4.32",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "symfony/cache@v7.4.5"
+          ]
+        },
+        {
+          "ID": "symfony/framework-bundle@v6.4.33",
+          "Name": "symfony/framework-bundle",
+          "Version": "v6.4.33",
+          "Relationship": "direct",
+          "DependsOn": [
+            "symfony/cache@v7.4.5",
+            "symfony/http-foundation@v6.4.33",
+            "symfony/http-kernel@v6.4.33"
+          ]
+        },
+        {
+          "ID": "symfony/http-foundation@v6.4.33",
+          "Name": "symfony/http-foundation",
+          "Version": "v6.4.33",
+          "Relationship": "indirect",
+          "DependsOn": [ ]
+        },
+        {
+          "ID": "symfony/http-kernel@v6.4.33",
+          "Name": "symfony/http-kernel",
+          "Version": "v6.4.33",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "symfony/http-foundation@v6.4.33"
+          ]
+        },
+        {
+          "ID": "symfony/monolog-bridge@v7.3.4",
+          "Name": "symfony/monolog-bridge",
+          "Version": "v7.3.4",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "symfony/http-kernel@v6.4.33"
+          ]
+        },
+        {
+          "ID": "symfony/monolog-bundle@v3.10.0",
+          "Name": "symfony/monolog-bundle",
+          "Version": "v3.10.0",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "symfony/http-kernel@v6.4.33",
+            "symfony/monolog-bridge@v7.3.4"
+          ]
+        },
+        {
+          "ID": "symfony/psr-http-message-bridge@v7.3.0",
+          "Name": "symfony/psr-http-message-bridge",
+          "Version": "v7.3.0",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "symfony/http-foundation@v6.4.33"
+          ]
+        },
+        {
+          "ID": "symfony/security-bundle@v6.4.26",
+          "Name": "symfony/security-bundle",
+          "Version": "v6.4.26",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "symfony/http-foundation@v6.4.33",
+            "symfony/http-kernel@v6.4.33",
+            "symfony/security-http@v7.3.4"
+          ]
+        },
+        {
+          "ID": "symfony/security-http@v7.3.4",
+          "Name": "symfony/security-http",
+          "Version": "v7.3.4",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "symfony/http-foundation@v6.4.33",
+            "symfony/http-kernel@v6.4.33"
+          ]
+        },
+        {
+          "ID": "symfony/stimulus-bundle@v2.30.0",
+          "Name": "symfony/stimulus-bundle",
+          "Version": "v2.30.0",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "symfony/http-kernel@v6.4.33"
+          ]
+        },
+        {
+          "ID": "symfony/twig-bundle@v6.4.24",
+          "Name": "symfony/twig-bundle",
+          "Version": "v6.4.24",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "symfony/http-foundation@v6.4.33",
+            "symfony/http-kernel@v6.4.33"
+          ]
+        },
+        {
+          "ID": "symfony/webpack-encore-bundle@v1.17.2",
+          "Name": "symfony/webpack-encore-bundle",
+          "Version": "v1.17.2",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "symfony/http-kernel@v6.4.33"
+          ]
+        },
+        {
+          "ID": "twig/extra-bundle@v3.21.0",
+          "Name": "twig/extra-bundle",
+          "Version": "v3.21.0",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "symfony/framework-bundle@v6.4.33",
+            "symfony/twig-bundle@v6.4.24"
+          ]
+        },
+        {
+          "ID": "acme-bundle/2fa-sms@1.0.0",
+          "Name": "acme-bundle/2fa-sms",
+          "Version": "1.0.0",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "scheb/2fa-bundle@v7.11.0",
+            "symfony/framework-bundle@v6.4.33"
+          ]
+        },
+        {
+          "ID": "acme-bundle/emailing-bundle@3.5.3",
+          "Name": "acme-bundle/emailing-bundle",
+          "Version": "3.5.3",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "babdev/pagerfanta-bundle@v4.5.0",
+            "doctrine/doctrine-bundle@2.18.2",
+            "doctrine/doctrine-migrations-bundle@3.5.0",
+            "phpoffice/phpspreadsheet@1.30.0",
+            "symfony/framework-bundle@v6.4.33",
+            "symfony/security-bundle@v6.4.26",
+            "symfony/twig-bundle@v6.4.24"
+          ]
+        },
+        {
+          "ID": "acme-bundle/inactivity-bundle@2.0.10",
+          "Name": "acme-bundle/inactivity-bundle",
+          "Version": "2.0.10",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "symfony/http-kernel@v6.4.33"
+          ]
+        },
+        {
+          "ID": "acme-bundle/saml-bundle@1.0.31",
+          "Name": "acme-bundle/saml-bundle",
+          "Version": "1.0.31",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "litesaml/lightsaml@4.5.1",
+            "symfony/cache@v7.4.5",
+            "symfony/framework-bundle@v6.4.33",
+            "symfony/http-foundation@v6.4.33",
+            "symfony/http-kernel@v6.4.33",
+            "symfony/security-bundle@v6.4.26",
+            "symfony/security-http@v7.3.4",
+            "symfony/twig-bundle@v6.4.24"
+          ]
+        },
+        {
+          "ID": "acme-bundle/twig-image-extension@1.3.3",
+          "Name": "acme-bundle/twig-image-extension",
+          "Version": "1.3.3",
+          "Relationship": "indirect",
+          "DependsOn": [
+            "liip/imagine-bundle@2.15.0"
+          ]
+        }
+      ],
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2026-34084",
+          "PkgID": "phpoffice/phpspreadsheet@1.30.0",
+          "PkgName": "phpoffice/phpspreadsheet",
+          "InstalledVersion": "1.30.0",
+          "FixedVersion": "5.6.0, 3.10.4, 2.4.4, 2.1.15, 1.30.3",
+          "Status": "fixed",
+          "Severity": "CRITICAL",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-34084",
+          "Title": "PhpSpreadsheet has SSRF/RCE in IOFactory::load when $filename is user controlled"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-45034",
+          "PkgID": "phpoffice/phpspreadsheet@1.30.0",
+          "PkgName": "phpoffice/phpspreadsheet",
+          "InstalledVersion": "1.30.0",
+          "FixedVersion": "1.30.5",
+          "Status": "fixed",
+          "Severity": "CRITICAL",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-45034",
+          "Title": "PHPSpreadsheet has a patch bypass for CVE-2026-34084 "
+        },
+        {
+          "VulnerabilityID": "CVE-2026-40863",
+          "PkgID": "phpoffice/phpspreadsheet@1.30.0",
+          "PkgName": "phpoffice/phpspreadsheet",
+          "InstalledVersion": "1.30.0",
+          "FixedVersion": "5.7.0, 3.10.5, 2.4.5, 2.1.16, 1.30.4",
+          "Status": "fixed",
+          "Severity": "HIGH",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-40863",
+          "Title": "PhpSpreadsheet has CPU Denial of Service via Unbounded Row Index in SpreadsheetML XML Reader"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-40902",
+          "PkgID": "phpoffice/phpspreadsheet@1.30.0",
+          "PkgName": "phpoffice/phpspreadsheet",
+          "InstalledVersion": "1.30.0",
+          "FixedVersion": "5.7.0, 3.10.5, 2.4.5, 2.1.16, 1.30.4",
+          "Status": "fixed",
+          "Severity": "HIGH",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-40902",
+          "Title": "PhpSpreadsheet has CPU Denial of Service via Unbounded Row Number in XLSX Row Dimensions"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-59931",
+          "PkgID": "phpoffice/phpspreadsheet@1.30.0",
+          "PkgName": "phpoffice/phpspreadsheet",
+          "InstalledVersion": "1.30.0",
+          "FixedVersion": "5.8.1, 3.10.7, 2.4.7, 2.1.18, 1.30.6",
+          "Status": "fixed",
+          "Severity": "HIGH",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-59931",
+          "Title": "PHPSpreadsheet: SSRF bypass via HTTP redirect in WEBSERVICE() domain whitelist"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-59932",
+          "PkgID": "phpoffice/phpspreadsheet@1.30.0",
+          "PkgName": "phpoffice/phpspreadsheet",
+          "InstalledVersion": "1.30.0",
+          "FixedVersion": "5.8.1, 3.10.7, 2.4.7, 2.1.18, 1.30.6",
+          "Status": "fixed",
+          "Severity": "HIGH",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-59932",
+          "Title": "PHPSpreadsheet: Gnumeric reader unbounded gzip expansion causes memory exhaustion"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-59933",
+          "PkgID": "phpoffice/phpspreadsheet@1.30.0",
+          "PkgName": "phpoffice/phpspreadsheet",
+          "InstalledVersion": "1.30.0",
+          "FixedVersion": "5.8.1, 3.10.7, 2.4.7, 2.1.18, 1.30.6",
+          "Status": "fixed",
+          "Severity": "HIGH",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-59933",
+          "Title": "PHPSpreadsheet: XLS/OLE sector-chain self-loop causes memory exhaustion"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-35453",
+          "PkgID": "phpoffice/phpspreadsheet@1.30.0",
+          "PkgName": "phpoffice/phpspreadsheet",
+          "InstalledVersion": "1.30.0",
+          "FixedVersion": "5.7.0, 3.10.5, 2.4.5, 2.1.16, 1.30.4",
+          "Status": "fixed",
+          "Severity": "MEDIUM",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-35453",
+          "Title": "PhpSpreadsheet has XSS via NumberFormat @ Text Substitution in HTML Writer"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-40296",
+          "PkgID": "phpoffice/phpspreadsheet@1.30.0",
+          "PkgName": "phpoffice/phpspreadsheet",
+          "InstalledVersion": "1.30.0",
+          "FixedVersion": "5.7.0, 3.10.5, 2.4.5, 2.1.16, 1.30.4",
+          "Status": "fixed",
+          "Severity": "MEDIUM",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-40296",
+          "Title": "PhpSpreadsheet has XSS via number format code with @ text placeholder bypasses htmlspecialchars in HTML writer"
+        },
+        {
+          "VulnerabilityID": "CVE-2024-21547",
+          "PkgID": "spatie/browsershot@3.61.0",
+          "PkgName": "spatie/browsershot",
+          "InstalledVersion": "3.61.0",
+          "FixedVersion": "5.0.2",
+          "Status": "fixed",
+          "Severity": "HIGH",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2024-21547",
+          "Title": "Spatie Browsershot Directory Traversal vulnerability"
+        },
+        {
+          "VulnerabilityID": "CVE-2025-1022",
+          "PkgID": "spatie/browsershot@3.61.0",
+          "PkgName": "spatie/browsershot",
+          "InstalledVersion": "3.61.0",
+          "FixedVersion": "5.0.5",
+          "Status": "fixed",
+          "Severity": "HIGH",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2025-1022",
+          "Title": "Browsershot Path Traversal"
+        },
+        {
+          "VulnerabilityID": "CVE-2025-3192",
+          "PkgID": "spatie/browsershot@3.61.0",
+          "PkgName": "spatie/browsershot",
+          "InstalledVersion": "3.61.0",
+          "Status": "affected",
+          "Severity": "HIGH",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2025-3192",
+          "Title": "Browsershot Server-Side Request Forgery (SSRF) via setURL() Function"
+        },
+        {
+          "VulnerabilityID": "CVE-2024-21544",
+          "PkgID": "spatie/browsershot@3.61.0",
+          "PkgName": "spatie/browsershot",
+          "InstalledVersion": "3.61.0",
+          "FixedVersion": "5.0.1",
+          "Status": "fixed",
+          "Severity": "MEDIUM",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2024-21544",
+          "Title": "Browsershot Local File Inclusion"
+        },
+        {
+          "VulnerabilityID": "CVE-2024-21549",
+          "PkgID": "spatie/browsershot@3.61.0",
+          "PkgName": "spatie/browsershot",
+          "InstalledVersion": "3.61.0",
+          "FixedVersion": "5.0.3",
+          "Status": "fixed",
+          "Severity": "MEDIUM",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2024-21549",
+          "Title": "Browsershot Improper Input Validation vulnerability"
+        },
+        {
+          "VulnerabilityID": "CVE-2025-1026",
+          "PkgID": "spatie/browsershot@3.61.0",
+          "PkgName": "spatie/browsershot",
+          "InstalledVersion": "3.61.0",
+          "FixedVersion": "5.0.5",
+          "Status": "fixed",
+          "Severity": "MEDIUM",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2025-1026",
+          "Title": "Browsershot Local File Inclusion"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-45073",
+          "PkgID": "symfony/cache@v7.4.5",
+          "PkgName": "symfony/cache",
+          "InstalledVersion": "v7.4.5",
+          "FixedVersion": "5.3.0, 6.2.0, 5.0.0, 5.4.0, 7.1.0, 7.4.0, 8.0.12, 5.2.0, 6.1.0, 6.3.0, 6.4.0, 7.2.0, 3.0.0, 5.1.0, 5.4.52, 6.4.40, 7.3.0, 7.4.12, 4.0.0",
+          "Status": "fixed",
+          "Severity": "HIGH",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-45073",
+          "Title": "Symfony is a PHP framework for web and console applications and a set  ..."
+        },
+        {
+          "VulnerabilityID": "CVE-2026-48736",
+          "PkgID": "symfony/http-foundation@v6.4.33",
+          "PkgName": "symfony/http-foundation",
+          "InstalledVersion": "v6.4.33",
+          "FixedVersion": "8.0.13, 6.4.41, 7.1.0, 7.2.0, 7.3.0, 7.4.0, 7.4.13",
+          "Status": "fixed",
+          "Severity": "HIGH",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-48736",
+          "Title": "Symfony is a PHP framework for web and console applications and a set  ..."
+        }
+      ]
+    }
+  ]
+}
