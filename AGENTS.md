@@ -1,8 +1,9 @@
 # AGENTS.md
 
 Rustine is a PHP CLI that opens GitLab merge requests fixing **only** the Composer/Yarn packages
-affected by a CVE reported by Trivy. Current state: `scan` (runs Trivy) and `plan` (shows the
-planned fixes, grouped by MR). Opening the merge requests is not implemented yet.
+affected by a CVE reported by Trivy. Current state: `scan` (runs Trivy), `plan` (shows the
+planned fixes, grouped by MR) and `apply` (Yarn Berry only: applies the fixes to the working tree, no commit/push).
+Yarn Classic, Composer and the GitLab integration are not implemented yet.
 
 ## Environment
 
@@ -22,6 +23,7 @@ make full_static_analyze   # static analysis + tests (run after any PHP change)
 
 bin/rustine scan --project=. --output=trivy-report.json
 bin/rustine plan --report=trivy-report.json [--group=critical-high] [--format=json]
+bin/rustine apply --project=. --report=trivy-report.json --group=others [--dry-run] [--trivy-arg=…]
 ```
 
 `make full_static_analyze` is the single source of truth: it must pass before a change is
@@ -36,6 +38,7 @@ considered done. IDE (PHPStorm) warnings are informational only.
 | `Version/` | Selecting the smallest fixed version (same major preferred)               |
 | `Plan/`    | Planning: grouping fixes by ecosystem and severity group                  |
 | `Pinning/` | Detecting pinned tools (`mise.toml` wins over the `volta` key)            |
+| `Apply/`   | Applying fixes: strategies, `mise exec` wrapping, git guard-rails, re-scan |
 
 Commands are registered in `src/Application.php`. `tests/` mirrors the structure of `src/`;
 fixtures (Trivy reports, the `fake-trivy` binary) live in `tests/fixtures/`.

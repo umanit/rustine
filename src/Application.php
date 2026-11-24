@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Rustine;
 
+use Rustine\Command\ApplyCommand;
 use Rustine\Command\PlanCommand;
 use Rustine\Command\ScanCommand;
 use Symfony\Component\Console\Application as BaseApplication;
@@ -18,5 +19,6 @@ final class Application extends BaseApplication
 
         $this->addCommand(new ScanCommand());
         $this->addCommand(new PlanCommand());
+        $this->addCommand(new ApplyCommand());
     }
 }
