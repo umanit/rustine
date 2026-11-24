@@ -45,9 +45,13 @@ final readonly class TranslatorFactory
      */
     public function availableLocales(): array
     {
+        // Not glob(): it does not work on phar:// paths, where the catalogs live in the distributed PHAR.
         $locales = [];
-        foreach (glob(sprintf('%s/%s+intl-icu.*.yaml', $this->directory, self::DOMAIN)) ?: [] as $file) {
-            if (1 === preg_match('/\.([A-Za-z_-]+)\.yaml$/', $file, $m)) {
+        if (!is_dir($this->directory)) {
+            return [];
+        }
+        foreach (new \DirectoryIterator($this->directory) as $file) {
+            if ($file->isFile() && 1 === preg_match(sprintf('/^%s\+intl-icu\.([A-Za-z_-]+)\.yaml$/', preg_quote(self::DOMAIN, '/')), $file->getFilename(), $m)) {
                 $locales[] = $m[1];
             }
         }

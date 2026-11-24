@@ -4,7 +4,7 @@ Rustine is a PHP CLI that opens GitLab merge requests fixing **only** the Compos
 affected by a CVE reported by Trivy. Commands: `scan` (runs Trivy), `plan` (shows the planned fixes, grouped by MR),
 `apply` (Yarn Berry/Classic and Composer: applies the fixes to the working tree, no commit/push) and `run` (the CI entry
 point: scan → plan → apply → commit → push → merge request; `--dry-run` only previews the texts from a report).
-The CI template, the phar and the README are not written yet.
+The CI template is not written yet; the PHAR is built by `make phar`.
 
 ## Environment
 
@@ -21,6 +21,7 @@ The CI template, the phar and the README are not written yet.
 make tests                 # vendor/bin/phpunit
 make static_analyze        # vendor/bin/phpstan analyse --memory-limit=1G
 make full_static_analyze   # static analysis + tests (run after any PHP change)
+make phar [VERSION=x.y.z]  # build/rustine.phar (tools/build-phar.php): clean `composer install --no-dev` staging, smoke test
 
 bin/rustine scan --project=. --output=trivy-report.json
 bin/rustine plan --report=trivy-report.json [--group=critical-high] [--format=json]
@@ -48,7 +49,8 @@ considered done. IDE (PHPStorm) warnings are informational only.
 | `Report/`  | Title, description and commit message of a merge request (localized)       |
 | `I18n/`    | `TranslatorFactory` (symfony/translation); catalogs in `resources/translations/` |
 
-Commands are registered in `src/Application.php`. `tests/` mirrors the structure of `src/`;
+Commands are registered in `src/Application.php`. Code must work inside the PHAR: no `glob()` (it does not support `phar://`),
+no path computed outside `__DIR__`-relative resources; `resources/` is embedded. `tests/` mirrors the structure of `src/`;
 fixtures (Trivy reports, the `fake-trivy` binary) live in `tests/fixtures/`.
 
 ## Code conventions
