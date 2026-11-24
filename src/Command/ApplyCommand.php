@@ -4,31 +4,19 @@ declare(strict_types=1);
 
 namespace Rustine\Command;
 
-use Rustine\Apply\ComposerStrategy;
-use Rustine\Apply\FixApplier;
 use Rustine\Apply\FixOutcome;
 use Rustine\Apply\FixOutcomeStatus;
 use Rustine\Apply\FixStrategy;
-use Rustine\Apply\PackageJsonEditor;
 use Rustine\Apply\ProcessCommandRunner;
-use Rustine\Apply\ToolEnvironment;
-use Rustine\Apply\TrivyRescanner;
+use Rustine\Apply\ProjectPlanApplier;
 use Rustine\Apply\UnsupportedProjectException;
-use Rustine\Apply\WorkingTree;
-use Rustine\Apply\YarnBerryStrategy;
-use Rustine\Apply\YarnClassicStrategy;
-use Rustine\Pinning\PinningDetector;
 use Rustine\Pinning\PinningException;
-use Rustine\Pinning\PinningSource;
-use Rustine\Pinning\ToolPinning;
-use Rustine\Pinning\YarnFlavor;
 use Rustine\Plan\GroupPlan;
 use Rustine\Plan\Planner;
 use Rustine\Plan\SeverityGroup;
 use Rustine\Trivy\Ecosystem;
 use Rustine\Trivy\InvalidTrivyReportException;
 use Rustine\Trivy\TrivyReportParser;
-use Rustine\Trivy\TrivyScanner;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
@@ -112,51 +100,27 @@ final class ApplyCommand
         }
         $plan = $plans[0];
 
-        $pinning = null;
-        if (Ecosystem::Yarn === $plan->ecosystem) {
-            try {
-                $pinning = (new PinningDetector())->detect($projectDir);
-            } catch (PinningException $e) {
-                $io->error($e->getMessage());
+        $runner = new ProcessCommandRunner();
+        $planApplier = new ProjectPlanApplier($runner, $projectDir, $trivyBin, $trivyArg);
 
-                return Command::FAILURE;
-            }
-            $io->writeln(sprintf('Tool pinning: %s', $pinning->describe()));
+        try {
+            $setup = $planApplier->setup($plan->ecosystem);
+        } catch (PinningException $e) {
+            $io->error($e->getMessage());
 
-            $flavor = $pinning->yarnFlavor();
-            if (null === $flavor) {
-                $io->error('Yarn is not pinned by the project: cannot choose a strategy.');
-
-                return Command::FAILURE;
-            }
-            $strategy = YarnFlavor::Berry === $flavor ? new YarnBerryStrategy() : new YarnClassicStrategy();
-        } else {
-            // PHP and Composer come from the CI image unless the project pins them with mise.
-            $pinning = $this->optionalMisePinning($projectDir);
-            $io->writeln(sprintf('Tool pinning: %s', $pinning?->describe() ?? 'none (tools of the environment)'));
-            $strategy = new ComposerStrategy();
+            return Command::FAILURE;
         }
+        $io->writeln(sprintf('Tool pinning: %s', $setup->pinning?->describe() ?? 'none (tools of the environment)'));
 
         if ($dryRun) {
-            $this->printDryRun($io, $plan, $strategy, $projectDir);
+            $this->printDryRun($io, $plan, $setup->strategy, $projectDir);
 
             return Command::SUCCESS;
         }
 
-        $runner = new ProcessCommandRunner();
-        $applier = new FixApplier(
-            $runner,
-            new ToolEnvironment($pinning, $projectDir),
-            new WorkingTree($runner, $projectDir),
-            new TrivyRescanner(new TrivyScanner($trivyBin), new TrivyReportParser(), $projectDir, $trivyArg),
-            $strategy,
-            new PackageJsonEditor(),
-            $projectDir,
-        );
-
         try {
-            $result = $applier->apply($plan, $parsedReport);
-        } catch (UnsupportedProjectException $e) {
+            $result = $planApplier->apply($plan, $parsedReport)->result;
+        } catch (UnsupportedProjectException|PinningException $e) {
             $io->error($e->getMessage());
 
             return Command::FAILURE;
@@ -199,20 +163,6 @@ final class ApplyCommand
                 $io->writeln(sprintf('      %d. [%s] %s', $i + 1, $attempt->kind->value, $attempt->describe()));
             }
         }
-    }
-
-    /**
-     * A `mise.toml` is honoured for Composer projects (PHP may be pinned); the `volta` key never concerns them.
-     */
-    private function optionalMisePinning(string $projectDir): ?ToolPinning
-    {
-        try {
-            $pinning = (new PinningDetector())->detect($projectDir);
-        } catch (PinningException) {
-            return null;
-        }
-
-        return PinningSource::Mise === $pinning->source ? $pinning : null;
     }
 
     private function describe(FixOutcome $outcome): string

@@ -1,9 +1,10 @@
 # AGENTS.md
 
 Rustine is a PHP CLI that opens GitLab merge requests fixing **only** the Composer/Yarn packages
-affected by a CVE reported by Trivy. Current state: `scan` (runs Trivy), `run --dry-run` (previews the merge request texts), `plan` (shows the
-planned fixes, grouped by MR) and `apply` (Yarn Berry/Classic and Composer: applies the fixes to the working tree, no commit/push).
-Pushing branches and opening merge requests (git/GitLab) is not implemented yet.
+affected by a CVE reported by Trivy. Commands: `scan` (runs Trivy), `plan` (shows the planned fixes, grouped by MR),
+`apply` (Yarn Berry/Classic and Composer: applies the fixes to the working tree, no commit/push) and `run` (the CI entry
+point: scan → plan → apply → commit → push → merge request; `--dry-run` only previews the texts from a report).
+The CI template, the phar and the README are not written yet.
 
 ## Environment
 
@@ -24,6 +25,7 @@ make full_static_analyze   # static analysis + tests (run after any PHP change)
 bin/rustine scan --project=. --output=trivy-report.json
 bin/rustine plan --report=trivy-report.json [--group=critical-high] [--format=json]
 bin/rustine run --report=trivy-report.json --group=others [--locale=fr] [--report-file=report.md] --dry-run
+RUSTINE_GITLAB_TOKEN=… bin/rustine run --group=others [--ecosystem=yarn] [--gitlab-url=… --project-id=… --default-branch=…]  # real run; exit code 2 = manual action needed
 bin/rustine apply --project=. --report=trivy-report.json --group=others [--ecosystem=yarn|composer] [--dry-run] [--trivy-arg=…]
 ```
 
@@ -41,6 +43,8 @@ considered done. IDE (PHPStorm) warnings are informational only.
 | `Pinning/` | Detecting pinned tools (`mise.toml` wins over the `volta` key)            |
 | `Apply/`   | Applying fixes: strategies, `mise exec` wrapping, git guard-rails, re-scan |
 | `Git/`     | Branch of one MR: inspect the remote, restart from the default branch, commit the allowed files, lease-guarded push; token kept out of argv and logs |
+| `GitLab/`  | REST v4 client (`GitLabClient` + `HttpGitLabClient`), `GitLabConfig` (options, then CI variables; token from env only) |
+| `Sync/`    | `MergeRequestSynchronizer` (one plan: branch + MR state machine), `NoteRenderer`, `SyncSettings`, `RunSummary` (report + exit code) |
 | `Report/`  | Title, description and commit message of a merge request (localized)       |
 | `I18n/`    | `TranslatorFactory` (symfony/translation); catalogs in `resources/translations/` |
 

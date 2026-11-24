@@ -9,13 +9,19 @@ use PHPUnit\Framework\TestCase;
 use Rustine\Application;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
+use Symfony\Component\HttpClient\MockHttpClient;
+use Symfony\Component\HttpClient\Response\MockResponse;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 final class CommandsTest extends TestCase
 {
     private const REPORT = __DIR__ . '/../fixtures/trivy/yarn-report.json';
+    private const GITLAB = ['--gitlab-url' => 'https://gitlab.example.com/api/v4', '--project-id' => '42', '--default-branch' => 'main'];
 
     /** @var list<string> */
     private array $dirs = [];
+    /** @var list<string> */
+    private array $files = [];
 
     #[Test]
     public function planPrintsTheTextPlan(): void
@@ -230,13 +236,62 @@ final class CommandsTest extends TestCase
     }
 
     #[Test]
-    public function runIsPreviewOnlyForNow(): void
+    public function runNeedsTheGitLabSettings(): void
     {
-        $tester = $this->tester('run');
-        $tester->execute(['--report' => self::REPORT, '--group' => ['others']]);
+        $this->withEnvironment(['GITLAB_TOKEN' => null, 'RUSTINE_GITLAB_TOKEN' => null, 'CI_API_V4_URL' => null, 'CI_PROJECT_ID' => null, 'CI_DEFAULT_BRANCH' => null], function (): void {
+            $tester = $this->tester('run');
+            $tester->execute(['--group' => ['others'], '--project' => sys_get_temp_dir()]);
 
-        self::assertSame(Command::INVALID, $tester->getStatusCode());
-        self::assertStringContainsString('Only --dry-run is available yet', $tester->getDisplay());
+            self::assertSame(Command::INVALID, $tester->getStatusCode());
+            self::assertStringContainsString('RUSTINE_GITLAB_TOKEN', $tester->getDisplay());
+        });
+    }
+
+    #[Test]
+    public function runStopsWhenGitLabRejectsTheToken(): void
+    {
+        $http = new MockHttpClient(new MockResponse('{"message":"401 Unauthorized"}', ['http_code' => 401]));
+
+        $this->withEnvironment(['GITLAB_TOKEN' => 'glpat-bad'], function () use ($http): void {
+            $tester = $this->tester('run', $http);
+            $tester->execute(['--group' => ['others'], '--project' => sys_get_temp_dir(), ...self::GITLAB]);
+
+            self::assertSame(Command::FAILURE, $tester->getStatusCode());
+            self::assertStringContainsString('Cannot authenticate to GitLab', $tester->getDisplay());
+            self::assertStringNotContainsString('glpat-bad', $tester->getDisplay());
+        });
+    }
+
+    #[Test]
+    public function runExitsWithTwoWhenOnlyManualItemsRemain(): void
+    {
+        $trivy = $this->fakeTrivy(__DIR__ . '/../fixtures/trivy/yarn-nofix-report.json');
+        $reportFile = sys_get_temp_dir() . '/rustine-run-' . bin2hex(random_bytes(4)) . '.md';
+        $http = new MockHttpClient([
+            new MockResponse('{"id":7,"username":"rustine-bot","name":"Rustine Bot","commit_email":null}'),
+            new MockResponse('[]'),
+        ]);
+
+        $this->withEnvironment(['GITLAB_TOKEN' => 'glpat-ok'], function () use ($http, $trivy, $reportFile): void {
+            $tester = $this->tester('run', $http);
+            $tester->execute([
+                '--group' => ['critical-high'],
+                '--project' => sys_get_temp_dir(),
+                '--report' => sys_get_temp_dir() . '/rustine-run-trivy-' . bin2hex(random_bytes(4)) . '.json',
+                '--trivy-bin' => $trivy,
+                '--report-file' => $reportFile,
+                ...self::GITLAB,
+            ]);
+
+            self::assertSame(2, $tester->getStatusCode());
+            self::assertStringContainsString('commits authored by Rustine Bot <rustine-bot@noreply.gitlab.example.com>', $tester->getDisplay());
+            self::assertStringContainsString('security/rustine-yarn-critical-high: nothing fixable automatically, no merge request (manual action required)', $tester->getDisplay());
+        });
+
+        $written = (string) file_get_contents($reportFile);
+        @unlink($reportFile);
+        self::assertStringContainsString('## Needs manual attention', $written);
+        self::assertStringContainsString('braces', $written);
     }
 
     #[Test]
@@ -266,6 +321,9 @@ final class CommandsTest extends TestCase
 
     protected function tearDown(): void
     {
+        foreach ($this->files as $file) {
+            @unlink($file);
+        }
         foreach ($this->dirs as $dir) {
             @unlink($dir . '/mise.toml');
             @unlink($dir . '/composer.json');
@@ -273,8 +331,41 @@ final class CommandsTest extends TestCase
         }
     }
 
-    private function tester(string $command): CommandTester
+    private function tester(string $command, ?HttpClientInterface $http = null): CommandTester
     {
-        return new CommandTester((new Application())->find($command));
+        return new CommandTester((new Application($http))->find($command));
+    }
+
+    /**
+     * A Trivy stand-in that "scans" by copying the given report.
+     */
+    private function fakeTrivy(string $report): string
+    {
+        $script = sys_get_temp_dir() . '/rustine-fake-trivy-' . bin2hex(random_bytes(4));
+        file_put_contents($script, "#!/bin/sh\nwhile [ \$# -gt 0 ]; do\n  if [ \"\$1\" = \"--output\" ]; then out=\"\$2\"; fi\n  shift\ndone\ncp " . escapeshellarg($report) . " \"\$out\"\n");
+        chmod($script, 0755);
+        $this->files[] = $script;
+
+        return $script;
+    }
+
+    /**
+     * @param array<string, string|null> $variables null unsets the variable
+     */
+    private function withEnvironment(array $variables, \Closure $test): void
+    {
+        $previous = [];
+        foreach ($variables as $name => $value) {
+            $previous[$name] = getenv($name);
+            putenv(null === $value ? $name : $name . '=' . $value);
+        }
+
+        try {
+            $test();
+        } finally {
+            foreach ($previous as $name => $value) {
+                putenv(false === $value ? $name : $name . '=' . $value);
+            }
+        }
     }
 }
