@@ -2,8 +2,8 @@
 
 Rustine is a PHP CLI that opens GitLab merge requests fixing **only** the Composer/Yarn packages
 affected by a CVE reported by Trivy. Current state: `scan` (runs Trivy), `plan` (shows the
-planned fixes, grouped by MR) and `apply` (Yarn Berry and Classic: applies the fixes to the working tree, no commit/push).
-Composer and the GitLab integration are not implemented yet.
+planned fixes, grouped by MR) and `apply` (Yarn Berry/Classic and Composer: applies the fixes to the working tree, no commit/push).
+The GitLab integration is not implemented yet.
 
 ## Environment
 
@@ -23,7 +23,7 @@ make full_static_analyze   # static analysis + tests (run after any PHP change)
 
 bin/rustine scan --project=. --output=trivy-report.json
 bin/rustine plan --report=trivy-report.json [--group=critical-high] [--format=json]
-bin/rustine apply --project=. --report=trivy-report.json --group=others [--dry-run] [--trivy-arg=…]
+bin/rustine apply --project=. --report=trivy-report.json --group=others [--ecosystem=yarn|composer] [--dry-run] [--trivy-arg=…]
 ```
 
 `make full_static_analyze` is the single source of truth: it must pass before a change is

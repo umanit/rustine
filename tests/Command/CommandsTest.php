@@ -150,6 +150,39 @@ final class CommandsTest extends TestCase
         self::assertStringContainsString('No tool pinning found', $tester->getDisplay());
     }
 
+    #[Test]
+    public function applyDryRunWorksOnAPhpOnlyProjectWithoutPinning(): void
+    {
+        $dir = sys_get_temp_dir() . '/rustine-apply-' . bin2hex(random_bytes(4));
+        mkdir($dir);
+        file_put_contents($dir . '/composer.json', '{"require":{"symfony/http-foundation":"^6.4"}}');
+        $this->dirs[] = $dir;
+
+        $tester = $this->tester('apply');
+        $tester->execute([
+            '--project' => $dir,
+            '--report' => __DIR__ . '/../fixtures/trivy/composer-report.json',
+            '--group' => ['critical-high'],
+            '--dry-run' => true,
+        ]);
+        @unlink($dir . '/composer.json');
+
+        self::assertSame(Command::SUCCESS, $tester->getStatusCode());
+        self::assertStringContainsString('Tool pinning: none', $tester->getDisplay());
+        self::assertStringContainsString('composer update symfony/http-foundation --with-all-dependencies', $tester->getDisplay());
+        self::assertStringContainsString('composer require symfony/http-foundation:^6.4.41', $tester->getDisplay());
+        self::assertStringContainsString('spatie/browsershot@3.61.0: not fixable automatically', $tester->getDisplay());
+    }
+
+    #[Test]
+    public function applyRejectsAnUnknownEcosystem(): void
+    {
+        $tester = $this->tester('apply');
+        $tester->execute(['--report' => self::REPORT, '--group' => ['others'], '--ecosystem' => 'pip', '--dry-run' => true]);
+
+        self::assertSame(Command::INVALID, $tester->getStatusCode());
+    }
+
     private function projectWithPinning(string $miseToml): string
     {
         $dir = sys_get_temp_dir() . '/rustine-apply-' . bin2hex(random_bytes(4));
@@ -164,6 +197,7 @@ final class CommandsTest extends TestCase
     {
         foreach ($this->dirs as $dir) {
             @unlink($dir . '/mise.toml');
+            @unlink($dir . '/composer.json');
             @rmdir($dir);
         }
     }

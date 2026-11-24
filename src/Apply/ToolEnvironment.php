@@ -18,7 +18,7 @@ final readonly class ToolEnvironment
     private const VOLTA_TOOLS = ['node', 'yarn'];
 
     public function __construct(
-        private ToolPinning $pinning,
+        private ?ToolPinning $pinning,
         private string $projectDir,
     ) {
     }
@@ -31,6 +31,10 @@ final readonly class ToolEnvironment
      */
     public function env(): array
     {
+        if (null === $this->pinning) {
+            return [];
+        }
+
         return ['MISE_TRUSTED_CONFIG_PATHS' => $this->projectDir];
     }
 
@@ -41,8 +45,18 @@ final readonly class ToolEnvironment
      */
     public function wrap(array $command): array
     {
+        // No pinning (e.g. a PHP-only project): commands run with the tools of the CI image.
+        if (null === $this->pinning) {
+            return $command;
+        }
+
         $specs = [];
         if (PinningSource::Volta === $this->pinning->source) {
+            // The `volta` key only pins Node and Yarn: other tools (composer, git…) come from the image.
+            if (!\in_array($command[0] ?? '', self::VOLTA_TOOLS, true)) {
+                return $command;
+            }
+
             foreach (self::VOLTA_TOOLS as $tool) {
                 $version = $this->pinning->version($tool);
                 if (null !== $version) {

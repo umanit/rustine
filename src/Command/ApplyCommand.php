@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Rustine\Command;
 
-use Rustine\Apply\DependencySource;
+use Rustine\Apply\ComposerStrategy;
 use Rustine\Apply\FixApplier;
 use Rustine\Apply\FixOutcome;
 use Rustine\Apply\FixOutcomeStatus;
@@ -19,6 +19,8 @@ use Rustine\Apply\YarnBerryStrategy;
 use Rustine\Apply\YarnClassicStrategy;
 use Rustine\Pinning\PinningDetector;
 use Rustine\Pinning\PinningException;
+use Rustine\Pinning\PinningSource;
+use Rustine\Pinning\ToolPinning;
 use Rustine\Pinning\YarnFlavor;
 use Rustine\Plan\GroupPlan;
 use Rustine\Plan\Planner;
@@ -32,7 +34,7 @@ use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-#[AsCommand(name: 'apply', description: 'Applies the planned Yarn fixes to the project working tree (no commit, no push)')]
+#[AsCommand(name: 'apply', description: 'Applies the planned fixes (Yarn, Composer) to the project working tree (no commit, no push)')]
 final class ApplyCommand
 {
     /**
@@ -47,6 +49,8 @@ final class ApplyCommand
         string $report = 'trivy-report.json',
         #[Option(description: 'Severity group to process: critical-high or others (exactly one, as each group is one MR)')]
         array $group = [],
+        #[Option(description: 'Ecosystem to process: yarn or composer (required when the group has both)')]
+        ?string $ecosystem = null,
         #[Option(description: 'Trivy binary')]
         string $trivyBin = 'trivy',
         #[Option(description: 'Extra Trivy argument for the re-scans (repeatable)')]
@@ -77,10 +81,16 @@ final class ApplyCommand
             return Command::FAILURE;
         }
 
+        $wanted = null === $ecosystem ? null : Ecosystem::tryFrom($ecosystem);
+        if (null !== $ecosystem && null === $wanted) {
+            $io->error(sprintf('Unknown ecosystem "%s" (expected: yarn, composer).', $ecosystem));
+
+            return Command::INVALID;
+        }
+
         try {
             $parsedReport = (new TrivyReportParser())->parseFile($report);
-            $pinning = (new PinningDetector())->detect($projectDir);
-        } catch (InvalidTrivyReportException | PinningException $e) {
+        } catch (InvalidTrivyReportException $e) {
             $io->error($e->getMessage());
 
             return Command::FAILURE;
@@ -88,25 +98,44 @@ final class ApplyCommand
 
         $plans = array_values(array_filter(
             (new Planner())->plan($parsedReport, $groups),
-            static fn (GroupPlan $plan): bool => Ecosystem::Yarn === $plan->ecosystem,
+            static fn (GroupPlan $plan): bool => null === $wanted || $wanted === $plan->ecosystem,
         ));
         if ([] === $plans) {
-            $io->success('Nothing to fix for Yarn in this group.');
+            $io->success('Nothing to fix in this group.');
 
             return Command::SUCCESS;
         }
+        if (\count($plans) > 1) {
+            $io->error('This group has several ecosystems (each one is a merge request): pass --ecosystem=yarn or --ecosystem=composer.');
+
+            return Command::INVALID;
+        }
         $plan = $plans[0];
 
-        $io->writeln(sprintf('Tool pinning: %s', $pinning->describe()));
+        $pinning = null;
+        if (Ecosystem::Yarn === $plan->ecosystem) {
+            try {
+                $pinning = (new PinningDetector())->detect($projectDir);
+            } catch (PinningException $e) {
+                $io->error($e->getMessage());
 
-        $flavor = $pinning->yarnFlavor();
-        if (null === $flavor) {
-            $io->error('Yarn is not pinned by the project: cannot choose a strategy.');
+                return Command::FAILURE;
+            }
+            $io->writeln(sprintf('Tool pinning: %s', $pinning->describe()));
 
-            return Command::FAILURE;
+            $flavor = $pinning->yarnFlavor();
+            if (null === $flavor) {
+                $io->error('Yarn is not pinned by the project: cannot choose a strategy.');
+
+                return Command::FAILURE;
+            }
+            $strategy = YarnFlavor::Berry === $flavor ? new YarnBerryStrategy() : new YarnClassicStrategy();
+        } else {
+            // PHP and Composer come from the CI image unless the project pins them with mise.
+            $pinning = $this->optionalMisePinning($projectDir);
+            $io->writeln(sprintf('Tool pinning: %s', $pinning?->describe() ?? 'none (tools of the environment)'));
+            $strategy = new ComposerStrategy();
         }
-
-        $strategy = YarnFlavor::Berry === $flavor ? new YarnBerryStrategy() : new YarnClassicStrategy();
 
         if ($dryRun) {
             $this->printDryRun($io, $plan, $strategy, $projectDir);
@@ -160,16 +189,30 @@ final class ApplyCommand
                 $io->writeln(sprintf('  - %s@%s: not fixable automatically (%s)', $fix->packageName, $fix->installedVersion, $fix->status->value));
                 continue;
             }
-            $spec = (new PackageJsonEditor())->declaredSpec($projectDir . '/package.json', $fix->packageName);
-            if (null !== $spec && !DependencySource::isRegistryRange($spec)) {
-                $io->writeln(sprintf('  - %s@%s: declared as "%s", needs a manual fix (not a registry range)', $fix->packageName, $fix->installedVersion, $spec));
+            $unsupported = $strategy->unsupportedReason($fix, $projectDir);
+            if (null !== $unsupported) {
+                $io->writeln(sprintf('  - %s@%s: needs a manual fix (%s)', $fix->packageName, $fix->installedVersion, $unsupported));
                 continue;
             }
             $io->writeln(sprintf('  - %s@%s → %s', $fix->packageName, $fix->installedVersion, $fix->targetVersion));
-            foreach ($strategy->attempts($fix) as $i => $attempt) {
+            foreach ($strategy->attempts($fix, $projectDir) as $i => $attempt) {
                 $io->writeln(sprintf('      %d. [%s] %s', $i + 1, $attempt->kind->value, $attempt->describe()));
             }
         }
+    }
+
+    /**
+     * A `mise.toml` is honoured for Composer projects (PHP may be pinned); the `volta` key never concerns them.
+     */
+    private function optionalMisePinning(string $projectDir): ?ToolPinning
+    {
+        try {
+            $pinning = (new PinningDetector())->detect($projectDir);
+        } catch (PinningException) {
+            return null;
+        }
+
+        return PinningSource::Mise === $pinning->source ? $pinning : null;
     }
 
     private function describe(FixOutcome $outcome): string

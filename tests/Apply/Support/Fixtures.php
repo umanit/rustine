@@ -26,7 +26,7 @@ final class Fixtures
         PackageFixStatus $status = PackageFixStatus::Fixable,
         Ecosystem $ecosystem = Ecosystem::Yarn,
     ): PackageFix {
-        $vulnerability = self::vulnerability($name, $installed);
+        $vulnerability = self::vulnerability($name, $installed, $ecosystem);
 
         return new PackageFix(
             $ecosystem, $name, $installed, $status,
@@ -36,10 +36,10 @@ final class Fixtures
         );
     }
 
-    public static function vulnerability(string $name = 'ckeditor4', string $installed = '4.22.1'): Vulnerability
+    public static function vulnerability(string $name = 'ckeditor4', string $installed = '4.22.1', Ecosystem $ecosystem = Ecosystem::Yarn): Vulnerability
     {
         return new Vulnerability(
-            'CVE-2024-0001', Ecosystem::Yarn, $name, $name . '@' . $installed, $installed,
+            'CVE-2024-0001', $ecosystem, $name, $name . '@' . $installed, $installed,
             ['4.25.0'], Severity::Medium, null, null,
         );
     }

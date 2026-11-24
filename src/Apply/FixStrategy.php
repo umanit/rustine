@@ -5,15 +5,37 @@ declare(strict_types=1);
 namespace Rustine\Apply;
 
 use Rustine\Plan\PackageFix;
+use Rustine\Trivy\Ecosystem;
 
 interface FixStrategy
 {
+    public function ecosystem(): Ecosystem;
+
+    /**
+     * Files (relative to the project) restored when an attempt fails: the manifest and the lockfile.
+     *
+     * @return list<string>
+     */
+    public function files(): array;
+
+    /**
+     * Why the package must be fixed by hand even though a fixed version exists (e.g. a git source), or null.
+     */
+    public function unsupportedReason(PackageFix $fix, string $projectDir): ?string;
+
     /**
      * Ways of fixing the package, cheapest first. Empty when the package is not fixable.
      *
      * @return list<Attempt>
      */
-    public function attempts(PackageFix $fix): array;
+    public function attempts(PackageFix $fix, string $projectDir): array;
+
+    /**
+     * Command whose output explains why nothing worked, run after the last attempt failed (read-only).
+     *
+     * @return list<string>|null
+     */
+    public function diagnosis(PackageFix $fix): ?array;
 
     /**
      * Environment of the commands that rewrite the lockfile.

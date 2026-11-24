@@ -8,6 +8,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Rustine\Apply\AttemptKind;
 use Rustine\Apply\CommandResult;
+use Rustine\Apply\ComposerStrategy;
 use Rustine\Apply\FixApplier;
 use Rustine\Apply\FixOutcomeStatus;
 use Rustine\Apply\FixStrategy;
@@ -346,7 +347,49 @@ final class FixApplierTest extends TestCase
     }
 
     #[Test]
-    public function itOnlyHandlesYarn(): void
+    public function withComposerAFailureEndsWithTheWhyNotExplanation(): void
+    {
+        file_put_contents($this->dir . '/composer.json', '{"require":{"twig/twig":"3.4.0"}}');
+        file_put_contents($this->dir . '/composer.lock', '{}');
+        $this->runner->handler = static fn (array $command): ?CommandResult => \in_array('why-not', $command, true)
+            ? new CommandResult(1, "twig/twig 3.4.3 requires php >=8.1\nproblem 2")
+            : null;
+        $fix = Fixtures::fix('twig/twig', '3.4.0', '3.4.3', ecosystem: Ecosystem::Composer);
+        $vulnerable = new \Rustine\Trivy\TrivyReport([Fixtures::vulnerability('twig/twig', '3.4.0', Ecosystem::Composer)], []);
+
+        $result = $this->applier(new QueueRescanner($vulnerable, $vulnerable), new ComposerStrategy())->apply(Fixtures::plan($fix), $vulnerable);
+
+        self::assertSame(FixOutcomeStatus::Failed, $result->outcomes[0]->status);
+        self::assertSame(
+            ['lockfile-refresh', 'direct-bump', 'composer why-not twig/twig 3.4.3 --locked'],
+            array_map(static fn (string $line): string => explode(':', $line)[0], $result->outcomes[0]->log),
+        );
+        self::assertStringContainsString('requires php >=8.1 | problem 2', $result->outcomes[0]->log[2]);
+        @unlink($this->dir . '/composer.json');
+        @unlink($this->dir . '/composer.lock');
+    }
+
+    #[Test]
+    public function withComposerAFixIsValidatedWithComposerValidate(): void
+    {
+        file_put_contents($this->dir . '/composer.json', '{"require":{"other/pkg":"^1.0"}}');
+        file_put_contents($this->dir . '/composer.lock', '{}');
+        $fix = Fixtures::fix('twig/twig', '3.4.0', '3.4.3', DependencyKind::Transitive, ecosystem: Ecosystem::Composer);
+        $vulnerable = new \Rustine\Trivy\TrivyReport([Fixtures::vulnerability('twig/twig', '3.4.0', Ecosystem::Composer)], []);
+
+        $result = $this->applier(new QueueRescanner(Fixtures::report()), new ComposerStrategy())->apply(Fixtures::plan($fix), $vulnerable);
+
+        self::assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
+        self::assertSame(
+            ['composer update twig/twig --with-all-dependencies --no-install --no-interaction --no-scripts --no-plugins --no-progress', 'composer validate --no-check-publish --no-interaction'],
+            $this->runner->yarnCommands(),
+        );
+        @unlink($this->dir . '/composer.json');
+        @unlink($this->dir . '/composer.lock');
+    }
+
+    #[Test]
+    public function itOnlyHandlesTheEcosystemOfItsStrategy(): void
     {
         $this->expectException(UnsupportedProjectException::class);
 

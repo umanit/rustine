@@ -38,4 +38,21 @@ final class ToolEnvironmentTest extends TestCase
 
         self::assertSame(['MISE_TRUSTED_CONFIG_PATHS' => '/srv/project'], $env->env());
     }
+
+    #[Test]
+    public function voltaOnlyWrapsNodeAndYarnCommands(): void
+    {
+        $env = new ToolEnvironment(new ToolPinning(PinningSource::Volta, ['node' => '20.11.0', 'yarn' => '1.22.19'], 'package.json'), '/p');
+
+        self::assertSame(['composer', 'update'], $env->wrap(['composer', 'update']), 'Composer is not pinned by volta.');
+    }
+
+    #[Test]
+    public function withoutPinningCommandsRunAsIs(): void
+    {
+        $env = new ToolEnvironment(null, '/p');
+
+        self::assertSame(['composer', 'update'], $env->wrap(['composer', 'update']));
+        self::assertSame([], $env->env());
+    }
 }

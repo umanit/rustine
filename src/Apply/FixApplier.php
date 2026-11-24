@@ -11,16 +11,13 @@ use Rustine\Trivy\TrivyReport;
 use Rustine\Version\Version;
 
 /**
- * Applies the fixes of one Yarn plan (Berry or Classic, depending on the strategy), package by package.
+ * Applies the fixes of one plan, with the strategy of its ecosystem (Yarn Berry/Classic, Composer), package by package.
  *
  * After each package Trivy is run again: a fix is kept only if its CVEs are gone, otherwise the manifest and the
  * lockfile are restored and the next attempt is tried. A package that cannot be fixed never blocks the others.
  */
 final class FixApplier
 {
-    /** Files restored when an attempt fails. */
-    private const RESTORABLE = ['package.json', 'yarn.lock'];
-
     public function __construct(
         private readonly CommandRunner $runner,
         private readonly ToolEnvironment $tools,
@@ -54,7 +51,7 @@ final class FixApplier
                 continue;
             }
 
-            $unsupported = $this->unsupportedSource($fix);
+            $unsupported = $this->strategy->unsupportedReason($fix, $this->projectDir);
             if (null !== $unsupported) {
                 $outcomes[] = new FixOutcome($fix, FixOutcomeStatus::UnsupportedSource, null, [$unsupported]);
                 continue;
@@ -78,18 +75,20 @@ final class FixApplier
 
     private function assertSupported(GroupPlan $plan): void
     {
-        if (Ecosystem::Yarn !== $plan->ecosystem) {
-            throw new UnsupportedProjectException(sprintf('Applying fixes is not implemented for "%s" yet.', $plan->ecosystem->value));
+        if ($this->strategy->ecosystem() !== $plan->ecosystem) {
+            throw new UnsupportedProjectException(sprintf('The strategy does not handle "%s" plans.', $plan->ecosystem->value));
         }
 
-        $artifacts = $this->tree->trackedYarnArtifacts();
-        if ([] !== $artifacts) {
-            throw new UnsupportedProjectException(
-                'Committed Yarn PnP/cache files are not supported yet: ' . implode(', ', $artifacts) . '.',
-            );
+        if (Ecosystem::Yarn === $plan->ecosystem) {
+            $artifacts = $this->tree->trackedYarnArtifacts();
+            if ([] !== $artifacts) {
+                throw new UnsupportedProjectException(
+                    'Committed Yarn PnP/cache files are not supported yet: ' . implode(', ', $artifacts) . '.',
+                );
+            }
         }
 
-        foreach (self::RESTORABLE as $file) {
+        foreach ($this->strategy->files() as $file) {
             if ($this->tree->isDirty($file)) {
                 throw new UnsupportedProjectException(sprintf('"%s" has uncommitted changes; refusing to modify it.', $file));
             }
@@ -106,7 +105,7 @@ final class FixApplier
         $snapshot = $this->snapshot();
         $log = [];
 
-        foreach ($this->strategy->attempts($fix) as $attempt) {
+        foreach ($this->strategy->attempts($fix, $this->projectDir) as $attempt) {
             // A resolution applies to every instance of the package: it must not drag another major along.
             if (AttemptKind::Resolution === $attempt->kind) {
                 $others = $this->otherMajorVersions($current, $fix);
@@ -162,6 +161,12 @@ final class FixApplier
             if ($abandon) {
                 break;
             }
+        }
+
+        $diagnosis = $this->strategy->diagnosis($fix);
+        if (null !== $diagnosis) {
+            $result = $this->runner->run($this->tools->wrap($diagnosis), $this->projectDir, $this->tools->env());
+            $log[] = sprintf('%s: %s', implode(' ', $diagnosis), $this->tail($result->output, 12));
         }
 
         return [new FixOutcome($fix, FixOutcomeStatus::Failed, null, $log), null];
@@ -228,20 +233,6 @@ final class FixApplier
         return $others;
     }
 
-    private function unsupportedSource(PackageFix $fix): ?string
-    {
-        $spec = $this->editor->declaredSpec($this->projectDir . '/package.json', $fix->packageName);
-        if (null === $spec || DependencySource::isRegistryRange($spec)) {
-            return null;
-        }
-
-        return sprintf(
-            'declared as "%s" in package.json, not an npm registry range: update this reference by hand to a version that fixes %s',
-            $spec,
-            implode(', ', $fix->fixedIds),
-        );
-    }
-
     private function stillVulnerable(TrivyReport $report, PackageFix $fix): bool
     {
         foreach ($report->vulnerabilities as $vulnerability) {
@@ -263,7 +254,7 @@ final class FixApplier
     private function snapshot(): array
     {
         $snapshot = [];
-        foreach (self::RESTORABLE as $file) {
+        foreach ($this->strategy->files() as $file) {
             $content = @file_get_contents($this->projectDir . '/' . $file);
             if (false === $content) {
                 throw new UnsupportedProjectException(sprintf('Unable to read "%s".', $file));
@@ -284,10 +275,10 @@ final class FixApplier
         }
     }
 
-    private function tail(string $output): string
+    private function tail(string $output, int $count = 5): string
     {
         $lines = array_values(array_filter(array_map('trim', explode("\n", $output)), static fn (string $l): bool => '' !== $l));
 
-        return implode(' | ', \array_slice($lines, -5));
+        return implode(' | ', \array_slice($lines, -$count));
     }
 }
