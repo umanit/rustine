@@ -1,0 +1,57 @@
+name: Release
+
+# Pushing a tag `vX.Y.Z` builds the PHAR and publishes it as a GitHub release.
+# The CI image (umanit/ci-webimages) downloads the `rustine.phar` asset of a given release.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish the PHAR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: intl, mbstring, phar
+          ini-values: phar.readonly=0
+          tools: composer:v2
+          coverage: none
+
+      - name: Check the tag
+        run: |
+          if ! [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::The tag '$GITHUB_REF_NAME' is not a version (expected vX.Y.Z)."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Static analysis and tests
+        run: make full_static_analyze
+
+      - name: Build the PHAR
+        run: make phar VERSION="${GITHUB_REF_NAME#v}"
+
+      - name: Checksum
+        working-directory: build
+        run: sha256sum rustine.phar | tee rustine.phar.sha256
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease=()
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then prerelease=(--prerelease); fi
+          gh release create "$GITHUB_REF_NAME" build/rustine.phar build/rustine.phar.sha256 \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes \
+            --verify-tag \
+            "${prerelease[@]}"

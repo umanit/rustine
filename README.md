@@ -9,7 +9,7 @@
 [Trivy](https://trivy.dev). No comfort updates, no noise: a package gets a merge request because it is vulnerable, and
 it is bumped to the smallest version that fixes it.
 
-> **Status:** pre-release. The CLI is complete; the shared CI template and the PHAR build are not published yet.
+> **Status:** pre-release (`0.x`): the CLI is complete and ready for pilot projects; expect adjustments.
 
 ## How it works
 
@@ -112,14 +112,15 @@ Rustine is distributed as a single executable PHAR (production dependencies and 
 ≥ 8.4 with `ext-intl`):
 
 ```bash
-curl -fsSL -o /usr/local/bin/rustine <url of the release> && chmod +x /usr/local/bin/rustine
+curl -fsSL -o /usr/local/bin/rustine https://github.com/umanit/rustine/releases/latest/download/rustine.phar
+chmod +x /usr/local/bin/rustine
 rustine --version
 ```
 
 To build it yourself, or to run from a checkout:
 
 ```bash
-git clone <this repository> rustine && cd rustine
+git clone https://github.com/umanit/rustine.git rustine && cd rustine
 composer install
 make phar VERSION=1.0.0      # → build/rustine.phar, smoke-tested (needs composer; the version is optional)
 bin/rustine list             # or run the sources directly
