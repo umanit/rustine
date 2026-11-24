@@ -1,9 +1,9 @@
 # AGENTS.md
 
 Rustine is a PHP CLI that opens GitLab merge requests fixing **only** the Composer/Yarn packages
-affected by a CVE reported by Trivy. Current state: `scan` (runs Trivy), `plan` (shows the
+affected by a CVE reported by Trivy. Current state: `scan` (runs Trivy), `run --dry-run` (previews the merge request texts), `plan` (shows the
 planned fixes, grouped by MR) and `apply` (Yarn Berry/Classic and Composer: applies the fixes to the working tree, no commit/push).
-The GitLab integration is not implemented yet.
+Pushing branches and opening merge requests (git/GitLab) is not implemented yet.
 
 ## Environment
 
@@ -23,6 +23,7 @@ make full_static_analyze   # static analysis + tests (run after any PHP change)
 
 bin/rustine scan --project=. --output=trivy-report.json
 bin/rustine plan --report=trivy-report.json [--group=critical-high] [--format=json]
+bin/rustine run --report=trivy-report.json --group=others [--locale=fr] [--report-file=report.md] --dry-run
 bin/rustine apply --project=. --report=trivy-report.json --group=others [--ecosystem=yarn|composer] [--dry-run] [--trivy-arg=…]
 ```
 
@@ -39,6 +40,8 @@ considered done. IDE (PHPStorm) warnings are informational only.
 | `Plan/`    | Planning: grouping fixes by ecosystem and severity group                  |
 | `Pinning/` | Detecting pinned tools (`mise.toml` wins over the `volta` key)            |
 | `Apply/`   | Applying fixes: strategies, `mise exec` wrapping, git guard-rails, re-scan |
+| `Report/`  | Title, description and commit message of a merge request (localized)       |
+| `I18n/`    | `TranslatorFactory` (symfony/translation); catalogs in `resources/translations/` |
 
 Commands are registered in `src/Application.php`. `tests/` mirrors the structure of `src/`;
 fixtures (Trivy reports, the `fake-trivy` binary) live in `tests/fixtures/`.
@@ -53,6 +56,16 @@ fixtures (Trivy reports, the `fake-trivy` binary) live in `tests/fixtures/`.
   caught in the commands, which return `Command::FAILURE` / `Command::INVALID`.
 - Use precise PHPDoc types for PHPStan `max` (`list<string>`, `array<string, …>`, …).
 - Everything is in English: code, identifiers, comments, messages, tests, docs and commits.
+
+## Translations
+
+- The texts written in merge requests and in the commits created in the target projects are localized
+  (English and French shipped); the code, logs, console output and this repository's commits stay in English.
+- Catalogs: `resources/translations/rustine+intl-icu.<locale>.yaml` (`symfony/translation`, ICU message format, nested
+  YAML, `{name}` placeholders; requires `ext-intl`). Stick to simple arguments for now: no plural/select, and no
+  apostrophe next to a brace (ICU quoting). Every locale must have exactly the keys of English
+  (`tests/I18n/CatalogsTest.php`). Add a language = add one file.
+- Data (package names, versions, CVE ids, commands, branch and label names) is never translated.
 
 ## Tests
 

@@ -17,10 +17,10 @@ final class PlanFormatterTest extends TestCase
     {
         $text = (new PlanFormatter())->toText($this->plans());
 
-        self::assertStringContainsString('security/yarn/critical-high — 4 fixable, 1 to report', $text);
+        self::assertStringContainsString('security/rustine-yarn-critical-high — 4 fixable, 1 to report', $text);
         self::assertStringContainsString('✔ brace-expansion@1.1.12 → 1.1.21 [HIGH, transitive, 7 CVE]', $text);
         self::assertStringContainsString('✘ braces@3.0.3 [HIGH, transitive, 1 CVE] — no fix available', $text);
-        self::assertStringContainsString('security/yarn/others', $text);
+        self::assertStringContainsString('security/rustine-yarn-others', $text);
     }
 
     #[Test]
@@ -34,7 +34,7 @@ final class PlanFormatterTest extends TestCase
     {
         $data = (new PlanFormatter())->toArray($this->plans());
 
-        self::assertSame('security/yarn/critical-high', $data[0]['branch']);
+        self::assertSame('security/rustine-yarn-critical-high', $data[0]['branch']);
         self::assertSame('1.1.21', $data[0]['fixes'][1]['target'] ?? null);
         self::assertNotFalse(json_encode($data));
     }

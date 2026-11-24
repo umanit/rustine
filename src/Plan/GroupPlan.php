@@ -24,7 +24,7 @@ final readonly class GroupPlan
     /** Stable branch name, the basis of MR idempotency. */
     public function branchName(): string
     {
-        return sprintf('security/%s/%s', $this->ecosystem->value, $this->group->value);
+        return sprintf('security/rustine-%s-%s', $this->ecosystem->value, $this->group->value);
     }
 
     /**

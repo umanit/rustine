@@ -26,7 +26,7 @@ final class PlannerTest extends TestCase
         $plans = $this->plan('yarn-report.json');
 
         self::assertSame(
-            ['security/yarn/critical-high', 'security/yarn/others'],
+            ['security/rustine-yarn-critical-high', 'security/rustine-yarn-others'],
             array_map(static fn(GroupPlan $p): string => $p->branchName(), $plans),
         );
 
@@ -105,7 +105,7 @@ final class PlannerTest extends TestCase
         $plans = $this->plan('composer-report.json');
         $high = $plans[0];
 
-        self::assertSame('security/composer/critical-high', $high->branchName());
+        self::assertSame('security/rustine-composer-critical-high', $high->branchName());
 
         $spreadsheet = $this->fix($high, 'phpoffice/phpspreadsheet', '1.30.0');
         self::assertSame(Severity::Critical, $spreadsheet->severity);

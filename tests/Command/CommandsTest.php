@@ -33,7 +33,7 @@ final class CommandsTest extends TestCase
         $tester = $this->tester('plan');
         $tester->execute(['--report' => self::REPORT, '--group' => ['others']]);
 
-        self::assertStringContainsString('security/yarn/others', $tester->getDisplay());
+        self::assertStringContainsString('security/rustine-yarn-others', $tester->getDisplay());
         self::assertStringNotContainsString('critical-high', $tester->getDisplay());
     }
 
@@ -44,7 +44,7 @@ final class CommandsTest extends TestCase
         $tester->execute(['--report' => self::REPORT, '--format' => 'json']);
 
         self::assertJson($tester->getDisplay());
-        self::assertStringContainsString('"branch": "security/yarn/critical-high"', $tester->getDisplay());
+        self::assertStringContainsString('"branch": "security/rustine-yarn-critical-high"', $tester->getDisplay());
     }
 
     #[Test]
@@ -109,7 +109,7 @@ final class CommandsTest extends TestCase
         $tester->execute(['--project' => $dir, '--report' => self::REPORT, '--group' => ['others'], '--dry-run' => true]);
 
         self::assertSame(Command::SUCCESS, $tester->getStatusCode());
-        self::assertStringContainsString('Dry run for security/yarn/others', $tester->getDisplay());
+        self::assertStringContainsString('Dry run for security/rustine-yarn-others', $tester->getDisplay());
         self::assertStringContainsString('[lockfile-refresh] yarn up -R', $tester->getDisplay());
         self::assertStringContainsString('resolutions[', $tester->getDisplay());
     }
@@ -181,6 +181,77 @@ final class CommandsTest extends TestCase
         $tester->execute(['--report' => self::REPORT, '--group' => ['others'], '--ecosystem' => 'pip', '--dry-run' => true]);
 
         self::assertSame(Command::INVALID, $tester->getStatusCode());
+    }
+
+    #[Test]
+    public function runDryRunPrintsTheMergeRequestThatWouldBeOpened(): void
+    {
+        $tester = $this->tester('run');
+        $tester->execute(['--report' => self::REPORT, '--group' => ['critical-high'], '--dry-run' => true, '--project' => sys_get_temp_dir()]);
+
+        self::assertSame(Command::SUCCESS, $tester->getStatusCode());
+        self::assertStringContainsString('security/rustine-yarn-critical-high', $tester->getDisplay());
+        self::assertStringContainsString('Security: fix Yarn dependencies (critical and high severity)', $tester->getDisplay());
+        self::assertStringContainsString('build(deps): fix vulnerable Yarn dependencies', $tester->getDisplay());
+        self::assertStringContainsString('rustine:v1 fingerprint=', $tester->getDisplay());
+    }
+
+    #[Test]
+    public function runUsesTheRequestedLocaleAndWritesTheReportFile(): void
+    {
+        $file = sys_get_temp_dir() . '/rustine-report-' . bin2hex(random_bytes(4)) . '.md';
+
+        $tester = $this->tester('run');
+        $tester->execute([
+            '--report' => self::REPORT,
+            '--group' => ['others'],
+            '--locale' => 'fr',
+            '--report-file' => $file,
+            '--dry-run' => true,
+            '--project' => sys_get_temp_dir(),
+        ]);
+        $written = (string) file_get_contents($file);
+        @unlink($file);
+
+        self::assertSame(Command::SUCCESS, $tester->getStatusCode());
+        self::assertStringContainsString('build(deps): corriger les dépendances Yarn vulnérables', $tester->getDisplay());
+        self::assertStringContainsString('## Corrections', $written);
+        self::assertStringStartsWith('<!-- security/rustine-yarn-others -->', $written);
+    }
+
+    #[Test]
+    public function runRejectsAnUnknownLocale(): void
+    {
+        $tester = $this->tester('run');
+        $tester->execute(['--report' => self::REPORT, '--group' => ['others'], '--locale' => 'xx', '--dry-run' => true]);
+
+        self::assertSame(Command::INVALID, $tester->getStatusCode());
+        self::assertStringContainsString('available: en, fr', $tester->getDisplay());
+    }
+
+    #[Test]
+    public function runIsPreviewOnlyForNow(): void
+    {
+        $tester = $this->tester('run');
+        $tester->execute(['--report' => self::REPORT, '--group' => ['others']]);
+
+        self::assertSame(Command::INVALID, $tester->getStatusCode());
+        self::assertStringContainsString('Only --dry-run is available yet', $tester->getDisplay());
+    }
+
+    #[Test]
+    public function runSaysWhenNoMergeRequestWouldBeOpened(): void
+    {
+        $tester = $this->tester('run');
+        $tester->execute([
+            '--report' => __DIR__ . '/../fixtures/trivy/composer-report.json',
+            '--group' => ['others'],
+            '--ecosystem' => 'composer',
+            '--dry-run' => true,
+            '--project' => sys_get_temp_dir(),
+        ]);
+
+        self::assertSame(Command::SUCCESS, $tester->getStatusCode());
     }
 
     private function projectWithPinning(string $miseToml): string

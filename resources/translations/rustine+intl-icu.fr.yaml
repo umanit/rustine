@@ -1,0 +1,64 @@
+title: "Sécurité : corriger les dépendances {ecosystem} ({group})"
+
+group:
+  critical-high: "sévérité critique et haute"
+  others: "sévérité moyenne, basse et inconnue"
+
+preview: "Aperçu du plan : rien n'a encore été exécuté, les corrections ci-dessous sont prévues mais non vérifiées."
+
+summary:
+  fixed: "Paquets corrigés : {packages} · CVE corrigées : {cves}"
+  planned: "Paquets à corriger : {packages} · CVE à corriger : {cves}"
+
+section:
+  fixed: "Corrections"
+  attention: "Action manuelle requise"
+  debt: "Dette technique"
+  verification: "Vérification"
+  tooling: "Outillage"
+
+table:
+  package: "Paquet"
+  version: "Version"
+  cves: "CVE"
+  severity: "Sévérité"
+  dependency: "Dépendance"
+  strategy: "Stratégie"
+
+dependency:
+  direct: "directe"
+  transitive: "transitive, via {chain}"
+  unknown: "inconnue"
+
+strategy:
+  lockfile-refresh: "rafraîchissement du lockfile"
+  direct-bump: "relèvement de la plage"
+  resolution: "resolution"
+  already: "corrigé par une autre modification de cette MR"
+  planned: "prévue"
+
+attention:
+  major_bump: "{cves} corrigées uniquement dans une nouvelle version majeure ({versions}) : non appliqué automatiquement."
+  no_fix: "{cves} : aucune version corrigée n'a été publiée."
+  unparsable: "la version installée {version} n'est pas comparable : à vérifier à la main."
+  unsupported_source: "déclaré avec une source que Rustine ne modifie pas : à mettre à jour à la main vers une version qui corrige {cves}."
+  failed: "aucune correction automatique n'a fonctionné pour {cves}."
+  technical_details: "Détails techniques"
+
+debt:
+  resolution: "{package} est épinglé via `resolutions` : à retirer dès que la dépendance parente embarque le correctif."
+
+verification:
+  rescan: "Trivy a été relancé après chaque modification : les CVE des paquets ci-dessus ne sont plus signalées."
+  check_ok: "Le lockfile est cohérent avec le manifeste."
+  check_failed: "Le contrôle de cohérence du lockfile a échoué :"
+
+tooling:
+  pinned: "Versions d'outils utilisées : {pinning}."
+  none: "Aucun épinglage d'outils : les outils de l'environnement CI ont été utilisés."
+
+footer: "Généré par Rustine {version}. Ne modifiez pas la branche à la main : elle est reconstruite à chaque exécution."
+
+commit:
+  subject: "corriger les dépendances {ecosystem} vulnérables ({group})"
+  intro: "Montée vers la plus petite version qui corrige les CVE signalées :"
