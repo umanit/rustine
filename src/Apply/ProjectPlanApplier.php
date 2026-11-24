@@ -36,10 +36,13 @@ final readonly class ProjectPlanApplier implements PlanApplier
     /**
      * Strategy of the ecosystem. Runs nothing: the Yarn flavor comes from the format of `yarn.lock`.
      *
+     * @param ToolVersions|null $tools what {@see tools()} found; without it, the commands are the conservative ones
+     *                                 (Yarn Berry runs the link step after every attempt)
+     *
      * @throws UnsupportedProjectException when a Yarn project has no `yarn.lock`
      * @throws \InvalidArgumentException  when a tool command is empty
      */
-    public function strategy(Ecosystem $ecosystem): FixStrategy
+    public function strategy(Ecosystem $ecosystem, ?ToolVersions $tools = null): FixStrategy
     {
         if (Ecosystem::Composer === $ecosystem) {
             return ComposerStrategy::fromCommandLine($this->composerCommand);
@@ -47,7 +50,9 @@ final readonly class ProjectPlanApplier implements PlanApplier
 
         $runtime = YarnRuntime::fromCommandLines($this->yarnCommand, $this->nodeCommand);
 
-        return YarnFlavor::Berry === $this->yarnLockfileFlavor() ? new YarnBerryStrategy($runtime) : new YarnClassicStrategy($runtime);
+        return YarnFlavor::Berry === $this->yarnLockfileFlavor()
+            ? new YarnBerryStrategy($runtime, lockfileOnly: YarnBerryStrategy::supportsLockfileOnly($tools?->version('yarn')))
+            : new YarnClassicStrategy($runtime);
     }
 
     /**
@@ -68,8 +73,8 @@ final readonly class ProjectPlanApplier implements PlanApplier
 
     public function apply(GroupPlan $plan, TrivyReport $report): AppliedPlan
     {
-        $strategy = $this->strategy($plan->ecosystem);
         $tools = $this->tools($plan->ecosystem);
+        $strategy = $this->strategy($plan->ecosystem, $tools);
 
         $applier = new FixApplier(
             $this->runner,

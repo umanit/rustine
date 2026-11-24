@@ -73,12 +73,17 @@ was closed by hand is opened again at the next run.
 
 | Ecosystem    | Attempts, in order                                                                                                                         |
 |--------------|--------------------------------------------------------------------------------------------------------------------------------------------|
-| Yarn Berry   | `yarn up -R <pkg>` (refresh within existing ranges) → direct range bump (`yarn up <pkg>@^x`) or `resolutions`                              |
+| Yarn Berry   | `yarn up -R <pkg>` (refresh within existing ranges) → direct range bump (`yarn up <pkg>@^x`) or `resolutions` (see below)                  |
 | Yarn Classic | prune the `<pkg>` entries of `yarn.lock` and `yarn install` → direct range bump in `package.json` or `resolutions["**/<pkg>"]`             |
 | Composer     | `composer update <pkg> -W` → `composer require <pkg>:^x -W` (`--dev` for `require-dev`); on failure `composer why-not` is added to the log |
 
 The description of the merge request lists what actually changed in the lockfile (versions before and after), the
-packages of the fixes in bold and the ones that moved along as is. `resolutions` are technical debt, and are flagged as
+packages of the fixes in bold and the ones that moved along as is. With Yarn Berry 4 or later, every attempt runs with `--mode=update-lockfile`: Yarn resolves and fetches what the lockfile
+lacks but skips the link step, so `node_modules` is not rebuilt after each attempt of each package (Trivy only reads
+`yarn.lock`). The final `yarn install --immutable` is a full install and brings `node_modules` in line with the result.
+Older Berry versions run the plain commands.
+
+`resolutions` are technical debt, and are flagged as
 such in the description. Composer runs with `--no-install
 --no-scripts --no-plugins`. A final `yarn install --immutable` / `--frozen-lockfile` / `composer validate` must pass
 before anything is pushed.

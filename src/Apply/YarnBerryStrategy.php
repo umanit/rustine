@@ -10,17 +10,32 @@ use Rustine\Trivy\Ecosystem;
 
 /**
  * Fix ladder for Yarn Berry (v2+), cheapest and cleanest first.
+ *
+ * With `$lockfileOnly`, every attempt runs with `--mode=update-lockfile`: Yarn resolves and fetches what the lockfile
+ * lacks but skips the link step, and `node_modules` stays as it is. Trivy only reads `yarn.lock`, so linking after every
+ * attempt of every package is wasted time. It is not combinable with `--immutable`, hence the final check is a normal
+ * install.
  */
 final readonly class YarnBerryStrategy implements FixStrategy
 {
-    /**
-     * @return list<Attempt>
-     */
+    /** First Yarn major version `--mode=update-lockfile` was checked with (`install` and `up`). */
+    public const LOCKFILE_ONLY_MIN_MAJOR = 4;
+
     public function __construct(
         private YarnRuntime $runtime = new YarnRuntime(),
         private YarnSourceGuard $sourceGuard = new YarnSourceGuard(),
-    )
+        private bool $lockfileOnly = false,
+    ) {
+    }
+
+    /**
+     * @param string|null $yarnVersion version printed by `yarn --version`
+     */
+    public static function supportsLockfileOnly(?string $yarnVersion): bool
     {
+        return null !== $yarnVersion
+            && 1 === preg_match('/^v?(\d+)\./', $yarnVersion, $m)
+            && (int) $m[1] >= self::LOCKFILE_ONLY_MIN_MAJOR;
     }
 
     public function ecosystem(): Ecosystem
@@ -53,13 +68,21 @@ final readonly class YarnBerryStrategy implements FixStrategy
         $range = '^' . $fix->targetVersion;
 
         // `-R` also updates transitive occurrences, within the ranges already declared.
-        $attempts = [new Attempt(AttemptKind::LockfileRefresh, [$this->runtime->yarn('up', '-R', $name)])];
+        $attempts = [new Attempt(AttemptKind::LockfileRefresh, [$this->yarn('up', '-R', $name)])];
 
         $attempts[] = DependencyKind::Direct === $fix->dependencyKind
-            ? new Attempt(AttemptKind::DirectBump, [$this->runtime->yarn('up', $name . '@' . $range)])
-            : new Attempt(AttemptKind::Resolution, [$this->runtime->yarn('install')], [$name, $range]);
+            ? new Attempt(AttemptKind::DirectBump, [$this->yarn('up', $name . '@' . $range)])
+            : new Attempt(AttemptKind::Resolution, [$this->yarn('install')], [$name, $range]);
 
         return $attempts;
+    }
+
+    /**
+     * @return non-empty-list<string>
+     */
+    private function yarn(string ...$arguments): array
+    {
+        return $this->runtime->yarn(...$arguments, ...($this->lockfileOnly ? ['--mode=update-lockfile'] : []));
     }
 
     /**

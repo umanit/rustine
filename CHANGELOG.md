@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- With Yarn Berry 4+, the attempts run with `--mode=update-lockfile` (no link step, `node_modules` untouched until the
+  final check), which makes a run much shorter on a project with many vulnerable packages. Checked on Yarn 4.14.1: the
+  lockfile is identical to the one of a plain `yarn up -R`. Older Berry versions keep the plain commands.
 - Trivy runs with `--skip-dirs **/vendor,**/node_modules` (Rustine only handles the lockfiles of the project root, so
   the scans and re-scans no longer read the installed dependencies) and `--disable-telemetry`. The `--trivy-arg`
   values come after, and Trivy accumulates repeated `--skip-dirs`.

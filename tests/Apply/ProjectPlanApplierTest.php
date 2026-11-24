@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 use Rustine\Apply\CommandResult;
 use Rustine\Apply\ProjectPlanApplier;
 use Rustine\Apply\ToolingException;
+use Rustine\Apply\ToolVersions;
 use Rustine\Apply\UnsupportedProjectException;
 use Rustine\Apply\YarnBerryStrategy;
 use Rustine\Apply\YarnClassicStrategy;
@@ -53,6 +54,22 @@ final class ProjectPlanApplierTest extends TestCase
         $this->expectException(UnsupportedProjectException::class);
 
         (new ProjectPlanApplier(new FakeRunner(), $this->dir))->strategy(Ecosystem::Yarn);
+    }
+
+    #[Test]
+    public function aBerryProjectOnYarn4StopsAtTheLockfile(): void
+    {
+        file_put_contents($this->dir . '/yarn.lock', "__metadata:\n  version: 8\n");
+        $fix = Fixtures::fix();
+        $applier = new ProjectPlanApplier(new FakeRunner(), $this->dir);
+
+        $withYarn4 = $applier->strategy(Ecosystem::Yarn, new ToolVersions(['yarn' => '4.14.1']))->attempts($fix, $this->dir);
+        $withYarn3 = $applier->strategy(Ecosystem::Yarn, new ToolVersions(['yarn' => '3.8.0']))->attempts($fix, $this->dir);
+        $unknown = $applier->strategy(Ecosystem::Yarn)->attempts($fix, $this->dir);
+
+        self::assertSame(['yarn', 'up', '-R', 'ckeditor4', '--mode=update-lockfile'], $withYarn4[0]->commands[0]);
+        self::assertSame(['yarn', 'up', '-R', 'ckeditor4'], $withYarn3[0]->commands[0]);
+        self::assertSame(['yarn', 'up', '-R', 'ckeditor4'], $unknown[0]->commands[0]);
     }
 
     #[Test]
