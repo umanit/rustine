@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Rustine\Trivy;
 
+use Rustine\GitLab\GitLabConfig;
 use Symfony\Component\Process\Process;
 
 final readonly class TrivyScanner
@@ -48,7 +49,7 @@ final readonly class TrivyScanner
         // Trivy runs inside the project: a relative output path must not end up there.
         $absoluteOutput = str_starts_with($outputFile, '/') ? $outputFile : (getcwd() ?: '.') . '/' . $outputFile;
 
-        $process = new Process($this->buildCommand($absoluteOutput, $extraArgs), $projectDir, null, null, 1800);
+        $process = new Process($this->buildCommand($absoluteOutput, $extraArgs), $projectDir, GitLabConfig::tokenUnsetEnv(), null, 1800);
         $process->run(null === $onOutput ? null : static function (string $type, string $buffer) use ($onOutput): void {
             $onOutput($buffer);
         });

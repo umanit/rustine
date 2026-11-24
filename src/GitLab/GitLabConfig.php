@@ -12,6 +12,9 @@ namespace Rustine\GitLab;
  */
 final readonly class GitLabConfig
 {
+    /** Environment variables that may hold the token, in order of precedence. */
+    public const TOKEN_VARIABLES = ['RUSTINE_GITLAB_TOKEN', 'GITLAB_TOKEN'];
+
     public function __construct(
         public string $apiUrl,
         public string $projectId,
@@ -31,7 +34,7 @@ final readonly class GitLabConfig
         $apiUrl = self::first($apiUrl, $env['CI_API_V4_URL'] ?? null);
         $projectId = self::first($projectId, $env['CI_PROJECT_ID'] ?? null);
         $defaultBranch = self::first($defaultBranch, $env['CI_DEFAULT_BRANCH'] ?? null);
-        $token = self::first($env['RUSTINE_GITLAB_TOKEN'] ?? null, $env['GITLAB_TOKEN'] ?? null);
+        $token = self::first(...array_map(static fn (string $name): string|false|null => $env[$name] ?? null, self::TOKEN_VARIABLES));
 
         if (null === $apiUrl || null === $projectId || null === $defaultBranch || null === $token) {
             $missing = [];
@@ -48,6 +51,16 @@ final readonly class GitLabConfig
         }
 
         return new self(rtrim($apiUrl, '/'), $projectId, $token, $defaultBranch);
+    }
+
+    /**
+     * Environment that removes the token from what a child process inherits (Symfony Process unsets `false` values).
+     *
+     * @return array<string, false>
+     */
+    public static function tokenUnsetEnv(): array
+    {
+        return array_fill_keys(self::TOKEN_VARIABLES, false);
     }
 
     public function host(): string
