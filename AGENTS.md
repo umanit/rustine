@@ -41,8 +41,7 @@ considered done. IDE (PHPStorm) warnings are informational only.
 | `Trivy/`   | Running Trivy and parsing its JSON report into objects (`TrivyReport`, …) |
 | `Version/` | Selecting the smallest fixed version (same major preferred)               |
 | `Plan/`    | Planning: grouping fixes by ecosystem and severity group                  |
-| `Pinning/` | Detecting pinned tools (`mise.toml` wins over the `volta` key)            |
-| `Apply/`   | Applying fixes: strategies, `mise exec` wrapping, git guard-rails, re-scan |
+| `Apply/`   | Applying fixes: strategies, tool checks (nothing installed), git guard-rails, re-scan |
 | `Git/`     | Branch of one MR: inspect the remote, restart from the default branch, commit the allowed files, lease-guarded push; token kept out of argv and logs |
 | `GitLab/`  | REST v4 client (`GitLabClient` + `HttpGitLabClient`), `GitLabConfig` (options, then CI variables; token from env only) |
 | `Sync/`    | `MergeRequestSynchronizer` (one plan: branch + MR state machine), `NoteRenderer`, `SyncSettings`, `RunSummary` (report + exit code) |
@@ -59,7 +58,7 @@ fixtures (Trivy reports, the `fake-trivy` binary) live in `tests/fixtures/`.
 - **Never add a `use` statement for native PHP classes.** Reference them with the global
   backslash (`\Exception`, `\Throwable`, `\JSON_THROW_ON_ERROR`, …), even if the IDE or a linter
   suggests otherwise.
-- Business errors are dedicated exceptions (`InvalidTrivyReportException`, `PinningException`),
+- Business errors are dedicated exceptions (`InvalidTrivyReportException`, `ToolingException`),
   caught in the commands, which return `Command::FAILURE` / `Command::INVALID`.
 - Use precise PHPDoc types for PHPStan `max` (`list<string>`, `array<string, …>`, …).
 - Everything is in English: code, identifiers, comments, messages, tests, docs and commits.

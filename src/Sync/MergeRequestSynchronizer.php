@@ -8,6 +8,7 @@ use Rustine\Apply\ApplyResult;
 use Rustine\Apply\FixOutcome;
 use Rustine\Apply\FixOutcomeStatus;
 use Rustine\Apply\PlanApplier;
+use Rustine\Apply\ToolingException;
 use Rustine\Apply\UnsupportedProjectException;
 use Rustine\Git\BranchPublisher;
 use Rustine\Git\GitException;
@@ -17,7 +18,6 @@ use Rustine\GitLab\GitLabClient;
 use Rustine\GitLab\GitLabException;
 use Rustine\GitLab\MergeRequest;
 use Rustine\GitLab\NewMergeRequest;
-use Rustine\Pinning\PinningException;
 use Rustine\Plan\GroupPlan;
 use Rustine\Report\MergeRequestContent;
 use Rustine\Report\MergeRequestRenderer;
@@ -53,7 +53,7 @@ final readonly class MergeRequestSynchronizer
     {
         try {
             return $this->process($plan, $report);
-        } catch (GitException|GitLabException|UnsupportedProjectException|PinningException $e) {
+        } catch (GitException|GitLabException|UnsupportedProjectException|ToolingException $e) {
             return new PlanOutcome($plan->branchName(), PlanAction::Failed, null, null, [$e->getMessage()]);
         }
     }
@@ -87,7 +87,7 @@ final readonly class MergeRequestSynchronizer
         $this->git->start($branch);
         try {
             $applied = $this->applier->apply($plan, $report);
-            $content = $this->renderer->render($plan, $applied->result, $applied->pinning);
+            $content = $this->renderer->render($plan, $applied->result, $applied->tools);
 
             if (null !== $applied->result->finalCheckError) {
                 return new PlanOutcome($branch, PlanAction::Failed, $content, $existing?->webUrl, [

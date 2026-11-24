@@ -10,9 +10,8 @@ use Rustine\Apply\ApplyResult;
 use Rustine\Apply\AttemptKind;
 use Rustine\Apply\FixOutcome;
 use Rustine\Apply\FixOutcomeStatus;
+use Rustine\Apply\ToolVersions;
 use Rustine\I18n\TranslatorFactory;
-use Rustine\Pinning\PinningSource;
-use Rustine\Pinning\ToolPinning;
 use Rustine\Plan\DependencyKind;
 use Rustine\Plan\GroupPlan;
 use Rustine\Plan\PackageFixStatus;
@@ -78,16 +77,16 @@ final class MergeRequestRendererTest extends TestCase
     {
         $fix = Fixtures::fix('minimist', '0.0.8', '0.2.4', DependencyKind::Transitive);
         $result = new ApplyResult([new FixOutcome($fix, FixOutcomeStatus::Applied, AttemptKind::Resolution, ['resolution: ok'])]);
-        $pinning = new ToolPinning(PinningSource::Mise, ['node' => '22.11.0', 'yarn' => '4.2.2'], 'mise.toml');
+        $tools = new ToolVersions(['node' => '22.11.0', 'yarn' => '4.2.2']);
 
-        $content = $this->renderer('en')->render(Fixtures::plan($fix), $result, $pinning);
+        $content = $this->renderer('en')->render(Fixtures::plan($fix), $result, $tools);
 
         self::assertStringNotContainsString('Preview', $content->description);
         self::assertStringContainsString('## Technical debt', $content->description);
         self::assertStringContainsString('`minimist` is pinned through `resolutions`', $content->description);
         self::assertStringContainsString('## Verification', $content->description);
         self::assertStringContainsString('The lockfile is consistent with the manifest.', $content->description);
-        self::assertStringContainsString('`mise.toml (node@22.11.0, yarn@4.2.2)`', $content->description);
+        self::assertStringContainsString('Tools of the CI environment: `node 22.11.0, yarn 4.2.2`.', $content->description);
         self::assertSame(1, $content->fixedPackages);
     }
 

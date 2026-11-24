@@ -16,9 +16,6 @@ use Rustine\GitLab\GitLabConfigException;
 use Rustine\GitLab\GitLabException;
 use Rustine\GitLab\HttpGitLabClient;
 use Rustine\I18n\TranslatorFactory;
-use Rustine\Pinning\PinningDetector;
-use Rustine\Pinning\PinningException;
-use Rustine\Pinning\ToolPinning;
 use Rustine\Plan\GroupPlan;
 use Rustine\Plan\Planner;
 use Rustine\Plan\SeverityGroup;
@@ -134,7 +131,7 @@ final class RunCommand
         }
 
         if ($dryRun) {
-            return $this->preview($io, $translator, $project, $report, $groups, $wanted, $reportFile);
+            return $this->preview($io, $translator, $report, $groups, $wanted, $reportFile);
         }
 
         $projectDir = realpath($project);
@@ -237,7 +234,7 @@ final class RunCommand
     /**
      * @param list<SeverityGroup> $groups
      */
-    private function preview(SymfonyStyle $io, TranslatorInterface $translator, string $project, string $report, array $groups, ?Ecosystem $wanted, ?string $reportFile): int
+    private function preview(SymfonyStyle $io, TranslatorInterface $translator, string $report, array $groups, ?Ecosystem $wanted, ?string $reportFile): int
     {
         try {
             $parsedReport = (new TrivyReportParser())->parseFile($report);
@@ -255,13 +252,12 @@ final class RunCommand
         }
 
         $renderer = new MergeRequestRenderer($translator, Application::VERSION);
-        $pinning = $this->pinning($project);
         $files = [];
 
         foreach ($plans as $plan) {
             // A preview does not run the fixes: nothing is verified, and a group with no fixable package
             // would not open a merge request (the manual items stay in the job report).
-            $content = $renderer->render($plan, null, Ecosystem::Yarn === $plan->ecosystem ? $pinning : null);
+            $content = $renderer->render($plan);
 
             $io->section($plan->branchName());
             if (0 === $content->fixedPackages) {
@@ -302,14 +298,5 @@ final class RunCommand
             (new Planner())->plan($report, $groups),
             static fn (GroupPlan $plan): bool => null === $wanted || $wanted === $plan->ecosystem,
         ));
-    }
-
-    private function pinning(string $project): ?ToolPinning
-    {
-        try {
-            return (new PinningDetector())->detect($project);
-        } catch (PinningException) {
-            return null;
-        }
     }
 }

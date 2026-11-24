@@ -8,8 +8,8 @@ use Rustine\GitLab\GitLabConfig;
 use Symfony\Component\Process\Process;
 
 /**
- * Runs commands with the environment of Rustine, minus the GitLab token: Yarn, Composer, mise or git never need it
- * (git gets its credentials from {@see \Rustine\Git\GitAccess}), and a Yarn plugin or a mise hook could read it.
+ * Runs commands with the environment of Rustine, minus the GitLab token: Yarn, Composer, Trivy or git never need it
+ * (git gets its credentials from {@see \Rustine\Git\GitAccess}), and a Yarn plugin could read it.
  */
 final readonly class ProcessCommandRunner implements CommandRunner
 {

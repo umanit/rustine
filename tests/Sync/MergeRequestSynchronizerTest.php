@@ -6,10 +6,10 @@ namespace Rustine\Tests\Sync;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Rustine\Apply\ToolingException;
 use Rustine\Git\BranchPublisher;
 use Rustine\Git\GitIdentity;
 use Rustine\I18n\TranslatorFactory;
-use Rustine\Pinning\PinningException;
 use Rustine\Report\MergeRequestRenderer;
 use Rustine\Sync\MergeRequestSynchronizer;
 use Rustine\Sync\NoteRenderer;
@@ -226,12 +226,12 @@ final class MergeRequestSynchronizerTest extends TestCase
     #[Test]
     public function aProjectErrorIsReportedAndTheWorkingTreeRestored(): void
     {
-        $this->applier->throw = new PinningException('Yarn is not pinned');
+        $this->applier->throw = new ToolingException('Yarn is not available');
 
         $outcome = $this->sync();
 
         self::assertSame(PlanAction::Failed, $outcome->action);
-        self::assertSame('Yarn is not pinned', $outcome->messages[0]);
+        self::assertSame('Yarn is not available', $outcome->messages[0]);
         self::assertSame("# lock v1\n", file_get_contents($this->sandbox->project . '/yarn.lock'));
         self::assertSame('main', trim($this->sandbox->exec(['git', 'branch', '--show-current'])));
         self::assertNull($this->sandbox->remoteSha(self::BRANCH));

@@ -40,6 +40,14 @@ final readonly class ComposerStrategy implements FixStrategy
         return new self($words);
     }
 
+    /**
+     * @return non-empty-list<string>
+     */
+    public function command(): array
+    {
+        return $this->composer;
+    }
+
     public function ecosystem(): Ecosystem
     {
         return Ecosystem::Composer;

@@ -41,7 +41,6 @@
             # Tools called by the bot, handy for local testing.
             extraPackages = with pkgs; [
               trivy
-              mise
               glab
               jq
             ];

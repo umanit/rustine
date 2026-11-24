@@ -37,14 +37,14 @@ class FakeRunner implements CommandRunner
     }
 
     /**
-     * @return list<string> the commands run through mise, as single lines (without the mise wrapper)
+     * @return list<string> the commands other than git, as single lines
      */
-    public function yarnCommands(): array
+    public function toolCommands(): array
     {
         $lines = [];
         foreach ($this->commands as $command) {
-            if ('mise' === $command[0]) {
-                $lines[] = implode(' ', \array_slice($command, array_search('--', $command, true) + 1));
+            if ('git' !== $command[0]) {
+                $lines[] = implode(' ', $command);
             }
         }
 

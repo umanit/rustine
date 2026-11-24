@@ -10,8 +10,8 @@ use Rustine\Apply\FixStrategy;
 use Rustine\Apply\ComposerStrategy;
 use Rustine\Apply\ProcessCommandRunner;
 use Rustine\Apply\ProjectPlanApplier;
+use Rustine\Apply\ToolingException;
 use Rustine\Apply\UnsupportedProjectException;
-use Rustine\Pinning\PinningException;
 use Rustine\Plan\GroupPlan;
 use Rustine\Plan\Planner;
 use Rustine\Plan\SeverityGroup;
@@ -115,27 +115,28 @@ final class ApplyCommand
         $planApplier = new ProjectPlanApplier($runner, $projectDir, $trivyBin, $trivyArg, $composerCommand);
 
         try {
-            $setup = $planApplier->setup($plan->ecosystem);
-        } catch (PinningException $e) {
+            $strategy = $planApplier->strategy($plan->ecosystem);
+        } catch (UnsupportedProjectException $e) {
             $io->error($e->getMessage());
 
             return Command::FAILURE;
         }
-        $io->writeln(sprintf('Tool pinning: %s', $setup->pinning?->describe() ?? 'none (tools of the environment)'));
 
         if ($dryRun) {
-            $this->printDryRun($io, $plan, $setup->strategy, $projectDir);
+            $this->printDryRun($io, $plan, $strategy, $projectDir);
 
             return Command::SUCCESS;
         }
 
         try {
-            $result = $planApplier->apply($plan, $parsedReport)->result;
-        } catch (UnsupportedProjectException|PinningException $e) {
+            $applied = $planApplier->apply($plan, $parsedReport);
+        } catch (UnsupportedProjectException|ToolingException $e) {
             $io->error($e->getMessage());
 
             return Command::FAILURE;
         }
+        $result = $applied->result;
+        $io->writeln(sprintf('Tools of the environment: %s', $applied->tools?->describe() ?? '-'));
 
         foreach ($result->outcomes as $outcome) {
             $io->writeln($this->describe($outcome));

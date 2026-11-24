@@ -78,8 +78,8 @@ before anything is pushed.
 ### Safety guarantees
 
 - Only `composer.json`, `composer.lock`, `package.json` and `yarn.lock` can change. Any other change abandons the fix,
-  untracked files included: anything a fix may create in the project directory (tool installs, caches) must be ignored
-  by git (`.gitignore` or `.git/info/exclude`).
+  untracked files included: anything a fix may create in the project directory (caches, reports) must be ignored by
+  git (`.gitignore` or `.git/info/exclude`).
 - Only branches named `security/rustine-*` are ever written; the default branch is never pushed.
 - Pushes use `--force-with-lease` on the commit seen at the beginning of the run.
 - The token is never put in a URL, a command line or a log: it travels in an environment variable read by git
@@ -95,23 +95,25 @@ before anything is pushed.
 | PHP ≥ 8.4 with `ext-intl`      | To run Rustine itself                                                           |
 | `git`                          | The project must be a git repository with a configured remote                   |
 | `trivy`                        | Version compatible with `--list-all-pkgs` (developed with 0.72)                 |
-| [`mise`](https://mise.jdx.dev) | Installs the Node and Yarn versions of the project (and PHP/Composer if pinned) |
-| `composer`, PHP                | Composer projects: taken from the environment unless `mise.toml` pins them      |
+| `node`, `yarn`                 | Yarn projects: on the `PATH`, in the versions the project expects               |
+| `composer`, PHP                | Composer projects: on the `PATH`, or the command given by `--composer-bin`      |
 
 Rustine runs **inside the project's own CI job**, so that `composer update` and `yarn install` use the same PHP, Node
 and Yarn versions as the project.
 
-### Tool pinning
+### Tools
 
-Node and Yarn versions come from the project, never guessed:
+Rustine **installs nothing**: the environment that runs it must already provide the tools of the project, in the
+versions the project expects (CI image, `mise install`, Volta, Corepack…, before Rustine starts). Commands run as they
+are, with the tools found on the `PATH`.
 
-1. `mise.toml` (or `.mise.toml`) — authoritative when present, even if a `volta` key also exists;
-2. otherwise the `volta` key of `package.json` (`volta.extends` is supported); Rustine reads it itself and runs the
-   commands through `mise exec node@… yarn@… --`, so Volta is not needed;
-3. otherwise Rustine stops with an explicit error for Yarn projects.
+Before fixing a group, Rustine checks the environment and stops with an explicit error when:
 
-Rustine never modifies `mise.toml` or the `volta` key. The source and the effective versions are written in the merge
-request description.
+- `node` or `yarn` (Yarn projects), or Composer (Composer projects), cannot be run;
+- the Yarn of the environment does not match `yarn.lock`: a Berry lockfile (`__metadata`) needs Yarn 2+, a Classic
+  lockfile (`# yarn lockfile v1`) needs Yarn 1. The fix ladder (Berry or Classic) is chosen from the lockfile.
+
+The versions found are written in the merge request description.
 
 ## Installation
 
@@ -208,8 +210,9 @@ Protected variables are only exposed to protected refs: run the schedule on the 
 
 ### Example job
 
-A shared template is planned; in the meantime, a minimal job looks like this (adapt the image and the tool setup to your
-CI):
+A shared template is planned; in the meantime, a minimal job looks like this. Preparing the tools is the job of the CI,
+not of Rustine: here `mise` installs the versions of the project before Rustine starts (an image that already ships
+them works as well).
 
 ```yaml
 security-bot:critical-high:
@@ -223,7 +226,7 @@ security-bot:critical-high:
         MISE_DATA_DIR: $CI_PROJECT_DIR/.mise
     script:
         # The caches live in the project directory (GitLab only caches paths there): hide them from git, otherwise the
-        # files they gain during a fix (e.g. a Node version installed by `mise exec`) abandon it as an unexpected change.
+        # files they gain during a fix (e.g. the Trivy cache filled by the re-scans) abandon it as an unexpected change.
         - printf '%s\n' .mise/ .trivy-cache/ trivy-report.json rustine-report.md >> .git/info/exclude
         - mise install
         - eval "$(mise env -s bash)"

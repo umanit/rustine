@@ -7,14 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** Rustine no longer installs any tool. Yarn and Composer commands run as they are, with the tools of the
+  environment, instead of through `mise exec` (which installed the pinned Node and Yarn versions on the fly). The CI job
+  must provide the tools before Rustine starts.
+- Before fixing a group, Rustine checks that `node` and `yarn` (or Composer) can be run, and that the Yarn of the
+  environment matches `yarn.lock` (Berry or Classic); otherwise it stops with an explicit error. The Yarn fix ladder is
+  chosen from the format of `yarn.lock`.
+- The merge request description gives the versions of the tools of the environment.
+
+### Removed
+
+- Reading the tool versions pinned by `mise.toml` or by the `volta` key of `package.json`: a Yarn project no longer
+  needs to pin its tools, and `mise` is no longer a requirement.
+
 ### Fixed
 
 - Only the lockfiles at the root of the project are handled: a CVE Trivy reports in `tools/*/composer.lock`, a
   sub-project or `node_modules/` is no longer planned as a dependency of the root project.
 - A fix is no longer reported as failed because another major version of the same package carries the same CVE.
 - Below 1.0, a new minor version is treated as a major bump (`0.3.x` → `0.4.x` is a breaking change in semver).
-- The GitLab token (`RUSTINE_GITLAB_TOKEN`, `GITLAB_TOKEN`) is removed from the environment of Yarn, Composer, mise, git
-  and Trivy.
+- The GitLab token (`RUSTINE_GITLAB_TOKEN`, `GITLAB_TOKEN`) is removed from the environment of Yarn, Composer, git and
+  Trivy.
 - `run` fails when the `--report-file` cannot be written, instead of ignoring it.
 
 ### Documentation

@@ -15,7 +15,7 @@ interface PlanApplier
 {
     /**
      * @throws UnsupportedProjectException when the project cannot be handled safely
-     * @throws \Rustine\Pinning\PinningException when the tools the project needs are not pinned
+     * @throws ToolingException            when a tool the ecosystem needs is missing or does not match the project
      */
     public function apply(GroupPlan $plan, TrivyReport $report): AppliedPlan;
 }

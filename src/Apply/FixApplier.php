@@ -20,7 +20,6 @@ final class FixApplier
 {
     public function __construct(
         private readonly CommandRunner $runner,
-        private readonly ToolEnvironment $tools,
         private readonly WorkingTree $tree,
         private readonly VulnerabilityRescanner $rescanner,
         private readonly FixStrategy $strategy,
@@ -68,7 +67,7 @@ final class FixApplier
         }
 
         // The final lockfile must be consistent with the manifest, whatever the sequence of fixes.
-        $check = $this->runner->run($this->tools->wrap($this->strategy->checkCommand()), $this->projectDir, [...$this->tools->env(), ...$this->strategy->checkEnv()]);
+        $check = $this->runner->run($this->strategy->checkCommand(), $this->projectDir, $this->strategy->checkEnv());
 
         return new ApplyResult($outcomes, $check->isSuccessful() ? null : $this->tail($check->output));
     }
@@ -165,7 +164,7 @@ final class FixApplier
 
         $diagnosis = $this->strategy->diagnosis($fix);
         if (null !== $diagnosis) {
-            $result = $this->runner->run($this->tools->wrap($diagnosis), $this->projectDir, $this->tools->env());
+            $result = $this->runner->run($diagnosis, $this->projectDir);
             $log[] = sprintf('%s: %s', implode(' ', $diagnosis), $this->tail($result->output, 12));
         }
 
@@ -188,7 +187,7 @@ final class FixApplier
         }
 
         foreach ($attempt->commands as $command) {
-            $result = $this->runner->run($this->tools->wrap($command), $this->projectDir, [...$this->tools->env(), ...$this->strategy->mutatingEnv()]);
+            $result = $this->runner->run($command, $this->projectDir, $this->strategy->mutatingEnv());
             if (!$result->isSuccessful()) {
                 return sprintf('`%s` failed (exit %d): %s', implode(' ', $command), $result->exitCode, $this->tail($result->output));
             }

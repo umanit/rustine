@@ -13,13 +13,10 @@ use Rustine\Apply\FixApplier;
 use Rustine\Apply\FixOutcomeStatus;
 use Rustine\Apply\FixStrategy;
 use Rustine\Apply\PackageJsonEditor;
-use Rustine\Apply\ToolEnvironment;
 use Rustine\Apply\UnsupportedProjectException;
 use Rustine\Apply\WorkingTree;
 use Rustine\Apply\YarnBerryStrategy;
 use Rustine\Apply\YarnClassicStrategy;
-use Rustine\Pinning\PinningSource;
-use Rustine\Pinning\ToolPinning;
 use Rustine\Plan\DependencyKind;
 use Rustine\Plan\PackageFixStatus;
 use Rustine\Tests\Apply\Support\FakeRunner;
@@ -68,7 +65,7 @@ final class FixApplierTest extends TestCase
 
         self::assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
         self::assertSame(AttemptKind::LockfileRefresh, $result->outcomes[0]->strategy);
-        self::assertSame(["yarn up -R ckeditor4", 'yarn install --immutable'], $this->runner->yarnCommands());
+        self::assertSame(["yarn up -R ckeditor4", 'yarn install --immutable'], $this->runner->toolCommands());
         self::assertSame("# changed by yarn\n", file_get_contents($this->dir . '/yarn.lock'));
         self::assertTrue($result->isHealthy());
         self::assertTrue($result->hasChanges());
@@ -82,7 +79,6 @@ final class FixApplierTest extends TestCase
         $yarnEnvs = array_values(array_filter($this->runner->envs, static fn (array $e): bool => [] !== $e));
         self::assertSame('false', $yarnEnvs[0]['YARN_ENABLE_IMMUTABLE_INSTALLS']);
         self::assertSame('false', $yarnEnvs[0]['YARN_ENABLE_SCRIPTS']);
-        self::assertSame($this->dir, $yarnEnvs[0]['MISE_TRUSTED_CONFIG_PATHS']);
         self::assertArrayNotHasKey('YARN_ENABLE_IMMUTABLE_INSTALLS', $yarnEnvs[1], 'The final check must stay immutable.');
     }
 
@@ -127,7 +123,7 @@ final class FixApplierTest extends TestCase
         self::assertStringContainsString("other@^1.0.0:\n  version \"1.0.0\"\n", (string) $seenByYarn);
         self::assertSame(
             ['yarn install --non-interactive --ignore-scripts', 'yarn install --frozen-lockfile --non-interactive --ignore-scripts'],
-            $this->runner->yarnCommands(),
+            $this->runner->toolCommands(),
         );
     }
 
@@ -168,7 +164,7 @@ final class FixApplierTest extends TestCase
             ],
             $result->outcomes[0]->log,
         );
-        self::assertSame(['yarn up -R braces'], $this->runner->yarnCommands());
+        self::assertSame(['yarn up -R braces'], $this->runner->toolCommands());
         self::assertSame(self::PACKAGE_JSON, file_get_contents($this->dir . '/package.json'));
     }
 
@@ -227,7 +223,7 @@ final class FixApplierTest extends TestCase
         self::assertFalse($result->hasChanges());
         self::assertSame(self::LOCK, file_get_contents($this->dir . '/yarn.lock'));
         self::assertSame(self::PACKAGE_JSON, file_get_contents($this->dir . '/package.json'));
-        self::assertNotContains('yarn install --immutable', $this->runner->yarnCommands(), 'No final check when nothing changed.');
+        self::assertNotContains('yarn install --immutable', $this->runner->toolCommands(), 'No final check when nothing changed.');
     }
 
     #[Test]
@@ -260,7 +256,7 @@ final class FixApplierTest extends TestCase
 
         self::assertSame(FixOutcomeStatus::UnsupportedSource, $result->outcomes[0]->status);
         self::assertStringContainsString($spec, $result->outcomes[0]->log[0]);
-        self::assertSame([], $this->runner->yarnCommands());
+        self::assertSame([], $this->runner->toolCommands());
         self::assertSame(0, $rescanner->calls);
         self::assertTrue($result->isHealthy(), 'A manual fix is reported, not a failure of the bot.');
         self::assertFalse($result->hasChanges());
@@ -302,7 +298,7 @@ final class FixApplierTest extends TestCase
             [FixOutcomeStatus::Skipped, FixOutcomeStatus::AlreadyFixed],
             array_map(static fn ($o) => $o->status, $result->outcomes),
         );
-        self::assertSame([], $this->runner->yarnCommands());
+        self::assertSame([], $this->runner->toolCommands());
         self::assertSame(0, $rescanner->calls);
     }
 
@@ -412,7 +408,7 @@ final class FixApplierTest extends TestCase
         self::assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
         self::assertSame(
             ['composer update twig/twig --with-all-dependencies --no-install --no-interaction --no-scripts --no-plugins --no-progress', 'composer validate --no-check-publish --no-interaction'],
-            $this->runner->yarnCommands(),
+            $this->runner->toolCommands(),
         );
         @unlink($this->dir . '/composer.json');
         @unlink($this->dir . '/composer.lock');
@@ -433,7 +429,6 @@ final class FixApplierTest extends TestCase
     {
         return new FixApplier(
             $this->runner,
-            new ToolEnvironment(new ToolPinning(PinningSource::Mise, ['yarn' => '4.2.2'], 'mise.toml'), $this->dir),
             new WorkingTree($this->runner, $this->dir),
             $rescanner,
             $strategy ?? new YarnBerryStrategy(),

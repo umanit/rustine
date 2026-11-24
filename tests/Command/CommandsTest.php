@@ -109,7 +109,7 @@ final class CommandsTest extends TestCase
     #[Test]
     public function applyDryRunPrintsTheAttemptsWithoutRunningAnything(): void
     {
-        $dir = $this->projectWithPinning("[tools]\nnode = \"22.11.0\"\nyarn = \"4.2.2\"\n");
+        $dir = $this->projectWithLockfile("__metadata:\n  version: 8\n");
 
         $tester = $this->tester('apply');
         $tester->execute(['--project' => $dir, '--report' => self::REPORT, '--group' => ['others'], '--dry-run' => true]);
@@ -132,7 +132,7 @@ final class CommandsTest extends TestCase
     #[Test]
     public function applyDryRunUsesTheClassicLadderForYarnClassic(): void
     {
-        $dir = $this->projectWithPinning("[tools]\nyarn = \"1.22.19\"\n");
+        $dir = $this->projectWithLockfile("# yarn lockfile v1\n");
 
         $tester = $this->tester('apply');
         $tester->execute(['--project' => $dir, '--report' => self::REPORT, '--group' => ['others'], '--dry-run' => true]);
@@ -143,7 +143,7 @@ final class CommandsTest extends TestCase
     }
 
     #[Test]
-    public function applyFailsWithoutToolPinning(): void
+    public function applyFailsWithoutAYarnLockfile(): void
     {
         $dir = sys_get_temp_dir() . '/rustine-apply-' . bin2hex(random_bytes(4));
         mkdir($dir);
@@ -153,11 +153,11 @@ final class CommandsTest extends TestCase
         rmdir($dir);
 
         self::assertSame(Command::FAILURE, $tester->getStatusCode());
-        self::assertStringContainsString('No tool pinning found', $tester->getDisplay());
+        self::assertStringContainsString('No readable yarn.lock', $tester->getDisplay());
     }
 
     #[Test]
-    public function applyDryRunWorksOnAPhpOnlyProjectWithoutPinning(): void
+    public function applyDryRunWorksOnAPhpOnlyProject(): void
     {
         $dir = sys_get_temp_dir() . '/rustine-apply-' . bin2hex(random_bytes(4));
         mkdir($dir);
@@ -174,7 +174,6 @@ final class CommandsTest extends TestCase
         @unlink($dir . '/composer.json');
 
         self::assertSame(Command::SUCCESS, $tester->getStatusCode());
-        self::assertStringContainsString('Tool pinning: none', $tester->getDisplay());
         self::assertStringContainsString('composer update symfony/http-foundation --with-all-dependencies', $tester->getDisplay());
         self::assertStringContainsString('composer require symfony/http-foundation:^6.4.41', $tester->getDisplay());
         self::assertStringContainsString('spatie/browsershot@3.61.0: not fixable automatically', $tester->getDisplay());
@@ -346,11 +345,11 @@ final class CommandsTest extends TestCase
         self::assertSame(Command::SUCCESS, $tester->getStatusCode());
     }
 
-    private function projectWithPinning(string $miseToml): string
+    private function projectWithLockfile(string $yarnLock): string
     {
         $dir = sys_get_temp_dir() . '/rustine-apply-' . bin2hex(random_bytes(4));
         mkdir($dir);
-        file_put_contents($dir . '/mise.toml', $miseToml);
+        file_put_contents($dir . '/yarn.lock', $yarnLock);
         $this->dirs[] = $dir;
 
         return $dir;
@@ -362,7 +361,7 @@ final class CommandsTest extends TestCase
             @unlink($file);
         }
         foreach ($this->dirs as $dir) {
-            @unlink($dir . '/mise.toml');
+            @unlink($dir . '/yarn.lock');
             @unlink($dir . '/composer.json');
             @rmdir($dir);
         }

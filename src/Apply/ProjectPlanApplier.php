@@ -4,10 +4,6 @@ declare(strict_types=1);
 
 namespace Rustine\Apply;
 
-use Rustine\Pinning\PinningDetector;
-use Rustine\Pinning\PinningException;
-use Rustine\Pinning\PinningSource;
-use Rustine\Pinning\YarnFlavor;
 use Rustine\Plan\GroupPlan;
 use Rustine\Trivy\Ecosystem;
 use Rustine\Trivy\TrivyReport;
@@ -15,8 +11,8 @@ use Rustine\Trivy\TrivyReportParser;
 use Rustine\Trivy\TrivyScanner;
 
 /**
- * Applies a plan to a real project: picks the strategy of the ecosystem from the pinned tools, then runs
- * {@see FixApplier}.
+ * Applies a plan to a real project: picks the strategy of the ecosystem, checks that the environment provides the
+ * tools it needs (Rustine installs none), then runs {@see FixApplier}.
  */
 final readonly class ProjectPlanApplier implements PlanApplier
 {
@@ -34,53 +30,63 @@ final readonly class ProjectPlanApplier implements PlanApplier
     }
 
     /**
-     * @throws PinningException         when the tools the ecosystem needs are not pinned by the project
-     * @throws \InvalidArgumentException when the Composer command is empty
+     * Strategy of the ecosystem. Runs nothing: the Yarn flavor comes from the format of `yarn.lock`.
+     *
+     * @throws UnsupportedProjectException when a Yarn project has no `yarn.lock`
+     * @throws \InvalidArgumentException  when the Composer command is empty
      */
-    public function setup(Ecosystem $ecosystem): ApplierSetup
+    public function strategy(Ecosystem $ecosystem): FixStrategy
     {
         if (Ecosystem::Composer === $ecosystem) {
-            // PHP and Composer come from the CI image unless the project pins them with mise.
-            return new ApplierSetup(ComposerStrategy::fromCommandLine($this->composerCommand), $this->optionalMisePinning());
+            return ComposerStrategy::fromCommandLine($this->composerCommand);
         }
 
-        $pinning = (new PinningDetector())->detect($this->projectDir);
-        $flavor = $pinning->yarnFlavor();
-        if (null === $flavor) {
-            throw new PinningException('Yarn is not pinned by the project: cannot choose a strategy.');
-        }
+        return YarnFlavor::Berry === $this->yarnLockfileFlavor() ? new YarnBerryStrategy() : new YarnClassicStrategy();
+    }
 
-        return new ApplierSetup(YarnFlavor::Berry === $flavor ? new YarnBerryStrategy() : new YarnClassicStrategy(), $pinning);
+    /**
+     * Checks the tools of the environment and reads their versions.
+     *
+     * @throws ToolingException            when a tool is missing or does not match the project
+     * @throws UnsupportedProjectException when a Yarn project has no `yarn.lock`
+     */
+    public function tools(Ecosystem $ecosystem): ToolVersions
+    {
+        $probe = new ToolProbe($this->runner, $this->projectDir);
+
+        return Ecosystem::Composer === $ecosystem
+            ? $probe->composer(ComposerStrategy::fromCommandLine($this->composerCommand)->command())
+            : $probe->yarn($this->yarnLockfileFlavor());
     }
 
     public function apply(GroupPlan $plan, TrivyReport $report): AppliedPlan
     {
-        $setup = $this->setup($plan->ecosystem);
+        $strategy = $this->strategy($plan->ecosystem);
+        $tools = $this->tools($plan->ecosystem);
 
         $applier = new FixApplier(
             $this->runner,
-            new ToolEnvironment($setup->pinning, $this->projectDir),
             new WorkingTree($this->runner, $this->projectDir),
             new TrivyRescanner(new TrivyScanner($this->trivyBin), new TrivyReportParser(), $this->projectDir, $this->trivyArgs),
-            $setup->strategy,
+            $strategy,
             new PackageJsonEditor(),
             $this->projectDir,
         );
 
-        return new AppliedPlan($applier->apply($plan, $report), $setup->pinning);
+        return new AppliedPlan($applier->apply($plan, $report), $tools);
     }
 
     /**
-     * A `mise.toml` is honoured for Composer projects (PHP may be pinned); the `volta` key never concerns them.
+     * @throws UnsupportedProjectException
      */
-    private function optionalMisePinning(): ?\Rustine\Pinning\ToolPinning
+    private function yarnLockfileFlavor(): YarnFlavor
     {
-        try {
-            $pinning = (new PinningDetector())->detect($this->projectDir);
-        } catch (PinningException) {
-            return null;
+        $lockfile = $this->projectDir . '/yarn.lock';
+        $content = is_file($lockfile) ? file_get_contents($lockfile) : false;
+        if (false === $content) {
+            throw new UnsupportedProjectException(sprintf('No readable yarn.lock in "%s".', $this->projectDir));
         }
 
-        return PinningSource::Mise === $pinning->source ? $pinning : null;
+        return YarnFlavor::ofLockfile($content);
     }
 }

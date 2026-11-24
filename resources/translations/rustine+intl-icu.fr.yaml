@@ -54,8 +54,8 @@ verification:
   check_failed: "Le contrôle de cohérence du lockfile a échoué :"
 
 tooling:
-  pinned: "Versions d’outils utilisées : {pinning}."
-  none: "Aucun épinglage d’outils : les outils de l’environnement CI ont été utilisés."
+  used: "Outils de l’environnement CI : {tools}."
+  none: "Les outils de l’environnement CI sont utilisés, Rustine n’en installe aucun."
 
 footer: "Généré par Rustine {version}. Ne modifiez pas la branche à la main : elle est reconstruite à chaque exécution."
 

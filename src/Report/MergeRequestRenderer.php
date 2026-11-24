@@ -8,7 +8,7 @@ use Rustine\Apply\ApplyResult;
 use Rustine\Apply\AttemptKind;
 use Rustine\Apply\FixOutcome;
 use Rustine\Apply\FixOutcomeStatus;
-use Rustine\Pinning\ToolPinning;
+use Rustine\Apply\ToolVersions;
 use Rustine\Plan\DependencyKind;
 use Rustine\Plan\GroupPlan;
 use Rustine\Plan\PackageFix;
@@ -34,7 +34,7 @@ final readonly class MergeRequestRenderer
     ) {
     }
 
-    public function render(GroupPlan $plan, ?ApplyResult $result = null, ?ToolPinning $pinning = null): MergeRequestContent
+    public function render(GroupPlan $plan, ?ApplyResult $result = null, ?ToolVersions $tools = null): MergeRequestContent
     {
         $outcomes = $this->outcomesByFix($plan, $result);
         $rows = $this->rows($plan, $result, $outcomes);
@@ -69,9 +69,9 @@ final readonly class MergeRequestRenderer
         if (null !== $result && ([] !== $rows || null !== $result->finalCheckError)) {
             $sections[] = '## ' . $this->t('section.verification') . "\n\n" . $this->verification($result);
         }
-        $sections[] = '## ' . $this->t('section.tooling') . "\n\n" . (null === $pinning
+        $sections[] = '## ' . $this->t('section.tooling') . "\n\n" . (null === $tools
             ? $this->t('tooling.none')
-            : $this->t('tooling.pinned', ['pinning' => '`' . $pinning->describe() . '`']));
+            : $this->t('tooling.used', ['tools' => '`' . $tools->describe() . '`']));
         $sections[] = sprintf(
             "---\n%s\n<!-- %s fingerprint=%s -->",
             $this->t('footer', ['version' => $this->version]),
