@@ -19,6 +19,8 @@ final readonly class ProjectPlanApplier implements PlanApplier
     /**
      * @param list<string> $trivyArgs       extra Trivy arguments for the re-scans
      * @param string       $composerCommand command that runs Composer (see {@see ComposerStrategy::fromCommandLine()})
+     * @param string       $yarnCommand     command that runs Yarn (see {@see YarnRuntime})
+     * @param string       $nodeCommand     command that runs Node (see {@see YarnRuntime})
      */
     public function __construct(
         private CommandRunner $runner,
@@ -26,6 +28,8 @@ final readonly class ProjectPlanApplier implements PlanApplier
         private string $trivyBin = 'trivy',
         private array $trivyArgs = [],
         private string $composerCommand = 'composer',
+        private string $yarnCommand = 'yarn',
+        private string $nodeCommand = 'node',
     ) {
     }
 
@@ -33,7 +37,7 @@ final readonly class ProjectPlanApplier implements PlanApplier
      * Strategy of the ecosystem. Runs nothing: the Yarn flavor comes from the format of `yarn.lock`.
      *
      * @throws UnsupportedProjectException when a Yarn project has no `yarn.lock`
-     * @throws \InvalidArgumentException  when the Composer command is empty
+     * @throws \InvalidArgumentException  when a tool command is empty
      */
     public function strategy(Ecosystem $ecosystem): FixStrategy
     {
@@ -41,7 +45,9 @@ final readonly class ProjectPlanApplier implements PlanApplier
             return ComposerStrategy::fromCommandLine($this->composerCommand);
         }
 
-        return YarnFlavor::Berry === $this->yarnLockfileFlavor() ? new YarnBerryStrategy() : new YarnClassicStrategy();
+        $runtime = YarnRuntime::fromCommandLines($this->yarnCommand, $this->nodeCommand);
+
+        return YarnFlavor::Berry === $this->yarnLockfileFlavor() ? new YarnBerryStrategy($runtime) : new YarnClassicStrategy($runtime);
     }
 
     /**
@@ -49,6 +55,7 @@ final readonly class ProjectPlanApplier implements PlanApplier
      *
      * @throws ToolingException            when a tool is missing or does not match the project
      * @throws UnsupportedProjectException when a Yarn project has no `yarn.lock`
+     * @throws \InvalidArgumentException  when a tool command is empty
      */
     public function tools(Ecosystem $ecosystem): ToolVersions
     {
@@ -56,7 +63,7 @@ final readonly class ProjectPlanApplier implements PlanApplier
 
         return Ecosystem::Composer === $ecosystem
             ? $probe->composer(ComposerStrategy::fromCommandLine($this->composerCommand)->command())
-            : $probe->yarn($this->yarnLockfileFlavor());
+            : $probe->yarn($this->yarnLockfileFlavor(), YarnRuntime::fromCommandLines($this->yarnCommand, $this->nodeCommand));
     }
 
     public function apply(GroupPlan $plan, TrivyReport $report): AppliedPlan

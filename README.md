@@ -95,7 +95,7 @@ before anything is pushed.
 | PHP ≥ 8.4 with `ext-intl`      | To run Rustine itself                                                           |
 | `git`                          | The project must be a git repository with a configured remote                   |
 | `trivy`                        | Version compatible with `--list-all-pkgs` (developed with 0.72)                 |
-| `node`, `yarn`                 | Yarn projects: on the `PATH`, in the versions the project expects               |
+| `node`, `yarn`                 | Yarn projects: on the `PATH`, or given by `--node-bin` / `--yarn-bin`           |
 | `composer`, PHP                | Composer projects: on the `PATH`, or the command given by `--composer-bin`      |
 
 Rustine runs **inside the project's own CI job**, so that `composer update` and `yarn install` use the same PHP, Node
@@ -105,7 +105,7 @@ and Yarn versions as the project.
 
 Rustine **installs nothing**: the environment that runs it must already provide the tools of the project, in the
 versions the project expects (CI image, `mise install`, Volta, Corepack…, before Rustine starts). Commands run as they
-are, with the tools found on the `PATH`.
+are, with the tools found on the `PATH` unless `--yarn-bin`, `--node-bin` or `--composer-bin` point elsewhere.
 
 Before fixing a group, Rustine checks the environment and stops with an explicit error when:
 
@@ -181,6 +181,8 @@ Options take precedence over the variables GitLab CI provides.
 | `--report-file`              |                                          | Markdown report: status and description of each group                                                                                                           |
 | `--report`                   |                                          | Trivy report: written by a real run, read by `--dry-run`                                                                                                        |
 | `--composer-bin`             | `RUSTINE_COMPOSER_BIN`                   | Command that runs Composer (default `composer`), e.g. `/usr/bin/php8.1 /usr/local/bin/composer2` to pick the PHP version; words separated by spaces, no quoting |
+| `--yarn-bin`                 | `RUSTINE_YARN_BIN`                       | Command that runs Yarn (default `yarn`), e.g. `/opt/yarn/bin/yarn`; words separated by spaces, no quoting                                                       |
+| `--node-bin`                 | `RUSTINE_NODE_BIN`                       | Command that runs Node (default `node`); given by path, its directory goes first on the `PATH` of Yarn                                                          |
 | `--trivy-bin`, `--trivy-arg` |                                          | Trivy binary and extra arguments (repeatable), e.g. `--trivy-arg=--ignorefile=.trivyignore`                                                                     |
 
 Labels are never translated (filters, boards and the open-merge-request limit depend on their names), nor are branch

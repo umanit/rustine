@@ -16,7 +16,10 @@ final readonly class YarnBerryStrategy implements FixStrategy
     /**
      * @return list<Attempt>
      */
-    public function __construct(private YarnSourceGuard $sourceGuard = new YarnSourceGuard())
+    public function __construct(
+        private YarnRuntime $runtime = new YarnRuntime(),
+        private YarnSourceGuard $sourceGuard = new YarnSourceGuard(),
+    )
     {
     }
 
@@ -50,11 +53,11 @@ final readonly class YarnBerryStrategy implements FixStrategy
         $range = '^' . $fix->targetVersion;
 
         // `-R` also updates transitive occurrences, within the ranges already declared.
-        $attempts = [new Attempt(AttemptKind::LockfileRefresh, [['yarn', 'up', '-R', $name]])];
+        $attempts = [new Attempt(AttemptKind::LockfileRefresh, [$this->runtime->yarn('up', '-R', $name)])];
 
         $attempts[] = DependencyKind::Direct === $fix->dependencyKind
-            ? new Attempt(AttemptKind::DirectBump, [['yarn', 'up', $name . '@' . $range]])
-            : new Attempt(AttemptKind::Resolution, [['yarn', 'install']], [$name, $range]);
+            ? new Attempt(AttemptKind::DirectBump, [$this->runtime->yarn('up', $name . '@' . $range)])
+            : new Attempt(AttemptKind::Resolution, [$this->runtime->yarn('install')], [$name, $range]);
 
         return $attempts;
     }
@@ -65,16 +68,16 @@ final readonly class YarnBerryStrategy implements FixStrategy
      */
     public function mutatingEnv(): array
     {
-        return ['YARN_ENABLE_IMMUTABLE_INSTALLS' => 'false', 'YARN_ENABLE_SCRIPTS' => 'false'];
+        return [...$this->runtime->env(), 'YARN_ENABLE_IMMUTABLE_INSTALLS' => 'false', 'YARN_ENABLE_SCRIPTS' => 'false'];
     }
 
     public function checkCommand(): array
     {
-        return ['yarn', 'install', '--immutable'];
+        return $this->runtime->yarn('install', '--immutable');
     }
 
     public function checkEnv(): array
     {
-        return ['YARN_ENABLE_SCRIPTS' => 'false'];
+        return [...$this->runtime->env(), 'YARN_ENABLE_SCRIPTS' => 'false'];
     }
 }

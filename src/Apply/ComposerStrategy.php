@@ -32,12 +32,7 @@ final readonly class ComposerStrategy implements FixStrategy
      */
     public static function fromCommandLine(string $commandLine): self
     {
-        $words = preg_split('/\s+/', trim($commandLine), -1, \PREG_SPLIT_NO_EMPTY) ?: [];
-        if ([] === $words) {
-            throw new \InvalidArgumentException('The Composer command is empty.');
-        }
-
-        return new self($words);
+        return new self(CommandLine::split($commandLine, 'Composer'));
     }
 
     /**

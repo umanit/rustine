@@ -10,6 +10,7 @@ use Rustine\Apply\CommandResult;
 use Rustine\Apply\ToolingException;
 use Rustine\Apply\ToolProbe;
 use Rustine\Apply\YarnFlavor;
+use Rustine\Apply\YarnRuntime;
 use Rustine\Tests\Apply\Support\FakeRunner;
 
 final class ToolProbeTest extends TestCase
@@ -27,6 +28,18 @@ final class ToolProbeTest extends TestCase
         self::assertSame(['node' => '22.11.0', 'yarn' => '4.2.2'], $tools->versions);
         self::assertSame('node 22.11.0, yarn 4.2.2', $tools->describe());
         self::assertSame([['node', '--version'], ['yarn', '--version']], $runner->commands);
+    }
+
+    #[Test]
+    public function itProbesTheConfiguredNodeAndYarn(): void
+    {
+        $runner = $this->runner(['/opt/node20/bin/node' => "v20.11.0\n", '/opt/yarn/bin/yarn' => "1.22.19\n"]);
+
+        $tools = (new ToolProbe($runner, '/p'))->yarn(YarnFlavor::Classic, new YarnRuntime(['/opt/yarn/bin/yarn'], ['/opt/node20/bin/node']));
+
+        self::assertSame(['node' => '20.11.0', 'yarn' => '1.22.19'], $tools->versions);
+        self::assertSame([['/opt/node20/bin/node', '--version'], ['/opt/yarn/bin/yarn', '--version']], $runner->commands);
+        self::assertStringStartsWith('/opt/node20/bin' . \PATH_SEPARATOR, $runner->envs[1]['PATH'] ?? '', 'Yarn runs with the configured Node.');
     }
 
     #[Test]

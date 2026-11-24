@@ -23,10 +23,10 @@ final readonly class ToolProbe
     /**
      * @throws ToolingException
      */
-    public function yarn(YarnFlavor $lockfile): ToolVersions
+    public function yarn(YarnFlavor $lockfile, YarnRuntime $runtime = new YarnRuntime()): ToolVersions
     {
-        $node = $this->version(['node', '--version'], 'Node');
-        $yarn = $this->version(['yarn', '--version'], 'Yarn');
+        $node = $this->version([...$runtime->node, '--version'], 'Node');
+        $yarn = $this->version($runtime->yarn('--version'), 'Yarn', $runtime->env());
 
         $flavor = YarnFlavor::ofVersion($yarn);
         if ($lockfile !== $flavor) {
@@ -61,24 +61,26 @@ final readonly class ToolProbe
 
     /**
      * @param non-empty-list<string> $command
+     * @param array<string, string>  $env
      *
      * @throws ToolingException
      */
-    private function version(array $command, string $tool): string
+    private function version(array $command, string $tool, array $env = []): string
     {
-        $output = $this->output($command, $tool);
+        $output = $this->output($command, $tool, $env);
 
         return $this->match('/v?(' . self::VERSION . ')/', $output) ?? $this->firstLine($output);
     }
 
     /**
      * @param non-empty-list<string> $command
+     * @param array<string, string>  $env
      *
      * @throws ToolingException
      */
-    private function output(array $command, string $tool): string
+    private function output(array $command, string $tool, array $env = []): string
     {
-        $result = $this->runner->run($command, $this->projectDir);
+        $result = $this->runner->run($command, $this->projectDir, $env);
         if ($result->isSuccessful() && '' !== trim($result->output)) {
             return $result->output;
         }

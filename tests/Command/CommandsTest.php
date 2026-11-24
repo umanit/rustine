@@ -200,6 +200,32 @@ final class CommandsTest extends TestCase
     }
 
     #[Test]
+    public function applyRunsYarnThroughTheConfiguredCommand(): void
+    {
+        $arguments = ['--project' => $this->projectWithLockfile("__metadata:\n  version: 8\n"), '--report' => self::REPORT, '--group' => ['others'], '--dry-run' => true];
+
+        $viaOption = $this->tester('apply');
+        $viaOption->execute([...$arguments, '--yarn-bin' => '/opt/node20/bin/node /opt/yarn/yarn-4.2.2.cjs', '--node-bin' => '/opt/node20/bin/node']);
+
+        $viaEnvironment = $this->tester('apply');
+        $this->withEnvironment(['RUSTINE_YARN_BIN' => '/opt/yarn/bin/yarn'], static fn () => $viaEnvironment->execute($arguments));
+
+        self::assertSame(Command::SUCCESS, $viaOption->getStatusCode());
+        self::assertStringContainsString('[lockfile-refresh] /opt/node20/bin/node /opt/yarn/yarn-4.2.2.cjs up -R', $viaOption->getDisplay());
+        self::assertStringContainsString('[lockfile-refresh] /opt/yarn/bin/yarn up -R', $viaEnvironment->getDisplay());
+    }
+
+    #[Test]
+    public function applyRejectsAnEmptyNodeCommand(): void
+    {
+        $tester = $this->tester('apply');
+        $tester->execute(['--project' => $this->projectWithLockfile("__metadata:\n"), '--report' => self::REPORT, '--group' => ['others'], '--dry-run' => true, '--node-bin' => ' ']);
+
+        self::assertNotSame(Command::SUCCESS, $tester->getStatusCode());
+        self::assertStringContainsString('The Node command is empty.', $tester->getDisplay());
+    }
+
+    #[Test]
     public function applyRejectsAnUnknownEcosystem(): void
     {
         $tester = $this->tester('apply');

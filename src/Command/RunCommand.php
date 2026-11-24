@@ -7,6 +7,7 @@ namespace Rustine\Command;
 use Rustine\Apply\ComposerStrategy;
 use Rustine\Apply\ProcessCommandRunner;
 use Rustine\Apply\ProjectPlanApplier;
+use Rustine\Apply\YarnRuntime;
 use Rustine\Application;
 use Rustine\Git\BranchPublisher;
 use Rustine\Git\Git;
@@ -75,6 +76,10 @@ final class RunCommand
         array $trivyArg = [],
         #[Option(description: 'Command that runs Composer, e.g. "/usr/bin/php8.1 /usr/local/bin/composer2" (default: $RUSTINE_COMPOSER_BIN, then composer)')]
         ?string $composerBin = null,
+        #[Option(description: 'Command that runs Yarn, e.g. "/opt/yarn/bin/yarn" (default: $RUSTINE_YARN_BIN, then yarn)')]
+        ?string $yarnBin = null,
+        #[Option(description: 'Command that runs Node, e.g. "/opt/node20/bin/node"; given by path, its directory goes first on the PATH of Yarn (default: $RUSTINE_NODE_BIN, then node)')]
+        ?string $nodeBin = null,
         #[Option(description: 'GitLab API root (default: $CI_API_V4_URL). The token comes from $RUSTINE_GITLAB_TOKEN or $GITLAB_TOKEN')]
         ?string $gitlabUrl = null,
         #[Option(description: 'GitLab project id or path (default: $CI_PROJECT_ID)')]
@@ -150,8 +155,11 @@ final class RunCommand
         }
 
         $composerCommand = Environment::string($composerBin, 'RUSTINE_COMPOSER_BIN', 'composer');
+        $yarnCommand = Environment::string($yarnBin, 'RUSTINE_YARN_BIN', 'yarn');
+        $nodeCommand = Environment::string($nodeBin, 'RUSTINE_NODE_BIN', 'node');
         try {
             ComposerStrategy::fromCommandLine($composerCommand);
+            YarnRuntime::fromCommandLines($yarnCommand, $nodeCommand);
         } catch (\InvalidArgumentException $e) {
             $io->error($e->getMessage());
 
@@ -193,7 +201,7 @@ final class RunCommand
         $synchronizer = new MergeRequestSynchronizer(
             $client,
             new BranchPublisher(new Git($runner, $projectDir, new GitAccess($config->token)), $config->defaultBranch, $identity, $remote),
-            new ProjectPlanApplier($runner, $projectDir, $trivyBin, $trivyArg, $composerCommand),
+            new ProjectPlanApplier($runner, $projectDir, $trivyBin, $trivyArg, $composerCommand, $yarnCommand, $nodeCommand),
             new MergeRequestRenderer($translator, Application::VERSION),
             new NoteRenderer($translator),
             new SyncSettings($config->defaultBranch, [] === $label ? ['security'] : $label, $severityLabelFormat, $assignee, $reviewer, $maxOpenMergeRequests),

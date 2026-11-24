@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `--yarn-bin` / `RUSTINE_YARN_BIN` and `--node-bin` / `RUSTINE_NODE_BIN` override the Yarn and Node commands, like
+  `--composer-bin`. A Node given by path goes first on the `PATH` of the Yarn commands, so Yarn runs with it.
+
 ### Changed
 
 - **Breaking:** Rustine no longer installs any tool. Yarn and Composer commands run as they are, with the tools of the
