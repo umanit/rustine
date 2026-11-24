@@ -4,7 +4,7 @@ group:
   critical-high: "sévérité critique et haute"
   others: "sévérité moyenne, basse et inconnue"
 
-preview: "Aperçu du plan : rien n'a encore été exécuté, les corrections ci-dessous sont prévues mais non vérifiées."
+preview: "Aperçu du plan : rien n’a encore été exécuté, les corrections ci-dessous sont prévues mais non vérifiées."
 
 summary:
   fixed: "Paquets corrigés : {packages} · CVE corrigées : {cves}"
@@ -39,10 +39,10 @@ strategy:
 
 attention:
   major_bump: "{cves} corrigées uniquement dans une nouvelle version majeure ({versions}) : non appliqué automatiquement."
-  no_fix: "{cves} : aucune version corrigée n'a été publiée."
-  unparsable: "la version installée {version} n'est pas comparable : à vérifier à la main."
+  no_fix: "{cves} : aucune version corrigée n’a été publiée."
+  unparsable: "la version installée {version} n’est pas comparable : à vérifier à la main."
   unsupported_source: "déclaré avec une source que Rustine ne modifie pas : à mettre à jour à la main vers une version qui corrige {cves}."
-  failed: "aucune correction automatique n'a fonctionné pour {cves}."
+  failed: "aucune correction automatique n’a fonctionné pour {cves}."
   technical_details: "Détails techniques"
 
 debt:
@@ -54,11 +54,16 @@ verification:
   check_failed: "Le contrôle de cohérence du lockfile a échoué :"
 
 tooling:
-  pinned: "Versions d'outils utilisées : {pinning}."
-  none: "Aucun épinglage d'outils : les outils de l'environnement CI ont été utilisés."
+  pinned: "Versions d’outils utilisées : {pinning}."
+  none: "Aucun épinglage d’outils : les outils de l’environnement CI ont été utilisés."
 
 footer: "Généré par Rustine {version}. Ne modifiez pas la branche à la main : elle est reconstruite à chaque exécution."
 
 commit:
   subject: "corriger les dépendances {ecosystem} vulnérables ({group})"
   intro: "Montée vers la plus petite version qui corrige les CVE signalées :"
+
+note:
+  updated: "La branche a été reconstruite par une nouvelle exécution de Rustine (paquets corrigés : {packages}). La description a été mise à jour."
+  closed: "Plus aucun paquet de ce groupe n’est corrigeable automatiquement (déjà corrigé, ou action manuelle requise) : fermeture de cette merge request. Rustine en ouvrira une nouvelle si une correction redevient possible."
+  foreign: "La branche {branch} contient des commits que Rustine n’a pas créés : elle a été laissée telle quelle. Déplacez vos commits ailleurs ou supprimez la branche pour que Rustine puisse la mettre à jour de nouveau."

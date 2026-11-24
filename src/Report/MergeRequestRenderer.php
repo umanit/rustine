@@ -66,7 +66,7 @@ final readonly class MergeRequestRenderer
         if ([] !== $debt) {
             $sections[] = '## ' . $this->t('section.debt') . "\n\n" . implode("\n", $debt);
         }
-        if (null !== $result) {
+        if (null !== $result && ([] !== $rows || null !== $result->finalCheckError)) {
             $sections[] = '## ' . $this->t('section.verification') . "\n\n" . $this->verification($result);
         }
         $sections[] = '## ' . $this->t('section.tooling') . "\n\n" . (null === $pinning

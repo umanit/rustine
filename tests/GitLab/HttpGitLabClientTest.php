@@ -118,6 +118,15 @@ final class HttpGitLabClientTest extends TestCase
     }
 
     #[Test]
+    public function itListsTheNoteBodies(): void
+    {
+        $client = $this->client([$this->json([['id' => 1, 'body' => 'first'], ['id' => 2, 'body' => 'second']])]);
+
+        self::assertSame(['first', 'second'], $client->listNoteBodies(5));
+        self::assertStringContainsString('/merge_requests/5/notes', $this->requests[0]['url']);
+    }
+
+    #[Test]
     public function itResolvesUsernamesExactly(): void
     {
         $client = $this->client([

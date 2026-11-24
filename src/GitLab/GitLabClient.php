@@ -60,6 +60,15 @@ interface GitLabClient
     public function addNote(int $iid, string $body): void;
 
     /**
+     * Bodies of the notes of a merge request (used to avoid posting the same remark twice).
+     *
+     * @return list<string>
+     *
+     * @throws GitLabException
+     */
+    public function listNoteBodies(int $iid): array;
+
+    /**
      * Id of the user with this username, null if there is none.
      *
      * @throws GitLabException

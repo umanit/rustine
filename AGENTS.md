@@ -64,7 +64,7 @@ fixtures (Trivy reports, the `fake-trivy` binary) live in `tests/fixtures/`.
   (English and French shipped); the code, logs, console output and this repository's commits stay in English.
 - Catalogs: `resources/translations/rustine+intl-icu.<locale>.yaml` (`symfony/translation`, ICU message format, nested
   YAML, `{name}` placeholders; requires `ext-intl`). Stick to simple arguments for now: no plural/select, and no
-  apostrophe next to a brace (ICU quoting). Every locale must have exactly the keys of English
+  apostrophe next to a brace (ICU quoting). In French, always write the typographic apostrophe `’`, never `'`. Every locale must have exactly the keys of English
   (`tests/I18n/CatalogsTest.php`). Add a language = add one file.
 - Data (package names, versions, CVE ids, commands, branch and label names) is never translated.
 

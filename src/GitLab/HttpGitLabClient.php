@@ -133,6 +133,25 @@ final readonly class HttpGitLabClient implements GitLabClient
         $this->request('POST', sprintf('%s/merge_requests/%d/notes', $this->projectPath, $iid), ['json' => ['body' => $body]]);
     }
 
+    public function listNoteBodies(int $iid): array
+    {
+        $bodies = [];
+        for ($page = 1; $page <= self::MAX_PAGES; ++$page) {
+            $notes = $this->request('GET', sprintf('%s/merge_requests/%d/notes', $this->projectPath, $iid), ['query' => ['per_page' => self::PER_PAGE, 'page' => $page]]);
+
+            foreach ($notes as $note) {
+                if (\is_array($note) && \is_string($note['body'] ?? null)) {
+                    $bodies[] = $note['body'];
+                }
+            }
+            if (\count($notes) < self::PER_PAGE) {
+                break;
+            }
+        }
+
+        return $bodies;
+    }
+
     public function findUserId(string $username): ?int
     {
         $users = $this->request('GET', 'users', ['query' => ['username' => $username]]);
