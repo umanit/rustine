@@ -40,6 +40,7 @@ considered done. IDE (PHPStorm) warnings are informational only.
 | `Plan/`    | Planning: grouping fixes by ecosystem and severity group                  |
 | `Pinning/` | Detecting pinned tools (`mise.toml` wins over the `volta` key)            |
 | `Apply/`   | Applying fixes: strategies, `mise exec` wrapping, git guard-rails, re-scan |
+| `Git/`     | Branch of one MR: inspect the remote, restart from the default branch, commit the allowed files, lease-guarded push; token kept out of argv and logs |
 | `Report/`  | Title, description and commit message of a merge request (localized)       |
 | `I18n/`    | `TranslatorFactory` (symfony/translation); catalogs in `resources/translations/` |
 
