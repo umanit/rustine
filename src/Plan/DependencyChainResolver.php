@@ -24,11 +24,9 @@ final class DependencyChainResolver
 
         $queue = [];
         $parent = [];
-        foreach ($packages as $package) {
-            if (Relationship::Direct === $package->relationship) {
-                $queue[] = $package->id;
-                $parent[$package->id] = null;
-            }
+        foreach ($this->starts($packages) as $id) {
+            $queue[] = $id;
+            $parent[$id] = null;
         }
 
         for ($i = 0; $i < \count($queue); ++$i) {
@@ -51,5 +49,54 @@ final class DependencyChainResolver
         }
 
         return null;
+    }
+
+    /**
+     * Direct dependencies of the project.
+     *
+     * For Composer, Trivy may list the project itself (`acme/app@dev-main`) as a `direct` package whose `DependsOn`
+     * are the real direct dependencies, some of them flagged `indirect`. That root is never a dependency: it is
+     * dropped and its own dependencies are the starting points instead.
+     *
+     * @param array<string, TrivyPackage> $packages
+     *
+     * @return list<string>
+     */
+    private function starts(array $packages): array
+    {
+        $dependedOn = [];
+        foreach ($packages as $package) {
+            foreach ($package->dependsOn as $child) {
+                $dependedOn[$child] = true;
+            }
+        }
+
+        $starts = [];
+        foreach ($packages as $package) {
+            if ($this->isRoot($package, $dependedOn)) {
+                foreach ($package->dependsOn as $child) {
+                    $starts[$child] = true;
+                }
+            } elseif (Relationship::Direct === $package->relationship) {
+                $starts[$package->id] = true;
+            }
+        }
+
+        return array_map('strval', array_keys($starts));
+    }
+
+    /**
+     * @param array<string, true> $dependedOn IDs depended on by at least one package
+     */
+    private function isRoot(TrivyPackage $package, array $dependedOn): bool
+    {
+        if (Relationship::Root === $package->relationship) {
+            return true;
+        }
+
+        // The project is installed from a branch (`dev-*`) and nothing depends on it.
+        return Relationship::Direct === $package->relationship
+            && str_starts_with($package->version, 'dev-')
+            && !isset($dependedOn[$package->id]);
     }
 }
