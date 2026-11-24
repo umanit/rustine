@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The merge request description lists the packages whose version changed in the lockfile, before and after, with the
+  packages of the fixes in bold: a refresh also moves the dependencies that are not vulnerable, within their ranges.
+  A branch kept because the fixes did not change keeps its description, so that it keeps describing the branch.
 - `--yarn-bin` / `RUSTINE_YARN_BIN` and `--node-bin` / `RUSTINE_NODE_BIN` override the Yarn and Node commands, like
   `--composer-bin`. A Node given by path goes first on the `PATH` of the Yarn commands, so Yarn runs with it.
 

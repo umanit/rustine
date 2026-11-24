@@ -9,6 +9,7 @@ use Rustine\Apply\ApplyResult;
 use Rustine\Apply\AttemptKind;
 use Rustine\Apply\FixOutcome;
 use Rustine\Apply\FixOutcomeStatus;
+use Rustine\Apply\LockChange;
 use Rustine\Apply\PlanApplier;
 use Rustine\Plan\GroupPlan;
 use Rustine\Trivy\TrivyReport;
@@ -22,6 +23,8 @@ final class FakePlanApplier implements PlanApplier
     public ?string $finalCheckError = null;
     public bool $succeed = true;
     public ?\Throwable $throw = null;
+    /** @var list<LockChange> */
+    public array $lockChanges = [];
 
     public function __construct(private readonly string $projectDir, public string $lock = "lock v2\n")
     {
@@ -45,6 +48,6 @@ final class FakePlanApplier implements PlanApplier
             file_put_contents($this->projectDir . '/yarn.lock', $this->lock);
         }
 
-        return new AppliedPlan(new ApplyResult($outcomes, $this->finalCheckError));
+        return new AppliedPlan(new ApplyResult($outcomes, $this->finalCheckError, $this->lockChanges));
     }
 }

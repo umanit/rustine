@@ -12,6 +12,7 @@ summary:
 
 section:
   fixed: "Corrections"
+  lock: "Changements du lockfile"
   attention: "Action manuelle requise"
   debt: "Dette technique"
   verification: "Vérification"
@@ -44,6 +45,13 @@ attention:
   unsupported_source: "déclaré avec une source que Rustine ne modifie pas : à mettre à jour à la main vers une version qui corrige {cves}."
   failed: "aucune correction automatique n’a fonctionné pour {cves}."
   technical_details: "Détails techniques"
+
+lock:
+  summary: "{file} change pour {changed} paquets (corrigés ci-dessus : {fixed}). Les autres ont suivi, dans les limites des plages déclarées par leurs parents."
+  show: "Afficher les paquets modifiés"
+  before: "Avant"
+  after: "Après"
+  more: "… et {count} autres"
 
 debt:
   resolution: "{package} est épinglé via `resolutions` : à retirer dès que la dépendance parente embarque le correctif."

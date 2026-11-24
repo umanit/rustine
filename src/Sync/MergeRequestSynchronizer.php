@@ -98,7 +98,7 @@ final readonly class MergeRequestSynchronizer
             }
 
             $push = $applied->result->hasChanges() && $this->git->commit($content->commitMessage)
-                ? ($this->canKeepBranch($existing, $remote, $content) ? PushResult::Unchanged : $this->git->push($branch, $remote))
+                ? ($this->canKeepBranch($existing, $remote, $content) ? PushResult::Kept : $this->git->push($branch, $remote))
                 : null;
         } finally {
             $this->git->finish();
@@ -154,6 +154,12 @@ final readonly class MergeRequestSynchronizer
             $this->gitlab->addNote($existing->iid, $this->notes->updated($content));
 
             return new PlanOutcome($branch, PlanAction::Updated, $content, $existing->webUrl);
+        }
+
+        // A kept branch was not rebuilt: its description keeps describing it (the lockfile changes in particular).
+        if (PushResult::Kept === $push) {
+            $stale = trim($existing->title) !== trim($content->title) || [] !== $add || [] !== $remove;
+            $content = $content->withDescription($existing->description);
         }
 
         if ($stale) {

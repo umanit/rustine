@@ -57,6 +57,24 @@ final class FixApplierTest extends TestCase
     }
 
     #[Test]
+    public function itReportsWhatChangedInTheLockfileCollateralChangesIncluded(): void
+    {
+        file_put_contents($this->dir . '/yarn.lock', "ckeditor4@^4.0.0:\n  version \"4.22.1\"\n\nlodash@^4.0.0:\n  version \"4.17.20\"\n");
+        $this->runner->handler = function (array $command): ?CommandResult {
+            file_put_contents($this->dir . '/yarn.lock', "ckeditor4@^4.0.0:\n  version \"4.25.0\"\n\nlodash@^4.0.0:\n  version \"4.17.21\"\n");
+
+            return null;
+        };
+
+        $result = $this->applier(new QueueRescanner(Fixtures::report()))->apply(Fixtures::plan(Fixtures::fix()), Fixtures::report([Fixtures::vulnerability()]));
+
+        self::assertSame(
+            [['ckeditor4', ['4.22.1'], ['4.25.0']], ['lodash', ['4.17.20'], ['4.17.21']]],
+            array_map(static fn ($c): array => [$c->package, $c->before, $c->after], $result->lockChanges),
+        );
+    }
+
+    #[Test]
     public function itKeepsTheLockfileRefreshWhenTheCvesDisappear(): void
     {
         $rescanner = new QueueRescanner(Fixtures::report());

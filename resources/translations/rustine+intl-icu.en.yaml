@@ -12,6 +12,7 @@ summary:
 
 section:
   fixed: "Fixes"
+  lock: "Lockfile changes"
   attention: "Needs manual attention"
   debt: "Technical debt"
   verification: "Verification"
@@ -44,6 +45,13 @@ attention:
   unsupported_source: "declared with a source that Rustine does not change: update it by hand to a version that fixes {cves}."
   failed: "no automatic fix worked for {cves}."
   technical_details: "Technical details"
+
+lock:
+  summary: "{file} changes for {changed} packages, {fixed} of them fixed above. The others moved along with them, within the ranges their parents declare."
+  show: "Show the changed packages"
+  before: "Before"
+  after: "After"
+  more: "… and {count} more"
 
 debt:
   resolution: "{package} is pinned through `resolutions`: remove the entry once the parent dependency ships the fix."

@@ -105,6 +105,26 @@ final class MergeRequestSynchronizerTest extends TestCase
     }
 
     #[Test]
+    public function aKeptBranchKeepsTheDescriptionThatDescribesIt(): void
+    {
+        $this->applier->lockChanges = [new \Rustine\Apply\LockChange('lodash', ['4.17.20'], ['4.17.21'])];
+        $this->sync();
+        $description = $this->gitlab->open[1]->description;
+        self::assertStringContainsString('`lodash`', $description);
+
+        // The default branch moves on and the refresh now moves another package: the branch is kept, so is its description.
+        $this->defaultBranchMovesOn();
+        $this->applier->lockChanges = [new \Rustine\Apply\LockChange('left-pad', ['1.2.0'], ['1.3.0'])];
+        $this->gitlab->writes = [];
+
+        $outcome = $this->sync();
+
+        self::assertSame(PlanAction::Unchanged, $outcome->action);
+        self::assertSame([], $this->gitlab->writes);
+        self::assertSame($description, $this->gitlab->open[1]->description);
+    }
+
+    #[Test]
     public function aMergeRequestInConflictIsRebuiltEvenForTheSameFixes(): void
     {
         $this->sync();

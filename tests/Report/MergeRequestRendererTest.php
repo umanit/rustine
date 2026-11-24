@@ -7,6 +7,7 @@ namespace Rustine\Tests\Report;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Rustine\Apply\ApplyResult;
+use Rustine\Apply\LockChange;
 use Rustine\Apply\AttemptKind;
 use Rustine\Apply\FixOutcome;
 use Rustine\Apply\FixOutcomeStatus;
@@ -123,6 +124,52 @@ final class MergeRequestRendererTest extends TestCase
 
         self::assertSame(0, $content->fixedPackages);
         self::assertStringNotContainsString('## Fixes', $content->description);
+    }
+
+    #[Test]
+    public function theLockfileChangesAreListedAndTheFixedPackagesAreHighlighted(): void
+    {
+        $fix = Fixtures::fix('ckeditor4', '4.22.1', '4.25.0');
+        $result = new ApplyResult(
+            [new FixOutcome($fix, FixOutcomeStatus::Applied, AttemptKind::LockfileRefresh)],
+            null,
+            [new LockChange('ckeditor4', ['4.22.1'], ['4.25.0']), new LockChange('lodash', ['4.17.20'], ['4.17.21']), new LockChange('left-pad', [], ['1.3.0'])],
+        );
+
+        $en = $this->renderer('en')->render(Fixtures::plan($fix), $result)->description;
+        $fr = $this->renderer('fr')->render(Fixtures::plan($fix), $result)->description;
+
+        self::assertStringContainsString('## Lockfile changes', $en);
+        self::assertStringContainsString('`yarn.lock` changes for 3 packages, 1 of them fixed above', $en);
+        self::assertStringContainsString('| **`ckeditor4`** | `4.22.1` | `4.25.0` |', $en);
+        self::assertStringContainsString('| `lodash` | `4.17.20` | `4.17.21` |', $en);
+        self::assertStringContainsString('| `left-pad` | — | `1.3.0` |', $en);
+        self::assertStringContainsString('## Changements du lockfile', $fr);
+        self::assertStringContainsString('paquets (corrigés ci-dessus : 1)', $fr);
+    }
+
+    #[Test]
+    public function theLockfileTableIsCapped(): void
+    {
+        $fix = Fixtures::fix();
+        $changes = array_map(static fn (int $i): LockChange => new LockChange('pkg-' . $i, ['1.0.0'], ['1.0.1']), range(1, 250));
+        $result = new ApplyResult([new FixOutcome($fix, FixOutcomeStatus::Applied, AttemptKind::LockfileRefresh)], null, $changes);
+
+        $description = $this->renderer('en')->render(Fixtures::plan($fix), $result)->description;
+
+        self::assertStringContainsString('pkg-200', $description);
+        self::assertStringNotContainsString('pkg-201', $description);
+        self::assertStringContainsString('… and 50 more', $description);
+    }
+
+    #[Test]
+    public function withoutLockfileChangesThereIsNoSection(): void
+    {
+        $fix = Fixtures::fix();
+        $result = new ApplyResult([new FixOutcome($fix, FixOutcomeStatus::Applied, AttemptKind::LockfileRefresh)]);
+
+        self::assertStringNotContainsString('Lockfile changes', $this->renderer('en')->render(Fixtures::plan($fix), $result)->description);
+        self::assertStringNotContainsString('Lockfile changes', $this->renderer('en')->render(Fixtures::plan($fix))->description);
     }
 
     #[Test]

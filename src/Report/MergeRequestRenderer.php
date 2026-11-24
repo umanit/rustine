@@ -8,6 +8,7 @@ use Rustine\Apply\ApplyResult;
 use Rustine\Apply\AttemptKind;
 use Rustine\Apply\FixOutcome;
 use Rustine\Apply\FixOutcomeStatus;
+use Rustine\Apply\LockChange;
 use Rustine\Apply\ToolVersions;
 use Rustine\Plan\DependencyKind;
 use Rustine\Plan\GroupPlan;
@@ -27,6 +28,9 @@ final readonly class MergeRequestRenderer
 {
     /** Marks the descriptions written by Rustine and carries the fingerprint used for idempotency. */
     public const MARKER = 'rustine:v1';
+
+    /** Rows of the lockfile table: a refresh may move hundreds of packages, GitLab limits a description to 1 MB. */
+    private const MAX_LOCK_ROWS = 200;
 
     /**
      * Fingerprint written by a previous run in a description, or null when the description is not (or no longer) one
@@ -67,6 +71,9 @@ final readonly class MergeRequestRenderer
         $sections[] = $this->summary($rows, null === $result);
         if ([] !== $rows) {
             $sections[] = '## ' . $this->t('section.fixed') . "\n\n" . $this->table($rows);
+        }
+        if (null !== $result && [] !== $result->lockChanges) {
+            $sections[] = '## ' . $this->t('section.lock') . "\n\n" . $this->lockChanges($plan, $rows, $result->lockChanges);
         }
         if ([] !== $attention) {
             $sections[] = '## ' . $this->t('section.attention') . "\n\n" . implode("\n", $attention);
@@ -279,6 +286,46 @@ final readonly class MergeRequestRenderer
         }
 
         return $items;
+    }
+
+    /**
+     * What the run changed in the lockfile: the packages of the fixes, and the ones that moved along with them. The
+     * table is folded, the summary line tells at a glance how far the changes go.
+     *
+     * @param list<array{fix: PackageFix, strategy: ?AttemptKind, already: bool}> $rows
+     * @param non-empty-list<LockChange>                                          $changes
+     */
+    private function lockChanges(GroupPlan $plan, array $rows, array $changes): string
+    {
+        $targeted = array_flip(array_map(static fn (array $row): string => $row['fix']->packageName, $rows));
+        $fixed = \count(array_filter($changes, static fn (LockChange $change): bool => isset($targeted[$change->package])));
+
+        $lines = [
+            sprintf('| %s | %s | %s |', $this->t('table.package'), $this->t('lock.before'), $this->t('lock.after')),
+            '|---|---|---|',
+        ];
+        foreach (\array_slice($changes, 0, self::MAX_LOCK_ROWS) as $change) {
+            $name = isset($targeted[$change->package]) ? '**`' . $change->package . '`**' : '`' . $change->package . '`';
+            $lines[] = sprintf('| %s | %s | %s |', $name, $this->versions($change->before), $this->versions($change->after));
+        }
+        if (\count($changes) > self::MAX_LOCK_ROWS) {
+            $lines[] = '| ' . $this->t('lock.more', ['count' => \count($changes) - self::MAX_LOCK_ROWS]) . ' | | |';
+        }
+
+        return sprintf(
+            "%s\n\n<details><summary>%s</summary>\n\n%s\n\n</details>",
+            $this->t('lock.summary', ['file' => '`' . $plan->ecosystem->lockFile() . '`', 'changed' => \count($changes), 'fixed' => $fixed]),
+            $this->t('lock.show'),
+            implode("\n", $lines),
+        );
+    }
+
+    /**
+     * @param list<string> $versions
+     */
+    private function versions(array $versions): string
+    {
+        return [] === $versions ? '—' : implode(', ', array_map(static fn (string $version): string => '`' . $version . '`', $versions));
     }
 
     /**

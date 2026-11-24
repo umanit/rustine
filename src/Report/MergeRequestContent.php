@@ -30,4 +30,9 @@ final readonly class MergeRequestContent
         public int $attentionItems,
     ) {
     }
+
+    public function withDescription(string $description): self
+    {
+        return new self($this->title, $description, $this->commitMessage, $this->fingerprint, $this->severity, $this->fixedPackages, $this->attentionItems);
+    }
 }

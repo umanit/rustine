@@ -36,6 +36,8 @@ final class FixApplier
         $this->assertSupported($plan);
 
         $baseline = $this->tree->dirtyPaths();
+        $lockfile = $this->projectDir . '/' . $plan->ecosystem->lockFile();
+        $lockBefore = @file_get_contents($lockfile);
         $current = $initialReport;
         $outcomes = [];
 
@@ -69,7 +71,12 @@ final class FixApplier
         // The final lockfile must be consistent with the manifest, whatever the sequence of fixes.
         $check = $this->runner->run($this->strategy->checkCommand(), $this->projectDir, $this->strategy->checkEnv());
 
-        return new ApplyResult($outcomes, $check->isSuccessful() ? null : $this->tail($check->output));
+        $lockAfter = @file_get_contents($lockfile);
+        $lockChanges = false === $lockBefore || false === $lockAfter
+            ? []
+            : (new LockfileVersions())->changes($plan->ecosystem, $lockBefore, $lockAfter);
+
+        return new ApplyResult($outcomes, $check->isSuccessful() ? null : $this->tail($check->output), $lockChanges);
     }
 
     private function assertSupported(GroupPlan $plan): void
