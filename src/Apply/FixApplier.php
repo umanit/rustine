@@ -11,7 +11,7 @@ use Rustine\Trivy\TrivyReport;
 use Rustine\Version\Version;
 
 /**
- * Applies the fixes of one Yarn plan, package by package.
+ * Applies the fixes of one Yarn plan (Berry or Classic, depending on the strategy), package by package.
  *
  * After each package Trivy is run again: a fix is kept only if its CVEs are gone, otherwise the manifest and the
  * lockfile are restored and the next attempt is tried. A package that cannot be fixed never blocks the others.
@@ -20,13 +20,6 @@ final class FixApplier
 {
     /** Files restored when an attempt fails. */
     private const RESTORABLE = ['package.json', 'yarn.lock'];
-
-    /**
-     * Yarn would otherwise refuse to modify the lockfile on CI, and lifecycle scripts have no business
-     * running while the bot resolves dependencies.
-     */
-    private const MUTATING_ENV = ['YARN_ENABLE_IMMUTABLE_INSTALLS' => 'false', 'YARN_ENABLE_SCRIPTS' => 'false'];
-    private const CHECK_ENV = ['YARN_ENABLE_SCRIPTS' => 'false'];
 
     public function __construct(
         private readonly CommandRunner $runner,
@@ -78,7 +71,7 @@ final class FixApplier
         }
 
         // The final lockfile must be consistent with the manifest, whatever the sequence of fixes.
-        $check = $this->runner->run($this->tools->wrap(['yarn', 'install', '--immutable']), $this->projectDir, [...$this->tools->env(), ...self::CHECK_ENV]);
+        $check = $this->runner->run($this->tools->wrap($this->strategy->checkCommand()), $this->projectDir, [...$this->tools->env(), ...$this->strategy->checkEnv()]);
 
         return new ApplyResult($outcomes, $check->isSuccessful() ? null : $this->tail($check->output));
     }
@@ -176,12 +169,17 @@ final class FixApplier
 
     private function run(Attempt $attempt): ?string
     {
+        if (null !== $attempt->pruneLockfile) {
+            $lockfile = $this->projectDir . '/yarn.lock';
+            file_put_contents($lockfile, (new YarnClassicLockfile())->withoutPackage((string) file_get_contents($lockfile), $attempt->pruneLockfile));
+        }
+
         if (null !== $attempt->resolutionEdit) {
             $this->editor->setResolution($this->projectDir . '/package.json', ...$attempt->resolutionEdit);
         }
 
         foreach ($attempt->commands as $command) {
-            $result = $this->runner->run($this->tools->wrap($command), $this->projectDir, [...$this->tools->env(), ...self::MUTATING_ENV]);
+            $result = $this->runner->run($this->tools->wrap($command), $this->projectDir, [...$this->tools->env(), ...$this->strategy->mutatingEnv()]);
             if (!$result->isSuccessful()) {
                 return sprintf('`%s` failed (exit %d): %s', implode(' ', $command), $result->exitCode, $this->tail($result->output));
             }

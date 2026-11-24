@@ -8,6 +8,7 @@ use Rustine\Apply\DependencySource;
 use Rustine\Apply\FixApplier;
 use Rustine\Apply\FixOutcome;
 use Rustine\Apply\FixOutcomeStatus;
+use Rustine\Apply\FixStrategy;
 use Rustine\Apply\PackageJsonEditor;
 use Rustine\Apply\ProcessCommandRunner;
 use Rustine\Apply\ToolEnvironment;
@@ -15,6 +16,7 @@ use Rustine\Apply\TrivyRescanner;
 use Rustine\Apply\UnsupportedProjectException;
 use Rustine\Apply\WorkingTree;
 use Rustine\Apply\YarnBerryStrategy;
+use Rustine\Apply\YarnClassicStrategy;
 use Rustine\Pinning\PinningDetector;
 use Rustine\Pinning\PinningException;
 use Rustine\Pinning\YarnFlavor;
@@ -98,17 +100,13 @@ final class ApplyCommand
         $io->writeln(sprintf('Tool pinning: %s', $pinning->describe()));
 
         $flavor = $pinning->yarnFlavor();
-        if (YarnFlavor::Berry !== $flavor) {
-            $io->error(
-                null === $flavor
-                    ? 'Yarn is not pinned by the project: cannot choose a strategy.'
-                    : 'Yarn Classic is not supported yet (only Berry).',
-            );
+        if (null === $flavor) {
+            $io->error('Yarn is not pinned by the project: cannot choose a strategy.');
 
             return Command::FAILURE;
         }
 
-        $strategy = new YarnBerryStrategy();
+        $strategy = YarnFlavor::Berry === $flavor ? new YarnBerryStrategy() : new YarnClassicStrategy();
 
         if ($dryRun) {
             $this->printDryRun($io, $plan, $strategy, $projectDir);
@@ -154,7 +152,7 @@ final class ApplyCommand
         return $result->isHealthy() ? Command::SUCCESS : Command::FAILURE;
     }
 
-    private function printDryRun(SymfonyStyle $io, GroupPlan $plan, YarnBerryStrategy $strategy, string $projectDir): void
+    private function printDryRun(SymfonyStyle $io, GroupPlan $plan, FixStrategy $strategy, string $projectDir): void
     {
         $io->writeln(sprintf('Dry run for %s (nothing is executed):', $plan->branchName()));
         foreach ($plan->fixes as $fix) {

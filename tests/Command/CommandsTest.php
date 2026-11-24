@@ -124,15 +124,16 @@ final class CommandsTest extends TestCase
     }
 
     #[Test]
-    public function applyRefusesYarnClassic(): void
+    public function applyDryRunUsesTheClassicLadderForYarnClassic(): void
     {
         $dir = $this->projectWithPinning("[tools]\nyarn = \"1.22.19\"\n");
 
         $tester = $this->tester('apply');
         $tester->execute(['--project' => $dir, '--report' => self::REPORT, '--group' => ['others'], '--dry-run' => true]);
 
-        self::assertSame(Command::FAILURE, $tester->getStatusCode());
-        self::assertStringContainsString('Yarn Classic is not supported yet', $tester->getDisplay());
+        self::assertSame(Command::SUCCESS, $tester->getStatusCode());
+        self::assertStringContainsString('yarn.lock: remove the entries of', $tester->getDisplay());
+        self::assertStringContainsString('resolutions["**/', $tester->getDisplay());
     }
 
     #[Test]

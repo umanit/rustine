@@ -11,18 +11,24 @@ final readonly class Attempt
 {
     /**
      * @param list<list<string>>        $commands       commands to run, in order (before tool wrapping)
-     * @param array{string, string}|null $resolutionEdit [package, range] to write in `resolutions` before the commands
+     * @param array{string, string}|null $resolutionEdit [key, range] to write in `resolutions` before the commands
+     * @param string|null                $pruneLockfile  package whose entries are removed from `yarn.lock` first
+     *                                                   (Yarn Classic: forces a new resolution within the ranges)
      */
     public function __construct(
         public AttemptKind $kind,
         public array $commands,
         public ?array $resolutionEdit = null,
+        public ?string $pruneLockfile = null,
     ) {
     }
 
     public function describe(): string
     {
         $parts = [];
+        if (null !== $this->pruneLockfile) {
+            $parts[] = sprintf('yarn.lock: remove the entries of "%s"', $this->pruneLockfile);
+        }
         if (null !== $this->resolutionEdit) {
             $parts[] = sprintf('package.json: resolutions["%s"] = "%s"', ...$this->resolutionEdit);
         }

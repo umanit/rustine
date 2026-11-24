@@ -2,8 +2,8 @@
 
 Rustine is a PHP CLI that opens GitLab merge requests fixing **only** the Composer/Yarn packages
 affected by a CVE reported by Trivy. Current state: `scan` (runs Trivy), `plan` (shows the
-planned fixes, grouped by MR) and `apply` (Yarn Berry only: applies the fixes to the working tree, no commit/push).
-Yarn Classic, Composer and the GitLab integration are not implemented yet.
+planned fixes, grouped by MR) and `apply` (Yarn Berry and Classic: applies the fixes to the working tree, no commit/push).
+Composer and the GitLab integration are not implemented yet.
 
 ## Environment
 

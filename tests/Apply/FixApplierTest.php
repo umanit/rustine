@@ -10,11 +10,13 @@ use Rustine\Apply\AttemptKind;
 use Rustine\Apply\CommandResult;
 use Rustine\Apply\FixApplier;
 use Rustine\Apply\FixOutcomeStatus;
+use Rustine\Apply\FixStrategy;
 use Rustine\Apply\PackageJsonEditor;
 use Rustine\Apply\ToolEnvironment;
 use Rustine\Apply\UnsupportedProjectException;
 use Rustine\Apply\WorkingTree;
 use Rustine\Apply\YarnBerryStrategy;
+use Rustine\Apply\YarnClassicStrategy;
 use Rustine\Pinning\PinningSource;
 use Rustine\Pinning\ToolPinning;
 use Rustine\Plan\DependencyKind;
@@ -99,6 +101,50 @@ final class FixApplierTest extends TestCase
         );
         self::assertSame(
             "{\n  \"name\": \"app\",\n  \"resolutions\": {\n    \"braces\": \"^3.0.3\"\n  }\n}\n",
+            file_get_contents($this->dir . '/package.json'),
+        );
+    }
+
+    #[Test]
+    public function withYarnClassicItPrunesTheLockfileEntriesBeforeInstalling(): void
+    {
+        file_put_contents($this->dir . '/yarn.lock', "# yarn lockfile v1\n\n\nbraces@^3.0.2:\n  version \"3.0.2\"\n\nother@^1.0.0:\n  version \"1.0.0\"\n");
+        $seenByYarn = null;
+        $this->runner->handler = function (array $command) use (&$seenByYarn): ?CommandResult {
+            $seenByYarn ??= file_get_contents($this->dir . '/yarn.lock');
+
+            return null;
+        };
+        $fix = Fixtures::fix('braces', '3.0.2', '3.0.3', DependencyKind::Transitive);
+        $vulnerable = Fixtures::report([Fixtures::vulnerability('braces', '3.0.2')]);
+
+        $result = $this->applier(new QueueRescanner(Fixtures::report()), new YarnClassicStrategy())->apply(Fixtures::plan($fix), $vulnerable);
+
+        self::assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
+        // Yarn rewrites the whole file afterwards: only the remaining entries matter here.
+        self::assertStringNotContainsString('braces', (string) $seenByYarn);
+        self::assertStringContainsString("other@^1.0.0:\n  version \"1.0.0\"\n", (string) $seenByYarn);
+        self::assertSame(
+            ['yarn install --non-interactive --ignore-scripts', 'yarn install --frozen-lockfile --non-interactive --ignore-scripts'],
+            $this->runner->yarnCommands(),
+        );
+    }
+
+    #[Test]
+    public function withYarnClassicAFailedPruneIsRestored(): void
+    {
+        $original = "# yarn lockfile v1\n\n\nbraces@^3.0.2:\n  version \"3.0.2\"\n";
+        file_put_contents($this->dir . '/yarn.lock', $original);
+        $this->runner->handler = null;
+        $fix = Fixtures::fix('braces', '3.0.2', '3.0.3', DependencyKind::Transitive);
+        $vulnerable = Fixtures::report([Fixtures::vulnerability('braces', '3.0.2')]);
+
+        $result = $this->applier(new QueueRescanner($vulnerable, $vulnerable), new YarnClassicStrategy())->apply(Fixtures::plan($fix), $vulnerable);
+
+        self::assertSame(FixOutcomeStatus::Failed, $result->outcomes[0]->status);
+        self::assertSame($original, file_get_contents($this->dir . '/yarn.lock'));
+        self::assertSame(
+            "{\n  \"name\": \"app\"\n}\n",
             file_get_contents($this->dir . '/package.json'),
         );
     }
@@ -310,14 +356,14 @@ final class FixApplierTest extends TestCase
         );
     }
 
-    private function applier(QueueRescanner $rescanner): FixApplier
+    private function applier(QueueRescanner $rescanner, ?FixStrategy $strategy = null): FixApplier
     {
         return new FixApplier(
             $this->runner,
             new ToolEnvironment(new ToolPinning(PinningSource::Mise, ['yarn' => '4.2.2'], 'mise.toml'), $this->dir),
             new WorkingTree($this->runner, $this->dir),
             $rescanner,
-            new YarnBerryStrategy(),
+            $strategy ?? new YarnBerryStrategy(),
             new PackageJsonEditor(),
             $this->dir,
         );

@@ -33,4 +33,23 @@ final readonly class YarnBerryStrategy implements FixStrategy
 
         return $attempts;
     }
+
+    /**
+     * Yarn would otherwise refuse to modify the lockfile on CI, and lifecycle scripts have no business running
+     * while the bot resolves dependencies.
+     */
+    public function mutatingEnv(): array
+    {
+        return ['YARN_ENABLE_IMMUTABLE_INSTALLS' => 'false', 'YARN_ENABLE_SCRIPTS' => 'false'];
+    }
+
+    public function checkCommand(): array
+    {
+        return ['yarn', 'install', '--immutable'];
+    }
+
+    public function checkEnv(): array
+    {
+        return ['YARN_ENABLE_SCRIPTS' => 'false'];
+    }
 }
