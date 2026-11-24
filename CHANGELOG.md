@@ -38,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Composer no longer runs with `--no-plugins`: without Symfony Flex, an update ignored `extra.symfony.require` and moved
+  the `symfony/*` components of the project to another minor (`symfony/string` 6.4 → 7.4 in a 6.4 project). Scripts
+  stay disabled and nothing is installed. As Flex is loaded from `vendor/`, Rustine now stops with an explicit error when
+  `extra.symfony.require` is set and `vendor/symfony/flex` is missing (run `composer install --no-scripts` first).
 - The branch of an open merge request is no longer force-pushed (with a "rebuilt" note and a new pipeline) at every
   run once the default branch has moved: when the fingerprint in its description is the one of the new run and it has no
   conflict, it is left as it is.

@@ -10,12 +10,15 @@ use Rustine\Trivy\Ecosystem;
 /**
  * Fix ladder for Composer, cheapest and cleanest first.
  *
- * Only `composer.lock` and `composer.json` are touched: nothing is installed (`--no-install`) and neither scripts nor
- * plugins run (Symfony Flex would otherwise apply recipes and change files that are not ours).
+ * Only `composer.lock` and `composer.json` are touched: nothing is installed (`--no-install`) and no script runs. The
+ * plugins of the project do run: Symfony Flex enforces `extra.symfony.require` while Composer resolves, and without it
+ * an update moves the `symfony/*` components that the project does not require itself to another minor (checked:
+ * `symfony/string` 6.4 → 7.4 in a 6.4 project). With `--no-install` no recipe is applied, and the scripts that would
+ * run them are disabled.
  */
 final readonly class ComposerStrategy implements FixStrategy
 {
-    private const FLAGS = ['--no-install', '--no-interaction', '--no-scripts', '--no-plugins', '--no-progress'];
+    private const FLAGS = ['--no-install', '--no-interaction', '--no-scripts', '--no-progress'];
 
     /**
      * @param non-empty-list<string> $composer command that runs Composer, e.g. `['composer']` or

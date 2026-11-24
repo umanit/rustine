@@ -572,7 +572,7 @@ final class FixApplierTest extends TestCase
 
         self::assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
         self::assertSame(
-            ['composer update twig/twig --with-all-dependencies --no-install --no-interaction --no-scripts --no-plugins --no-progress', 'composer validate --no-check-publish --no-interaction'],
+            ['composer update twig/twig --with-all-dependencies --no-install --no-interaction --no-scripts --no-progress', 'composer validate --no-check-publish --no-interaction'],
             $this->runner->toolCommands(),
         );
         @unlink($this->dir . '/composer.json');

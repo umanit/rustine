@@ -84,10 +84,15 @@ lacks but skips the link step, so `node_modules` is not rebuilt after each attem
 `yarn.lock`). The final `yarn install --immutable` is a full install and brings `node_modules` in line with the result.
 Older Berry versions run the plain commands.
 
-`resolutions` are technical debt, and are flagged as
-such in the description. Composer runs with `--no-install
---no-scripts --no-plugins`. A final `yarn install --immutable` / `--frozen-lockfile` / `composer validate` must pass
-before anything is pushed.
+`resolutions` are technical debt, and are flagged as such in the description. A final `yarn install --immutable` /
+`--frozen-lockfile` / `composer validate` must pass before anything is pushed.
+
+Composer runs with `--no-install --no-scripts`: nothing is installed and no script runs, but the plugins of the project
+do (only the ones its `allow-plugins` allows). Symfony Flex needs it: it is what enforces `extra.symfony.require` while
+Composer resolves, and without it an update moves the `symfony/*` components that the project does not require itself
+to another minor (`symfony/string` 6.4 → 7.4 in a 6.4 project). Flex is loaded from `vendor/`, so when
+`extra.symfony.require` is set and `vendor/symfony/flex` is missing, Rustine stops with an explicit error instead of
+producing that merge request: run `composer install --no-scripts` before it.
 
 ### Safety guarantees
 

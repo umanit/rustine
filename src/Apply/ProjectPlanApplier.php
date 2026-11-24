@@ -68,9 +68,14 @@ final readonly class ProjectPlanApplier implements PlanApplier
     {
         $probe = new ToolProbe($this->runner, $this->projectDir);
 
-        return Ecosystem::Composer === $ecosystem
-            ? $probe->composer(ComposerStrategy::fromCommandLine($this->composerCommand)->command())
-            : $probe->yarn($this->yarnLockfileFlavor(), YarnRuntime::fromCommandLines($this->yarnCommand, $this->nodeCommand));
+        if (Ecosystem::Composer === $ecosystem) {
+            $versions = $probe->composer(ComposerStrategy::fromCommandLine($this->composerCommand)->command());
+            $this->assertFlexIsLoadedWhenRequired();
+
+            return $versions;
+        }
+
+        return $probe->yarn($this->yarnLockfileFlavor(), YarnRuntime::fromCommandLines($this->yarnCommand, $this->nodeCommand));
     }
 
     public function apply(GroupPlan $plan, TrivyReport $report): AppliedPlan
@@ -89,6 +94,33 @@ final readonly class ProjectPlanApplier implements PlanApplier
         );
 
         return new AppliedPlan($applier->apply($plan, $report), $tools);
+    }
+
+    /**
+     * `extra.symfony.require` is only enforced by Symfony Flex, which Composer loads from `vendor/`: without it, an update
+     * silently moves the `symfony/*` components of the project to another minor.
+     *
+     * @throws ToolingException
+     */
+    private function assertFlexIsLoadedWhenRequired(): void
+    {
+        $manifest = ComposerManifest::read($this->projectDir . '/composer.json');
+        $require = $manifest->symfonyRequire();
+        if (null === $require) {
+            return;
+        }
+
+        $vendor = $manifest->vendorDir();
+        $flex = (str_starts_with($vendor, '/') ? $vendor : $this->projectDir . '/' . $vendor) . '/symfony/flex';
+        if (!is_dir($flex)) {
+            throw new ToolingException(sprintf(
+                'composer.json sets extra.symfony.require to "%s", which only Symfony Flex enforces, and Flex is not installed '
+                . '(no %s/symfony/flex): the update would move Symfony components to another minor version. Rustine installs no '
+                . 'tool: run `composer install --no-scripts` before it.',
+                $require,
+                $vendor,
+            ));
+        }
     }
 
     /**

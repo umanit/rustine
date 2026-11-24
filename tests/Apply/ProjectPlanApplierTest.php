@@ -30,6 +30,7 @@ final class ProjectPlanApplierTest extends TestCase
     protected function tearDown(): void
     {
         @unlink($this->dir . '/yarn.lock');
+        @unlink($this->dir . '/composer.json');
         @rmdir($this->dir);
     }
 
@@ -70,6 +71,39 @@ final class ProjectPlanApplierTest extends TestCase
         self::assertSame(['yarn', 'up', '-R', 'ckeditor4', '--mode=update-lockfile'], $withYarn4[0]->commands[0]);
         self::assertSame(['yarn', 'up', '-R', 'ckeditor4'], $withYarn3[0]->commands[0]);
         self::assertSame(['yarn', 'up', '-R', 'ckeditor4'], $unknown[0]->commands[0]);
+    }
+
+    #[Test]
+    public function aSymfonyRequirementNeedsFlexToBeInstalled(): void
+    {
+        file_put_contents($this->dir . '/composer.json', '{"extra":{"symfony":{"require":"6.4.*"}}}');
+        $runner = new FakeRunner();
+        $runner->handler = static fn (): CommandResult => new CommandResult(0, "Composer version 2.8.1 2024-10-04 PHP version 8.4.1\n");
+        $applier = new ProjectPlanApplier($runner, $this->dir);
+
+        try {
+            $applier->tools(Ecosystem::Composer);
+            self::fail('Without Flex the requirement would be ignored: Rustine must stop.');
+        } catch (ToolingException $e) {
+            self::assertStringContainsString('extra.symfony.require to "6.4.*"', $e->getMessage());
+            self::assertStringContainsString('composer install --no-scripts', $e->getMessage());
+        }
+
+        mkdir($this->dir . '/vendor/symfony/flex', 0o777, true);
+        self::assertSame('2.8.1', $applier->tools(Ecosystem::Composer)->version('composer'));
+        rmdir($this->dir . '/vendor/symfony/flex');
+        rmdir($this->dir . '/vendor/symfony');
+        rmdir($this->dir . '/vendor');
+    }
+
+    #[Test]
+    public function aProjectWithoutSymfonyRequirementDoesNotNeedFlex(): void
+    {
+        file_put_contents($this->dir . '/composer.json', '{"require":{"twig/twig":"^3.0"}}');
+        $runner = new FakeRunner();
+        $runner->handler = static fn (): CommandResult => new CommandResult(0, "Composer version 2.8.1 2024-10-04 PHP version 8.4.1\n");
+
+        self::assertSame('2.8.1', (new ProjectPlanApplier($runner, $this->dir))->tools(Ecosystem::Composer)->version('composer'));
     }
 
     #[Test]

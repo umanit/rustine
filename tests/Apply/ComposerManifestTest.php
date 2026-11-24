@@ -49,4 +49,26 @@ final class ComposerManifestTest extends TestCase
         file_put_contents($this->file, '{nope');
         self::assertNull(ComposerManifest::read($this->file)->declaration('a/b'));
     }
+
+    #[Test]
+    public function itReadsTheSymfonyRequirementAndTheVendorDirectory(): void
+    {
+        file_put_contents($this->file, '{"extra":{"symfony":{"require":"6.4.*"}},"config":{"vendor-dir":"lib/vendor"}}');
+
+        $manifest = ComposerManifest::read($this->file);
+
+        self::assertSame('6.4.*', $manifest->symfonyRequire());
+        self::assertSame('lib/vendor', $manifest->vendorDir());
+    }
+
+    #[Test]
+    public function withoutThoseSettingsThereIsNoSymfonyRequirementAndTheVendorIsVendor(): void
+    {
+        file_put_contents($this->file, '{"extra":{"symfony":{"allow-contrib":false}},"config":{}}');
+
+        $manifest = ComposerManifest::read($this->file);
+
+        self::assertNull($manifest->symfonyRequire());
+        self::assertSame('vendor', $manifest->vendorDir());
+    }
 }
