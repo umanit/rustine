@@ -256,3 +256,7 @@ make full_static_analyze   # PHPStan (max level) + PHPUnit; must pass after any 
 
 Tests use real temporary git repositories and a local bare remote, `MockHttpClient` for GitLab and a fake Trivy: no
 network, no real Yarn or Composer run. See [`AGENTS.md`](AGENTS.md) for the conventions and the architecture.
+
+## License
+
+Rustine is released under the [MIT License](LICENSE).

@@ -2,7 +2,7 @@
   "name": "umanit/rustine",
   "description": "Opens GitLab merge requests that fix only the Composer/Yarn packages affected by a CVE reported by Trivy",
   "type": "project",
-  "license": "proprietary",
+  "license": "MIT",
   "bin": [
     "bin/rustine"
   ],
