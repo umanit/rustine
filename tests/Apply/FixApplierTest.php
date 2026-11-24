@@ -184,6 +184,36 @@ final class FixApplierTest extends TestCase
     }
 
     #[Test]
+    public function theSameCveOnAnotherMajorDoesNotMakeTheFixFail(): void
+    {
+        $fix = Fixtures::fix('semver', '5.7.1', '5.7.2', DependencyKind::Transitive);
+        $other = Fixtures::vulnerability('semver', '7.5.1');
+        // The refresh fixed semver 5.x; semver 7.x still carries the same CVE, as another instance of the plan.
+        $rescanner = new QueueRescanner(Fixtures::report([$other]));
+
+        $result = $this->applier($rescanner)->apply(
+            Fixtures::plan($fix),
+            Fixtures::report([Fixtures::vulnerability('semver', '5.7.1'), $other]),
+        );
+
+        self::assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
+        self::assertSame(AttemptKind::LockfileRefresh, $result->outcomes[0]->strategy);
+    }
+
+    #[Test]
+    public function theCveStillReportedOnTheSameMajorIsAFailure(): void
+    {
+        $fix = Fixtures::fix('semver', '5.7.1', '5.7.2', DependencyKind::Transitive);
+        // Neither attempt removes the CVE from semver 5.x: the fix fails.
+        $stillVulnerable = Fixtures::report([Fixtures::vulnerability('semver', '5.7.1')]);
+        $rescanner = new QueueRescanner($stillVulnerable, $stillVulnerable);
+
+        $result = $this->applier($rescanner)->apply(Fixtures::plan($fix), $stillVulnerable);
+
+        self::assertSame(FixOutcomeStatus::Failed, $result->outcomes[0]->status);
+    }
+
+    #[Test]
     public function itRestoresEverythingWhenNoAttemptWorks(): void
     {
         $vulnerable = Fixtures::report([Fixtures::vulnerability()]);
