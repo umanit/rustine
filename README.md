@@ -5,6 +5,10 @@
   </picture>
 </p>
 
+<p align="center">
+  <a href="https://github.com/umanit/rustine/actions/workflows/ci.yml"><img src="https://github.com/umanit/rustine/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+</p>
+
 **Rustine** opens GitLab merge requests that fix **only** the Composer and Yarn packages affected by a CVE reported by
 [Trivy](https://trivy.dev). No comfort updates, no noise: a package gets a merge request because it is vulnerable, and
 it is bumped to the smallest version that fixes it.
