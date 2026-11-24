@@ -181,6 +181,26 @@ final class CommandsTest extends TestCase
     }
 
     #[Test]
+    public function applyRunsComposerThroughTheConfiguredCommand(): void
+    {
+        $dir = sys_get_temp_dir() . '/rustine-apply-' . bin2hex(random_bytes(4));
+        mkdir($dir);
+        file_put_contents($dir . '/composer.json', '{"require":{"symfony/http-foundation":"^6.4"}}');
+        $this->dirs[] = $dir;
+        $arguments = ['--project' => $dir, '--report' => __DIR__ . '/../fixtures/trivy/composer-report.json', '--group' => ['critical-high'], '--dry-run' => true];
+
+        $viaOption = $this->tester('apply');
+        $viaOption->execute([...$arguments, '--composer-bin' => '/usr/bin/php8.1 /usr/local/bin/composer2']);
+
+        $viaEnvironment = $this->tester('apply');
+        $this->withEnvironment(['RUSTINE_COMPOSER_BIN' => '/opt/composer'], static fn () => $viaEnvironment->execute($arguments));
+
+        self::assertStringContainsString('/usr/bin/php8.1 /usr/local/bin/composer2 update symfony/http-foundation', $viaOption->getDisplay());
+        self::assertStringContainsString('/opt/composer update symfony/http-foundation', $viaEnvironment->getDisplay());
+        self::assertStringNotContainsString('[lockfile-refresh] composer update', $viaOption->getDisplay());
+    }
+
+    #[Test]
     public function applyRejectsAnUnknownEcosystem(): void
     {
         $tester = $this->tester('apply');

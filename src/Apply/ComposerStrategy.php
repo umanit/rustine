@@ -17,6 +17,29 @@ final readonly class ComposerStrategy implements FixStrategy
 {
     private const FLAGS = ['--no-install', '--no-interaction', '--no-scripts', '--no-plugins', '--no-progress'];
 
+    /**
+     * @param non-empty-list<string> $composer command that runs Composer, e.g. `['composer']` or
+     *                                         `['/usr/bin/php8.1', '/usr/local/bin/composer2']`
+     */
+    public function __construct(private array $composer = ['composer'])
+    {
+    }
+
+    /**
+     * @param string $commandLine words separated by spaces (no quoting: paths with spaces are not supported)
+     *
+     * @throws \InvalidArgumentException when empty
+     */
+    public static function fromCommandLine(string $commandLine): self
+    {
+        $words = preg_split('/\s+/', trim($commandLine), -1, \PREG_SPLIT_NO_EMPTY) ?: [];
+        if ([] === $words) {
+            throw new \InvalidArgumentException('The Composer command is empty.');
+        }
+
+        return new self($words);
+    }
+
     public function ecosystem(): Ecosystem
     {
         return Ecosystem::Composer;
@@ -50,14 +73,14 @@ final readonly class ComposerStrategy implements FixStrategy
 
         $name = $fix->packageName;
         $attempts = [
-            new Attempt(AttemptKind::LockfileRefresh, [['composer', 'update', $name, '--with-all-dependencies', ...self::FLAGS]]),
+            new Attempt(AttemptKind::LockfileRefresh, [[...$this->composer, 'update', $name, '--with-all-dependencies', ...self::FLAGS]]),
         ];
 
         // The constraint of a direct requirement may forbid the fixed version: raise it, within the same major.
         $declaration = ComposerManifest::read($projectDir . '/composer.json')->declaration($name);
         if (null !== $declaration) {
             $attempts[] = new Attempt(AttemptKind::DirectBump, [[
-                'composer', 'require', $name . ':^' . ltrim($fix->targetVersion, 'v'),
+                ...$this->composer, 'require', $name . ':^' . ltrim($fix->targetVersion, 'v'),
                 ...('require-dev' === $declaration['field'] ? ['--dev'] : []),
                 '--update-with-all-dependencies', ...self::FLAGS,
             ]]);
@@ -68,7 +91,7 @@ final readonly class ComposerStrategy implements FixStrategy
 
     public function diagnosis(PackageFix $fix): ?array
     {
-        return null === $fix->targetVersion ? null : ['composer', 'why-not', $fix->packageName, $fix->targetVersion, '--locked'];
+        return null === $fix->targetVersion ? null : [...$this->composer, 'why-not', $fix->packageName, $fix->targetVersion, '--locked'];
     }
 
     public function mutatingEnv(): array
@@ -79,7 +102,7 @@ final readonly class ComposerStrategy implements FixStrategy
     public function checkCommand(): array
     {
         // Also fails when `composer.lock` is out of date with `composer.json`.
-        return ['composer', 'validate', '--no-check-publish', '--no-interaction'];
+        return [...$this->composer, 'validate', '--no-check-publish', '--no-interaction'];
     }
 
     public function checkEnv(): array

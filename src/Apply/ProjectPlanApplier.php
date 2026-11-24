@@ -21,24 +21,27 @@ use Rustine\Trivy\TrivyScanner;
 final readonly class ProjectPlanApplier implements PlanApplier
 {
     /**
-     * @param list<string> $trivyArgs extra Trivy arguments for the re-scans
+     * @param list<string> $trivyArgs       extra Trivy arguments for the re-scans
+     * @param string       $composerCommand command that runs Composer (see {@see ComposerStrategy::fromCommandLine()})
      */
     public function __construct(
         private CommandRunner $runner,
         private string $projectDir,
         private string $trivyBin = 'trivy',
         private array $trivyArgs = [],
+        private string $composerCommand = 'composer',
     ) {
     }
 
     /**
-     * @throws PinningException when the tools the ecosystem needs are not pinned by the project
+     * @throws PinningException         when the tools the ecosystem needs are not pinned by the project
+     * @throws \InvalidArgumentException when the Composer command is empty
      */
     public function setup(Ecosystem $ecosystem): ApplierSetup
     {
         if (Ecosystem::Composer === $ecosystem) {
             // PHP and Composer come from the CI image unless the project pins them with mise.
-            return new ApplierSetup(new ComposerStrategy(), $this->optionalMisePinning());
+            return new ApplierSetup(ComposerStrategy::fromCommandLine($this->composerCommand), $this->optionalMisePinning());
         }
 
         $pinning = (new PinningDetector())->detect($this->projectDir);

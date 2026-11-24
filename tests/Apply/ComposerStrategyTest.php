@@ -31,6 +31,36 @@ final class ComposerStrategyTest extends TestCase
     }
 
     #[Test]
+    public function composerCanBeRunThroughACustomCommand(): void
+    {
+        $this->manifest('{"require":{"twig/twig":"^3.0"}}');
+        $strategy = ComposerStrategy::fromCommandLine('  /usr/bin/php8.1   /usr/local/bin/composer2 ');
+        $fix = $this->fix(DependencyKind::Direct);
+
+        $commands = [];
+        foreach ($strategy->attempts($fix, $this->dir) as $attempt) {
+            foreach ($attempt->commands as $command) {
+                $commands[] = \array_slice($command, 0, 3);
+            }
+        }
+
+        self::assertSame([
+            ['/usr/bin/php8.1', '/usr/local/bin/composer2', 'update'],
+            ['/usr/bin/php8.1', '/usr/local/bin/composer2', 'require'],
+        ], $commands);
+        self::assertSame(['/usr/bin/php8.1', '/usr/local/bin/composer2', 'why-not'], \array_slice($strategy->diagnosis($fix) ?? [], 0, 3));
+        self::assertSame(['/usr/bin/php8.1', '/usr/local/bin/composer2', 'validate'], \array_slice($strategy->checkCommand(), 0, 3));
+    }
+
+    #[Test]
+    public function anEmptyComposerCommandIsRejected(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        ComposerStrategy::fromCommandLine('   ');
+    }
+
+    #[Test]
     public function aTransitiveDependencyOnlyGetsAnUpdate(): void
     {
         $this->manifest('{"require":{"other/pkg":"^1.0"}}');

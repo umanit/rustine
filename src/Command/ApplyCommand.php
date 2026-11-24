@@ -7,6 +7,7 @@ namespace Rustine\Command;
 use Rustine\Apply\FixOutcome;
 use Rustine\Apply\FixOutcomeStatus;
 use Rustine\Apply\FixStrategy;
+use Rustine\Apply\ComposerStrategy;
 use Rustine\Apply\ProcessCommandRunner;
 use Rustine\Apply\ProjectPlanApplier;
 use Rustine\Apply\UnsupportedProjectException;
@@ -43,6 +44,8 @@ final class ApplyCommand
         string $trivyBin = 'trivy',
         #[Option(description: 'Extra Trivy argument for the re-scans (repeatable)')]
         array $trivyArg = [],
+        #[Option(description: 'Command that runs Composer, e.g. "/usr/bin/php8.1 /usr/local/bin/composer2" (default: $RUSTINE_COMPOSER_BIN, then composer)')]
+        ?string $composerBin = null,
         #[Option(description: 'Only print the commands that would run; the project is left untouched')]
         bool $dryRun = false,
     ): int {
@@ -101,7 +104,15 @@ final class ApplyCommand
         $plan = $plans[0];
 
         $runner = new ProcessCommandRunner();
-        $planApplier = new ProjectPlanApplier($runner, $projectDir, $trivyBin, $trivyArg);
+        $composerCommand = Environment::string($composerBin, 'RUSTINE_COMPOSER_BIN', 'composer');
+        try {
+            ComposerStrategy::fromCommandLine($composerCommand);
+        } catch (\InvalidArgumentException $e) {
+            $io->error($e->getMessage());
+
+            return Command::INVALID;
+        }
+        $planApplier = new ProjectPlanApplier($runner, $projectDir, $trivyBin, $trivyArg, $composerCommand);
 
         try {
             $setup = $planApplier->setup($plan->ecosystem);

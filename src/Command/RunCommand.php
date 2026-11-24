@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Rustine\Command;
 
+use Rustine\Apply\ComposerStrategy;
 use Rustine\Apply\ProcessCommandRunner;
 use Rustine\Apply\ProjectPlanApplier;
 use Rustine\Application;
@@ -75,6 +76,8 @@ final class RunCommand
         string $trivyBin = 'trivy',
         #[Option(description: 'Extra Trivy argument for the scan and the re-scans (repeatable)')]
         array $trivyArg = [],
+        #[Option(description: 'Command that runs Composer, e.g. "/usr/bin/php8.1 /usr/local/bin/composer2" (default: $RUSTINE_COMPOSER_BIN, then composer)')]
+        ?string $composerBin = null,
         #[Option(description: 'GitLab API root (default: $CI_API_V4_URL). The token comes from $RUSTINE_GITLAB_TOKEN or $GITLAB_TOKEN')]
         ?string $gitlabUrl = null,
         #[Option(description: 'GitLab project id or path (default: $CI_PROJECT_ID)')]
@@ -99,7 +102,7 @@ final class RunCommand
         ?string $gitAuthorEmail = null,
     ): int {
         $factory = new TranslatorFactory();
-        $locale ??= (false === getenv('RUSTINE_LOCALE') || '' === getenv('RUSTINE_LOCALE')) ? TranslatorFactory::FALLBACK_LOCALE : (string) getenv('RUSTINE_LOCALE');
+        $locale = Environment::string($locale, 'RUSTINE_LOCALE', TranslatorFactory::FALLBACK_LOCALE);
         if (!\in_array($locale, $factory->availableLocales(), true)) {
             $io->error(sprintf('Unknown locale "%s" (available: %s).', $locale, implode(', ', $factory->availableLocales())));
 
@@ -149,6 +152,15 @@ final class RunCommand
             return Command::FAILURE;
         }
 
+        $composerCommand = Environment::string($composerBin, 'RUSTINE_COMPOSER_BIN', 'composer');
+        try {
+            ComposerStrategy::fromCommandLine($composerCommand);
+        } catch (\InvalidArgumentException $e) {
+            $io->error($e->getMessage());
+
+            return Command::FAILURE;
+        }
+
         $client = new HttpGitLabClient($this->httpClient ?? HttpClient::create(), $config->apiUrl, $config->projectId, $config->token);
         try {
             $user = $client->currentUser();
@@ -180,7 +192,7 @@ final class RunCommand
         $synchronizer = new MergeRequestSynchronizer(
             $client,
             new BranchPublisher(new Git($runner, $projectDir, new GitAccess($config->token)), $config->defaultBranch, $identity, $remote),
-            new ProjectPlanApplier($runner, $projectDir, $trivyBin, $trivyArg),
+            new ProjectPlanApplier($runner, $projectDir, $trivyBin, $trivyArg, $composerCommand),
             new MergeRequestRenderer($translator, Application::VERSION),
             new NoteRenderer($translator),
             new SyncSettings($config->defaultBranch, [] === $label ? ['security'] : $label, $severityLabelFormat, $assignee, $reviewer, $maxOpenMergeRequests),

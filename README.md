@@ -152,25 +152,26 @@ verified*. Add `--report-file=preview.md` to keep the output.
 
 Options take precedence over the variables GitLab CI provides.
 
-| Option                       | Variable                                 | Default / meaning                                                                           |
-|------------------------------|------------------------------------------|---------------------------------------------------------------------------------------------|
-| `--group`                    |                                          | **Required**: `critical-high` or `others` (exactly one)                                     |
-| `--ecosystem`                |                                          | `yarn` or `composer` (default: both)                                                        |
-| `--project`                  |                                          | Project directory (default `.`)                                                             |
-| `--gitlab-url`               | `CI_API_V4_URL`                          | GitLab API root                                                                             |
-| `--project-id`               | `CI_PROJECT_ID`                          | Project id or path                                                                          |
-| `--default-branch`           | `CI_DEFAULT_BRANCH`                      | Branch the fixes start from and the merge requests target                                   |
-| *(no option, on purpose)*    | `RUSTINE_GITLAB_TOKEN` or `GITLAB_TOKEN` | Access token                                                                                |
-| `--locale`                   | `RUSTINE_LOCALE`                         | Language of the texts written in the project (default `en`)                                 |
-| `--label`                    |                                          | Label of every merge request (repeatable, default `security`)                               |
-| `--severity-label-format`    |                                          | Default `severity::{severity}` → `severity::high`                                           |
-| `--assignee`, `--reviewer`   |                                          | Usernames, applied when a merge request is **created**                                      |
-| `--max-open-merge-requests`  |                                          | Stops opening new merge requests above this number                                          |
-| `--git-author-name/-email`   |                                          | Default: the token owner (commit email, else its noreply address)                           |
-| `--remote`                   |                                          | Git remote (default `origin`)                                                               |
-| `--report-file`              |                                          | Markdown report: status and description of each group                                       |
-| `--report`                   |                                          | Trivy report: written by a real run, read by `--dry-run`                                    |
-| `--trivy-bin`, `--trivy-arg` |                                          | Trivy binary and extra arguments (repeatable), e.g. `--trivy-arg=--ignorefile=.trivyignore` |
+| Option                       | Variable                                 | Default / meaning                                                                                                                                               |
+|------------------------------|------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `--group`                    |                                          | **Required**: `critical-high` or `others` (exactly one)                                                                                                         |
+| `--ecosystem`                |                                          | `yarn` or `composer` (default: both)                                                                                                                            |
+| `--project`                  |                                          | Project directory (default `.`)                                                                                                                                 |
+| `--gitlab-url`               | `CI_API_V4_URL`                          | GitLab API root                                                                                                                                                 |
+| `--project-id`               | `CI_PROJECT_ID`                          | Project id or path                                                                                                                                              |
+| `--default-branch`           | `CI_DEFAULT_BRANCH`                      | Branch the fixes start from and the merge requests target                                                                                                       |
+| *(no option, on purpose)*    | `RUSTINE_GITLAB_TOKEN` or `GITLAB_TOKEN` | Access token                                                                                                                                                    |
+| `--locale`                   | `RUSTINE_LOCALE`                         | Language of the texts written in the project (default `en`)                                                                                                     |
+| `--label`                    |                                          | Label of every merge request (repeatable, default `security`)                                                                                                   |
+| `--severity-label-format`    |                                          | Default `severity::{severity}` → `severity::high`                                                                                                               |
+| `--assignee`, `--reviewer`   |                                          | Usernames, applied when a merge request is **created**                                                                                                          |
+| `--max-open-merge-requests`  |                                          | Stops opening new merge requests above this number                                                                                                              |
+| `--git-author-name/-email`   |                                          | Default: the token owner (commit email, else its noreply address)                                                                                               |
+| `--remote`                   |                                          | Git remote (default `origin`)                                                                                                                                   |
+| `--report-file`              |                                          | Markdown report: status and description of each group                                                                                                           |
+| `--report`                   |                                          | Trivy report: written by a real run, read by `--dry-run`                                                                                                        |
+| `--composer-bin`             | `RUSTINE_COMPOSER_BIN`                   | Command that runs Composer (default `composer`), e.g. `/usr/bin/php8.1 /usr/local/bin/composer2` to pick the PHP version; words separated by spaces, no quoting |
+| `--trivy-bin`, `--trivy-arg` |                                          | Trivy binary and extra arguments (repeatable), e.g. `--trivy-arg=--ignorefile=.trivyignore`                                                                     |
 
 Labels are never translated (filters, boards and the open-merge-request limit depend on their names), nor are branch
 names, CVE identifiers, versions or commands.
