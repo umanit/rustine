@@ -103,7 +103,7 @@ final class RunCommand
         if (!\in_array($locale, $factory->availableLocales(), true)) {
             $io->error(sprintf('Unknown locale "%s" (available: %s).', $locale, implode(', ', $factory->availableLocales())));
 
-            return Command::INVALID;
+            return Command::FAILURE;
         }
         $translator = $factory->create($locale);
 
@@ -113,21 +113,21 @@ final class RunCommand
             if (null === $parsed) {
                 $io->error(sprintf('Unknown group "%s" (expected: %s).', $name, implode(', ', array_column(SeverityGroup::cases(), 'value'))));
 
-                return Command::INVALID;
+                return Command::FAILURE;
             }
             $groups[] = $parsed;
         }
         if (1 !== \count($groups)) {
             $io->error('Pass exactly one --group: each severity group is a separate merge request.');
 
-            return Command::INVALID;
+            return Command::FAILURE;
         }
 
         $wanted = null === $ecosystem ? null : Ecosystem::tryFrom($ecosystem);
         if (null !== $ecosystem && null === $wanted) {
             $io->error(sprintf('Unknown ecosystem "%s" (expected: yarn, composer).', $ecosystem));
 
-            return Command::INVALID;
+            return Command::FAILURE;
         }
 
         if ($dryRun) {
@@ -138,7 +138,7 @@ final class RunCommand
         if (false === $projectDir) {
             $io->error(sprintf('Project directory "%s" does not exist.', $project));
 
-            return Command::INVALID;
+            return Command::FAILURE;
         }
 
         try {
@@ -146,7 +146,7 @@ final class RunCommand
         } catch (GitLabConfigException $e) {
             $io->error($e->getMessage());
 
-            return Command::INVALID;
+            return Command::FAILURE;
         }
 
         $client = new HttpGitLabClient($this->httpClient ?? HttpClient::create(), $config->apiUrl, $config->projectId, $config->token);

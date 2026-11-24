@@ -228,10 +228,11 @@ final class CommandsTest extends TestCase
     #[Test]
     public function runRejectsAnUnknownLocale(): void
     {
+        // Exit code 2 means "manual action required" for `run`: a usage error must be a plain failure (1).
         $tester = $this->tester('run');
         $tester->execute(['--report' => self::REPORT, '--group' => ['others'], '--locale' => 'xx', '--dry-run' => true]);
 
-        self::assertSame(Command::INVALID, $tester->getStatusCode());
+        self::assertSame(Command::FAILURE, $tester->getStatusCode());
         self::assertStringContainsString('available: en, fr', $tester->getDisplay());
     }
 
@@ -242,7 +243,7 @@ final class CommandsTest extends TestCase
             $tester = $this->tester('run');
             $tester->execute(['--group' => ['others'], '--project' => sys_get_temp_dir()]);
 
-            self::assertSame(Command::INVALID, $tester->getStatusCode());
+            self::assertSame(Command::FAILURE, $tester->getStatusCode());
             self::assertStringContainsString('RUSTINE_GITLAB_TOKEN', $tester->getDisplay());
         });
     }
