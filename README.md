@@ -21,7 +21,8 @@ On every scheduled run, for the ecosystem(s) and severity group you ask for:
 
 1. **Scan** — Trivy runs on the project (`--list-all-pkgs`, to tell direct from transitive dependencies).
 2. **Plan** — vulnerable packages are grouped per ecosystem and severity group; for each one Rustine picks the smallest
-   fixed version, in the same major version when possible.
+   fixed version, in the same major version when possible (the same minor version for `0.x`, where a new minor is a
+   breaking change).
 3. **Apply** — package by package, strategies are tried in order. After each attempt Trivy runs again: the change is
    kept only if the CVEs are gone, otherwise the files are restored and the next strategy is tried. A package that
    cannot be fixed never blocks the others.

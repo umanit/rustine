@@ -224,7 +224,7 @@ final class FixApplier
         $others = [];
         foreach (array_keys($versions) as $version) {
             $parsed = Version::tryParse((string) $version);
-            if (null !== $parsed && $parsed->major() !== $target->major()) {
+            if (null !== $parsed && !$parsed->isSameLineAs($target)) {
                 $others[] = (string) $version;
             }
         }
@@ -234,9 +234,9 @@ final class FixApplier
     }
 
     /**
-     * True while one of the CVEs the fix targets is still reported on the package, in the major version of the fixed
-     * instance. Another major of the same package may carry the same CVE (e.g. semver 5.x and 7.x): it is another
-     * instance, with its own fix, and must not make this one look like a failure.
+     * True while one of the CVEs the fix targets is still reported on the package, on the line of the fixed instance
+     * (same major, same minor below 1.0). Another major of the same package may carry the same CVE (e.g. semver 5.x
+     * and 7.x): it is another instance, with its own fix, and must not make this one look like a failure.
      */
     private function stillVulnerable(TrivyReport $report, PackageFix $fix): bool
     {
@@ -252,7 +252,7 @@ final class FixApplier
             }
 
             $reported = Version::tryParse($vulnerability->installedVersion);
-            if (null === $installed || null === $reported || $reported->major() === $installed->major()) {
+            if (null === $installed || null === $reported || $reported->isSameLineAs($installed)) {
                 return true;
             }
         }

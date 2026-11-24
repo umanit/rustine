@@ -9,7 +9,7 @@ final class FixedVersionSelector
     /**
      * Picks, for one CVE, the smallest fixed version strictly greater than the installed one.
      *
-     * Preference order: same major, then stable version, then smallest version.
+     * Preference order: same major (same minor below 1.0), then stable version, then smallest version.
      * Unparsable versions (e.g. `dev-main`) are ignored.
      *
      * @param list<string> $fixedVersions
@@ -23,7 +23,7 @@ final class FixedVersionSelector
                 continue;
             }
 
-            $candidates[] = new FixCandidate($version, $version->major() !== $installed->major());
+            $candidates[] = new FixCandidate($version, !$version->isSameLineAs($installed));
         }
 
         if ([] === $candidates) {

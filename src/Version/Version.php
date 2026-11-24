@@ -46,6 +46,16 @@ final readonly class Version
         return $this->numbers[0];
     }
 
+    /**
+     * Versions on the same line are compatible according to semver: same major, or same minor below 1.0
+     * (`^0.3.5` does not allow 0.4.0, a breaking change).
+     */
+    public function isSameLineAs(self $other): bool
+    {
+        return $this->major() === $other->major()
+            && (0 !== $this->major() || $this->numbers[1] === $other->numbers[1]);
+    }
+
     public function isPrerelease(): bool
     {
         return '' !== $this->suffix;

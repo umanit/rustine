@@ -50,6 +50,8 @@ final class FixedVersionSelectorTest extends TestCase
         yield 'stable higher major before its pre-release' => ['1.0.0', ['3.0.0-rc.1', '2.0.0'], '2.0.0', true];
         yield 'lts suffix accepted for lack of better' => ['4.22.1', ['4.24.0-lts'], '4.24.0-lts', false];
         yield 'stable same major before pre-release' => ['4.22.1', ['4.24.0-lts', '4.25.0'], '4.25.0', false];
+        yield '0.x: same minor first' => ['0.3.5', ['0.4.2', '0.3.9'], '0.3.9', false];
+        yield '0.x: another minor is a breaking bump' => ['0.3.5', ['0.4.2'], '0.4.2', true];
         yield 'no fixed version' => ['3.0.3', [], null, false];
         yield 'all fixed versions are lower' => ['2.0.0', ['1.9.9', '2.0.0'], null, false];
         yield 'unparsable fixed versions' => ['1.0.0', ['dev-main'], null, false];
