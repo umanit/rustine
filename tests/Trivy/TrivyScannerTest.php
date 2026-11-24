@@ -30,7 +30,7 @@ final class TrivyScannerTest extends TestCase
         $command = (new TrivyScanner('/opt/trivy'))->buildCommand('/tmp/out.json', ['--skip-db-update', '--ignorefile', 'x']);
 
         self::assertSame(
-            ['/opt/trivy', 'fs', '--no-progress', '--scanners', 'vuln', '--list-all-pkgs', '--format', 'json', '--output', '/tmp/out.json', '--skip-db-update', '--ignorefile', 'x', '.'],
+            ['/opt/trivy', 'fs', '--no-progress', '--disable-telemetry', '--skip-dirs', '**/vendor,**/node_modules', '--scanners', 'vuln', '--list-all-pkgs', '--format', 'json', '--output', '/tmp/out.json', '--skip-db-update', '--ignorefile', 'x', '.'],
             $command,
         );
     }

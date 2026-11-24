@@ -9,6 +9,12 @@ use Symfony\Component\Process\Process;
 
 final readonly class TrivyScanner
 {
+    /**
+     * Installed dependencies, at any depth: Rustine only handles the lockfiles of the project root, so what Trivy finds
+     * there is ignored anyway, and reading it makes every scan (and every re-scan) slower.
+     */
+    public const SKIPPED_DIRS = ['**/vendor', '**/node_modules'];
+
     public function __construct(private string $trivyBin = 'trivy')
     {
     }
@@ -25,6 +31,8 @@ final readonly class TrivyScanner
         return [
             $this->trivyBin, 'fs',
             '--no-progress',
+            '--disable-telemetry',
+            '--skip-dirs', implode(',', self::SKIPPED_DIRS),
             '--scanners', 'vuln',
             '--list-all-pkgs',
             '--format', 'json',

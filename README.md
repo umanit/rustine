@@ -19,7 +19,8 @@ it is bumped to the smallest version that fixes it.
 
 On every scheduled run, for the ecosystem(s) and severity group you ask for:
 
-1. **Scan** — Trivy runs on the project (`--list-all-pkgs`, to tell direct from transitive dependencies).
+1. **Scan** — Trivy runs on the project (`--list-all-pkgs`, to tell direct from transitive dependencies). The installed
+   dependencies (`**/vendor`, `**/node_modules`) are skipped and telemetry is disabled.
 2. **Plan** — vulnerable packages are grouped per ecosystem and severity group; for each one Rustine picks the smallest
    fixed version, in the same major version when possible (the same minor version for `0.x`, where a new minor is a
    breaking change).

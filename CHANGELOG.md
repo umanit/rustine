@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Trivy runs with `--skip-dirs **/vendor,**/node_modules` (Rustine only handles the lockfiles of the project root, so
+  the scans and re-scans no longer read the installed dependencies) and `--disable-telemetry`. The `--trivy-arg`
+  values come after, and Trivy accumulates repeated `--skip-dirs`.
 - **Breaking:** Rustine no longer installs any tool. Yarn and Composer commands run as they are, with the tools of the
   environment, instead of through `mise exec` (which installed the pinned Node and Yarn versions on the fly). The CI job
   must provide the tools before Rustine starts.
