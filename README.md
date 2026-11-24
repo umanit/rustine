@@ -26,9 +26,10 @@ On every scheduled run, for the ecosystem(s) and severity group you ask for:
 2. **Plan** — vulnerable packages are grouped per ecosystem and severity group; for each one Rustine picks the smallest
    fixed version, in the same major version when possible (the same minor version for `0.x`, where a new minor is a
    breaking change).
-3. **Apply** — package by package, strategies are tried in order. After each attempt Trivy runs again: the change is
-   kept only if the CVEs are gone, otherwise the files are restored and the next strategy is tried. A package that
-   cannot be fixed never blocks the others.
+3. **Apply** — package by package, strategies are tried in order. After each attempt the lockfile is read back: the change
+   is kept only if the package is no longer locked at a vulnerable version, otherwise the files are restored and the
+   next strategy is tried. A package that cannot be fixed never blocks the others. Trivy runs once, when every package
+   has been handled, to confirm the result: a fix whose CVEs it still reports is flagged for a manual check.
 4. **Publish** — a stable branch is force-pushed and a merge request is opened or updated; its description lists the
    CVEs, the dependency chain, the strategy used and the verification.
 
@@ -196,6 +197,7 @@ Options take precedence over the variables GitLab CI provides.
 | `--composer-bin`             | `RUSTINE_COMPOSER_BIN`                   | Command that runs Composer (default `composer`), e.g. `/usr/bin/php8.1 /usr/local/bin/composer2` to pick the PHP version; words separated by spaces, no quoting |
 | `--yarn-bin`                 | `RUSTINE_YARN_BIN`                       | Command that runs Yarn (default `yarn`), e.g. `/opt/yarn/bin/yarn`; words separated by spaces, no quoting                                                       |
 | `--node-bin`                 | `RUSTINE_NODE_BIN`                       | Command that runs Node (default `node`); given by path, its directory goes first on the `PATH` of Yarn                                                          |
+| `--verify`                   | `RUSTINE_VERIFY`                         | When Trivy confirms the fixes: `final` (default, once when every package is handled), `each` (after every attempt the lockfile accepts: slow, the most certain) or `none` (the lockfile alone decides) |
 | `--trivy-bin`, `--trivy-arg` |                                          | Trivy binary and extra arguments (repeatable), e.g. `--trivy-arg=--ignorefile=.trivyignore`                                                                     |
 
 Labels are never translated (filters, boards and the open-merge-request limit depend on their names), nor are branch
@@ -241,7 +243,7 @@ security-bot:critical-high:
         MISE_DATA_DIR: $CI_PROJECT_DIR/.mise
     script:
         # The caches live in the project directory (GitLab only caches paths there): hide them from git, otherwise the
-        # files they gain during a fix (e.g. the Trivy cache filled by the re-scans) abandon it as an unexpected change.
+        # files they gain during a fix (e.g. the Trivy cache filled by the final scan) abandon it as an unexpected change.
         - printf '%s\n' .mise/ .trivy-cache/ trivy-report.json rustine-report.md >> .git/info/exclude
         - mise install
         - eval "$(mise env -s bash)"

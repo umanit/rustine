@@ -21,6 +21,7 @@ final readonly class ProjectPlanApplier implements PlanApplier
      * @param string       $composerCommand command that runs Composer (see {@see ComposerStrategy::fromCommandLine()})
      * @param string       $yarnCommand     command that runs Yarn (see {@see YarnRuntime})
      * @param string       $nodeCommand     command that runs Node (see {@see YarnRuntime})
+     * @param VerifyMode   $verify          when Trivy confirms the fixes
      */
     public function __construct(
         private CommandRunner $runner,
@@ -30,6 +31,7 @@ final readonly class ProjectPlanApplier implements PlanApplier
         private string $composerCommand = 'composer',
         private string $yarnCommand = 'yarn',
         private string $nodeCommand = 'node',
+        private VerifyMode $verify = VerifyMode::Final,
     ) {
     }
 
@@ -83,6 +85,7 @@ final readonly class ProjectPlanApplier implements PlanApplier
             $strategy,
             new PackageJsonEditor(),
             $this->projectDir,
+            $this->verify,
         );
 
         return new AppliedPlan($applier->apply($plan, $report), $tools);

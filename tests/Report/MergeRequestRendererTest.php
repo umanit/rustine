@@ -115,6 +115,32 @@ final class MergeRequestRendererTest extends TestCase
     }
 
     #[Test]
+    public function anAppliedFixThatTrivyStillReportsNeedsAManualCheck(): void
+    {
+        $fix = Fixtures::fix('aaa', '1.0.0', '1.0.1');
+        $result = new ApplyResult([new FixOutcome($fix, FixOutcomeStatus::Applied, AttemptKind::LockfileRefresh, [], stillReported: true)]);
+
+        $content = $this->renderer('fr')->render(Fixtures::plan($fix), $result);
+
+        self::assertStringContainsString('Trivy signale encore', $content->description);
+        self::assertSame(1, $content->fixedPackages);
+        self::assertSame(1, $content->attentionItems);
+    }
+
+    #[Test]
+    public function theVerificationTellsWhenTrivyWasRun(): void
+    {
+        $fix = Fixtures::fix('aaa', '1.0.0', '1.0.1');
+        $outcomes = [new FixOutcome($fix, FixOutcomeStatus::Applied, AttemptKind::LockfileRefresh)];
+        $render = fn (\Rustine\Apply\VerifyMode $mode): string => $this->renderer('en')
+            ->render(Fixtures::plan($fix), new ApplyResult($outcomes, verify: $mode))->description;
+
+        self::assertStringContainsString('after each change', $render(\Rustine\Apply\VerifyMode::Each));
+        self::assertStringContainsString('once every change was applied', $render(\Rustine\Apply\VerifyMode::Final));
+        self::assertStringContainsString('Trivy was not run again', $render(\Rustine\Apply\VerifyMode::None));
+    }
+
+    #[Test]
     public function skippedPackagesAreReportedFromThePlanStatus(): void
     {
         $major = Fixtures::fix('major', '1.0.0', '2.0.0', status: PackageFixStatus::MajorBumpRequired);

@@ -10,11 +10,13 @@ final readonly class ApplyResult
      * @param list<FixOutcome> $outcomes
      * @param string|null      $finalCheckError null when the final frozen-lockfile install passed
      * @param list<LockChange> $lockChanges     what the fixes changed in the lockfile, collateral changes included
+     * @param VerifyMode       $verify          when Trivy confirmed the fixes
      */
     public function __construct(
         public array $outcomes,
         public ?string $finalCheckError = null,
         public array $lockChanges = [],
+        public VerifyMode $verify = VerifyMode::Final,
     ) {
     }
 

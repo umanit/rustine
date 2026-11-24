@@ -7,6 +7,7 @@ namespace Rustine\Command;
 use Rustine\Apply\ComposerStrategy;
 use Rustine\Apply\ProcessCommandRunner;
 use Rustine\Apply\ProjectPlanApplier;
+use Rustine\Apply\VerifyMode;
 use Rustine\Apply\YarnRuntime;
 use Rustine\Application;
 use Rustine\Git\BranchPublisher;
@@ -74,6 +75,8 @@ final class RunCommand
         string $trivyBin = 'trivy',
         #[Option(description: 'Extra Trivy argument for the scan and the re-scans (repeatable)')]
         array $trivyArg = [],
+        #[Option(description: 'When Trivy confirms the fixes: each (after every attempt, slow), final (once at the end) or none (the lockfile alone decides); default: $RUSTINE_VERIFY, then final')]
+        ?string $verify = null,
         #[Option(description: 'Command that runs Composer, e.g. "/usr/bin/php8.1 /usr/local/bin/composer2" (default: $RUSTINE_COMPOSER_BIN, then composer)')]
         ?string $composerBin = null,
         #[Option(description: 'Command that runs Yarn, e.g. "/opt/yarn/bin/yarn" (default: $RUSTINE_YARN_BIN, then yarn)')]
@@ -124,6 +127,14 @@ final class RunCommand
         }
         if (1 !== \count($groups)) {
             $io->error('Pass exactly one --group: each severity group is a separate merge request.');
+
+            return Command::FAILURE;
+        }
+
+        $verify = Environment::string($verify, 'RUSTINE_VERIFY', VerifyMode::Final->value);
+        $verifyMode = VerifyMode::tryFrom($verify);
+        if (null === $verifyMode) {
+            $io->error(sprintf('Unknown verification "%s" (expected: %s).', $verify, implode(', ', array_column(VerifyMode::cases(), 'value'))));
 
             return Command::FAILURE;
         }
@@ -201,7 +212,7 @@ final class RunCommand
         $synchronizer = new MergeRequestSynchronizer(
             $client,
             new BranchPublisher(new Git($runner, $projectDir, new GitAccess($config->token)), $config->defaultBranch, $identity, $remote),
-            new ProjectPlanApplier($runner, $projectDir, $trivyBin, $trivyArg, $composerCommand, $yarnCommand, $nodeCommand),
+            new ProjectPlanApplier($runner, $projectDir, $trivyBin, $trivyArg, $composerCommand, $yarnCommand, $nodeCommand, $verifyMode),
             new MergeRequestRenderer($translator, Application::VERSION),
             new NoteRenderer($translator),
             new SyncSettings($config->defaultBranch, [] === $label ? ['security'] : $label, $severityLabelFormat, $assignee, $reviewer, $maxOpenMergeRequests),

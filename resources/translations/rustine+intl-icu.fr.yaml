@@ -44,6 +44,7 @@ attention:
   unparsable: "la version installée {version} n’est pas comparable : à vérifier à la main."
   unsupported_source: "déclaré avec une source que Rustine ne modifie pas : à mettre à jour à la main vers une version qui corrige {cves}."
   failed: "aucune correction automatique n’a fonctionné pour {cves}."
+  still_reported: "Trivy signale encore {cves} après la correction : vérifiez le résultat à la main."
   technical_details: "Détails techniques"
 
 lock:
@@ -57,7 +58,9 @@ debt:
   resolution: "{package} est épinglé via `resolutions` : à retirer dès que la dépendance parente embarque le correctif."
 
 verification:
-  rescan: "Trivy a été relancé après chaque modification : les CVE des paquets ci-dessus ne sont plus signalées."
+  rescan_each: "Trivy a été relancé après chaque modification : les CVE des paquets ci-dessus ne sont plus signalées."
+  rescan_final: "Trivy a été relancé une fois toutes les modifications appliquées : les CVE des paquets ci-dessus ne sont plus signalées."
+  rescan_none: "Trivy n’a pas été relancé : le lockfile n’installe plus de version vulnérable des paquets ci-dessus."
   check_ok: "Le lockfile est cohérent avec le manifeste."
   check_failed: "Le contrôle de cohérence du lockfile a échoué :"
 

@@ -44,6 +44,7 @@ attention:
   unparsable: "the installed version {version} cannot be compared: check it by hand."
   unsupported_source: "declared with a source that Rustine does not change: update it by hand to a version that fixes {cves}."
   failed: "no automatic fix worked for {cves}."
+  still_reported: "Trivy still reports {cves} after the fix: check the result by hand."
   technical_details: "Technical details"
 
 lock:
@@ -57,7 +58,9 @@ debt:
   resolution: "{package} is pinned through `resolutions`: remove the entry once the parent dependency ships the fix."
 
 verification:
-  rescan: "Trivy was run again after each change: the CVEs of the packages above are no longer reported."
+  rescan_each: "Trivy was run again after each change: the CVEs of the packages above are no longer reported."
+  rescan_final: "Trivy was run again once every change was applied: the CVEs of the packages above are no longer reported."
+  rescan_none: "Trivy was not run again: the lockfile no longer installs a vulnerable version of the packages above."
   check_ok: "The lockfile is consistent with the manifest."
   check_failed: "The lockfile consistency check failed:"
 

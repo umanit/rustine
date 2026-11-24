@@ -10,6 +10,7 @@ use Rustine\Apply\FixStrategy;
 use Rustine\Apply\ComposerStrategy;
 use Rustine\Apply\ProcessCommandRunner;
 use Rustine\Apply\ProjectPlanApplier;
+use Rustine\Apply\VerifyMode;
 use Rustine\Apply\ToolingException;
 use Rustine\Apply\UnsupportedProjectException;
 use Rustine\Apply\YarnRuntime;
@@ -51,6 +52,8 @@ final class ApplyCommand
         ?string $yarnBin = null,
         #[Option(description: 'Command that runs Node, e.g. "/opt/node20/bin/node"; given by path, its directory goes first on the PATH of Yarn (default: $RUSTINE_NODE_BIN, then node)')]
         ?string $nodeBin = null,
+        #[Option(description: 'When Trivy confirms the fixes: each (after every attempt, slow), final (once at the end) or none (the lockfile alone decides); default: $RUSTINE_VERIFY, then final')]
+        ?string $verify = null,
         #[Option(description: 'Only print the commands that would run; the project is left untouched')]
         bool $dryRun = false,
     ): int {
@@ -75,6 +78,14 @@ final class ApplyCommand
             $io->error(sprintf('Project directory "%s" does not exist.', $project));
 
             return Command::FAILURE;
+        }
+
+        $verify = Environment::string($verify, 'RUSTINE_VERIFY', VerifyMode::Final->value);
+        $verifyMode = VerifyMode::tryFrom($verify);
+        if (null === $verifyMode) {
+            $io->error(sprintf('Unknown verification "%s" (expected: %s).', $verify, implode(', ', array_column(VerifyMode::cases(), 'value'))));
+
+            return Command::INVALID;
         }
 
         $wanted = null === $ecosystem ? null : Ecosystem::tryFrom($ecosystem);
@@ -120,7 +131,7 @@ final class ApplyCommand
 
             return Command::INVALID;
         }
-        $planApplier = new ProjectPlanApplier($runner, $projectDir, $trivyBin, $trivyArg, $composerCommand, $yarnCommand, $nodeCommand);
+        $planApplier = new ProjectPlanApplier($runner, $projectDir, $trivyBin, $trivyArg, $composerCommand, $yarnCommand, $nodeCommand, $verifyMode);
 
         try {
             $strategy = $planApplier->strategy($plan->ecosystem);
@@ -191,7 +202,9 @@ final class ApplyCommand
         $label = sprintf('%s@%s → %s', $fix->packageName, $fix->installedVersion, $fix->targetVersion ?? '?');
 
         return match ($outcome->status) {
-            FixOutcomeStatus::Applied => sprintf('  ✔ %s (%s)', $label, $outcome->strategy?->value),
+            FixOutcomeStatus::Applied => $outcome->stillReported
+                ? sprintf('  ⚠ %s (%s): Trivy still reports its CVEs, check the result by hand', $label, $outcome->strategy?->value)
+                : sprintf('  ✔ %s (%s)', $label, $outcome->strategy?->value),
             FixOutcomeStatus::AlreadyFixed => sprintf('  ✔ %s already fixed by a previous change', $label),
             FixOutcomeStatus::UnsupportedSource => sprintf("  ✘ %s needs a manual fix\n      %s", $label, implode("\n      ", $outcome->log)),
             FixOutcomeStatus::Skipped => sprintf('  ✘ %s skipped (%s)', $label, $fix->status->value),

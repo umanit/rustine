@@ -13,8 +13,10 @@ use Rustine\Version\Version;
 /**
  * Applies the fixes of one plan, with the strategy of its ecosystem (Yarn Berry/Classic, Composer), package by package.
  *
- * After each package Trivy is run again: a fix is kept only if its CVEs are gone, otherwise the manifest and the
- * lockfile are restored and the next attempt is tried. A package that cannot be fixed never blocks the others.
+ * After each attempt the lockfile is read back: a fix is kept only if the package is no longer locked at a vulnerable
+ * version, otherwise the manifest and the lockfile are restored and the next attempt is tried. A package that cannot
+ * be fixed never blocks the others. By default Trivy is run once, at the end, to confirm that the CVEs are gone: a scan
+ * after every attempt would cost minutes per package (see {@see VerifyMode}).
  */
 final class FixApplier
 {
@@ -25,6 +27,7 @@ final class FixApplier
         private readonly FixStrategy $strategy,
         private readonly PackageJsonEditor $editor,
         private readonly string $projectDir,
+        private readonly VerifyMode $verify = VerifyMode::Final,
     ) {
     }
 
@@ -38,7 +41,8 @@ final class FixApplier
         $baseline = $this->tree->dirtyPaths();
         $lockfile = $this->projectDir . '/' . $plan->ecosystem->lockFile();
         $lockBefore = @file_get_contents($lockfile);
-        $current = $initialReport;
+        $locked = $this->lockedVersions($lockfile);
+        $changed = false;
         $outcomes = [];
 
         foreach ($plan->fixes as $fix) {
@@ -47,7 +51,8 @@ final class FixApplier
                 continue;
             }
 
-            if (!$this->stillVulnerable($current, $fix)) {
+            // The report tells what is vulnerable at the start, then the lockfile follows what the fixes changed.
+            if (!$this->stillReported($initialReport, $fix) || ($changed && !$this->vulnerableInLock($locked ?? [], $fix))) {
                 $outcomes[] = new FixOutcome($fix, FixOutcomeStatus::AlreadyFixed);
                 continue;
             }
@@ -58,14 +63,21 @@ final class FixApplier
                 continue;
             }
 
-            [$outcome, $report] = $this->fixPackage($fix, $current, $baseline);
+            [$outcome, $after] = $this->fixPackage($fix, $locked ?? [], $baseline);
             $outcomes[] = $outcome;
-            $current = $report ?? $current;
+            if (null !== $after) {
+                $locked = $after;
+                $changed = true;
+            }
         }
 
-        $result = new ApplyResult($outcomes);
+        $result = new ApplyResult($outcomes, verify: $this->verify);
         if (!$result->hasChanges()) {
             return $result;
+        }
+
+        if (VerifyMode::Final === $this->verify) {
+            $outcomes = $this->confirmWithTrivy($outcomes);
         }
 
         // The final lockfile must be consistent with the manifest, whatever the sequence of fixes.
@@ -76,7 +88,7 @@ final class FixApplier
             ? []
             : (new LockfileVersions())->changes($plan->ecosystem, $lockBefore, $lockAfter);
 
-        return new ApplyResult($outcomes, $check->isSuccessful() ? null : $this->tail($check->output), $lockChanges);
+        return new ApplyResult($outcomes, $check->isSuccessful() ? null : $this->tail($check->output), $lockChanges, $this->verify);
     }
 
     private function assertSupported(GroupPlan $plan): void
@@ -102,11 +114,12 @@ final class FixApplier
     }
 
     /**
-     * @param list<string> $baseline
+     * @param array<string, list<string>> $locked   versions the lockfile installs before the fix
+     * @param list<string>                $baseline
      *
-     * @return array{FixOutcome, TrivyReport|null} the new report is null when nothing was kept
+     * @return array{FixOutcome, array<string, list<string>>|null} the versions locked after the fix, null when nothing was kept
      */
-    private function fixPackage(PackageFix $fix, TrivyReport $current, array &$baseline): array
+    private function fixPackage(PackageFix $fix, array $locked, array &$baseline): array
     {
         $snapshot = $this->snapshot();
         $log = [];
@@ -114,7 +127,7 @@ final class FixApplier
         foreach ($this->strategy->attempts($fix, $this->projectDir) as $attempt) {
             // A resolution applies to every instance of the package: it must not drag another major along.
             if (AttemptKind::Resolution === $attempt->kind) {
-                $others = $this->otherMajorVersions($current, $fix);
+                $others = $this->otherMajorVersions($locked, $fix);
                 if ([] !== $others) {
                     $log[] = sprintf(
                         '%s: skipped, %s is also installed in other majors (%s) and a resolution would force them all to ^%s',
@@ -127,7 +140,7 @@ final class FixApplier
                 }
             }
 
-            $report = null;
+            $after = null;
             $error = null;
             $abandon = false;
 
@@ -145,19 +158,24 @@ final class FixApplier
                 }
 
                 if (null === $error) {
-                    $report = $this->rescanner->rescan();
-                    if ($this->stillVulnerable($report, $fix)) {
-                        $error = 'the CVEs are still reported after the attempt';
-                    }
+                    $after = $this->lockedVersions($this->projectDir . '/' . $this->strategy->ecosystem()->lockFile());
+                    $error = null === $after
+                        ? 'the versions installed by the lockfile cannot be read to check the fix'
+                        : $this->vulnerableReason($after, $fix);
+                }
+
+                // The lockfile accepted the fix: Trivy, the slow judge, is only asked about what is left.
+                if (null === $error && VerifyMode::Each === $this->verify && $this->stillReported($this->rescanner->rescan(), $fix)) {
+                    $error = 'the CVEs are still reported after the attempt';
                 }
             } catch (\Throwable $e) {
                 $error = $e->getMessage();
             }
 
-            if (null === $error && null !== $report) {
+            if (null === $error && null !== $after) {
                 $log[] = sprintf('%s: ok', $attempt->kind->value);
 
-                return [new FixOutcome($fix, FixOutcomeStatus::Applied, $attempt->kind, $log), $report];
+                return [new FixOutcome($fix, FixOutcomeStatus::Applied, $attempt->kind, $log), $after];
             }
 
             $log[] = sprintf('%s: %s', $attempt->kind->value, $error);
@@ -204,39 +222,114 @@ final class FixApplier
     }
 
     /**
-     * Installed versions of the package whose major differs from the fix target.
+     * Locked versions of the package whose line differs from the fix target.
+     *
+     * @param array<string, list<string>> $locked
      *
      * @return list<string>
      */
-    private function otherMajorVersions(TrivyReport $report, PackageFix $fix): array
+    private function otherMajorVersions(array $locked, PackageFix $fix): array
     {
         $target = null === $fix->targetVersion ? null : Version::tryParse($fix->targetVersion);
         if (null === $target) {
             return [];
         }
 
-        $versions = [];
-        foreach ($report->packagesOf($fix->ecosystem) as $package) {
-            if ($package->name === $fix->packageName) {
-                $versions[$package->version] = true;
-            }
-        }
-        foreach ($report->vulnerabilities as $vulnerability) {
-            if ($vulnerability->ecosystem === $fix->ecosystem && $vulnerability->packageName === $fix->packageName) {
-                $versions[$vulnerability->installedVersion] = true;
-            }
-        }
-
         $others = [];
-        foreach (array_keys($versions) as $version) {
-            $parsed = Version::tryParse((string) $version);
+        foreach ($locked[$fix->packageName] ?? [] as $version) {
+            $parsed = Version::tryParse($version);
             if (null !== $parsed && !$parsed->isSameLineAs($target)) {
-                $others[] = (string) $version;
+                $others[] = $version;
             }
         }
-        sort($others);
 
         return $others;
+    }
+
+    /**
+     * Versions installed by the lockfile, by package; null when it cannot be read or holds no package.
+     *
+     * @return array<string, list<string>>|null
+     */
+    private function lockedVersions(string $lockfile): ?array
+    {
+        $content = @file_get_contents($lockfile);
+        if (false === $content) {
+            return null;
+        }
+
+        $versions = (new LockfileVersions())->parse($this->strategy->ecosystem(), $content);
+
+        return [] === $versions ? null : $versions;
+    }
+
+    /**
+     * @param array<string, list<string>> $locked
+     */
+    private function vulnerableReason(array $locked, PackageFix $fix): ?string
+    {
+        $remaining = $this->vulnerableVersions($locked, $fix);
+
+        return [] === $remaining
+            ? null
+            : sprintf('the lockfile still installs %s %s, below %s', $fix->packageName, implode(', ', $remaining), $fix->targetVersion);
+    }
+
+    /**
+     * @param array<string, list<string>> $locked
+     */
+    private function vulnerableInLock(array $locked, PackageFix $fix): bool
+    {
+        return [] !== $this->vulnerableVersions($locked, $fix);
+    }
+
+    /**
+     * Locked versions that the fix is meant to replace: on the line of the fixed instance (same major, same minor below
+     * 1.0), from the installed version up, and below the target. Another major of the same package is another
+     * instance, with its own fix, and an older version on the same line was not reported.
+     *
+     * @param array<string, list<string>> $locked
+     *
+     * @return list<string>
+     */
+    private function vulnerableVersions(array $locked, PackageFix $fix): array
+    {
+        $versions = $locked[$fix->packageName] ?? [];
+        $installed = Version::tryParse($fix->installedVersion);
+        $target = null === $fix->targetVersion ? null : Version::tryParse($fix->targetVersion);
+
+        // Versions that cannot be compared: the only safe check is that the reported one is gone.
+        if (null === $installed || null === $target) {
+            return \in_array($fix->installedVersion, $versions, true) ? [$fix->installedVersion] : [];
+        }
+
+        return array_values(array_filter($versions, static function (string $raw) use ($installed, $target): bool {
+            $version = Version::tryParse($raw);
+
+            return null !== $version
+                && $version->isSameLineAs($installed)
+                && $version->compare($installed) >= 0
+                && $target->isGreaterThan($version);
+        }));
+    }
+
+    /**
+     * One Trivy run for the whole plan: a fix whose CVEs are still reported is flagged for a manual check.
+     *
+     * @param list<FixOutcome> $outcomes
+     *
+     * @return list<FixOutcome>
+     */
+    private function confirmWithTrivy(array $outcomes): array
+    {
+        $report = $this->rescanner->rescan();
+
+        return array_map(
+            fn (FixOutcome $outcome): FixOutcome => FixOutcomeStatus::Applied === $outcome->status && $this->stillReported($report, $outcome->fix)
+                ? new FixOutcome($outcome->fix, $outcome->status, $outcome->strategy, $outcome->log, stillReported: true)
+                : $outcome,
+            $outcomes,
+        );
     }
 
     /**
@@ -244,7 +337,7 @@ final class FixApplier
      * (same major, same minor below 1.0). Another major of the same package may carry the same CVE (e.g. semver 5.x
      * and 7.x): it is another instance, with its own fix, and must not make this one look like a failure.
      */
-    private function stillVulnerable(TrivyReport $report, PackageFix $fix): bool
+    private function stillReported(TrivyReport $report, PackageFix $fix): bool
     {
         $installed = Version::tryParse($fix->installedVersion);
 

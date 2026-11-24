@@ -275,6 +275,9 @@ final readonly class MergeRequestRenderer
                 $messages[] = $this->t('attention.unsupported_source', ['cves' => $this->cves($fix, $fix->fixedIds)])
                     . $this->details($this->t('attention.technical_details'), $outcome->log);
             }
+            if (true === $outcome?->stillReported) {
+                $messages[] = $this->t('attention.still_reported', ['cves' => $this->cves($fix, $fix->fixedIds)]);
+            }
             if (FixOutcomeStatus::Failed === $outcome?->status) {
                 $messages[] = $this->t('attention.failed', ['cves' => $this->cves($fix, $fix->fixedIds)])
                     . $this->details($this->t('attention.technical_details'), $outcome->log);
@@ -363,7 +366,7 @@ final readonly class MergeRequestRenderer
 
     private function verification(ApplyResult $result): string
     {
-        $lines = ['- ' . $this->t('verification.rescan')];
+        $lines = ['- ' . $this->t('verification.rescan_' . $result->verify->value)];
         $lines[] = null === $result->finalCheckError
             ? '- ' . $this->t('verification.check_ok')
             : '- ' . $this->t('verification.check_failed') . "\n\n  ```text\n  " . $result->finalCheckError . "\n  ```";
