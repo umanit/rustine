@@ -19,6 +19,19 @@ final readonly class TrivyScanner
     public const INCLUDE_DEV_ARG = '--include-dev-deps';
 
     /**
+     * Arguments of the re-scans of a run that has just scanned the project itself: the vulnerability database is then
+     * fresh, and checking it again costs time at every re-scan.
+     *
+     * @param list<string> $args
+     *
+     * @return list<string>
+     */
+    public static function forRescan(array $args): array
+    {
+        return \in_array('--skip-db-update', $args, true) ? $args : [...$args, '--skip-db-update'];
+    }
+
+    /**
      * Extra Trivy arguments for the scan and the re-scans, with the development dependencies when asked: both must
      * agree, otherwise a fix of a development dependency would be "confirmed" by a re-scan that does not see it.
      *

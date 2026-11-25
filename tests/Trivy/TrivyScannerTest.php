@@ -45,6 +45,13 @@ final class TrivyScannerTest extends TestCase
     }
 
     #[Test]
+    public function theRescansOfARunSkipTheDatabaseUpdate(): void
+    {
+        self::assertSame(['--severity=HIGH', '--skip-db-update'], TrivyScanner::forRescan(['--severity=HIGH']));
+        self::assertSame(['--skip-db-update'], TrivyScanner::forRescan(['--skip-db-update']), 'Never twice.');
+    }
+
+    #[Test]
     public function itWritesTheReportProducedByTrivy(): void
     {
         $output = $this->dir . '/report.json';

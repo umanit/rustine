@@ -215,7 +215,7 @@ final class RunCommand
         $synchronizer = new MergeRequestSynchronizer(
             $client,
             new BranchPublisher(new Git($runner, $projectDir, new GitAccess($config->token)), $config->defaultBranch, $identity, $remote),
-            new ProjectPlanApplier($runner, $projectDir, $trivyBin, $trivyArg, $composerCommand, $yarnCommand, $nodeCommand, $verifyMode),
+            new ProjectPlanApplier($runner, $projectDir, $trivyBin, TrivyScanner::forRescan($trivyArg), $composerCommand, $yarnCommand, $nodeCommand, $verifyMode),
             new MergeRequestRenderer($translator, Application::VERSION),
             new NoteRenderer($translator),
             new SyncSettings($config->defaultBranch, [] === $label ? ['security'] : $label, $severityLabelFormat, $assignee, $reviewer, $maxOpenMergeRequests),
