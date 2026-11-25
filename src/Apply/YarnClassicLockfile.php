@@ -18,6 +18,11 @@ final class YarnClassicLockfile
 {
     public function withoutPackage(string $content, string $package): string
     {
+        // A lockfile checked out with CRLF line endings: edit it as LF, then give the endings back.
+        if (str_contains($content, "\r\n")) {
+            return str_replace("\n", "\r\n", $this->withoutPackage(str_replace("\r\n", "\n", $content), $package));
+        }
+
         $kept = [];
         foreach (explode("\n\n", $content) as $block) {
             if (!$this->isBlockOf($block, $package)) {

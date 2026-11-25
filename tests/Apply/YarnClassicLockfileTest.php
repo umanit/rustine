@@ -50,6 +50,18 @@ final class YarnClassicLockfileTest extends TestCase
     }
 
     #[Test]
+    public function aLockfileWithCrlfLineEndingsIsEditedAndKeepsThem(): void
+    {
+        $crlf = str_replace("\n", "\r\n", self::LOCK);
+
+        $result = (new YarnClassicLockfile())->withoutPackage($crlf, 'braces');
+
+        self::assertSame(str_replace("\n", "\r\n", (new YarnClassicLockfile())->withoutPackage(self::LOCK, 'braces')), $result);
+        self::assertStringNotContainsString('version "3.0.2"', $result);
+        self::assertStringNotContainsString("\n\n", str_replace("\r\n", '', $result));
+    }
+
+    #[Test]
     public function itKeepsScopedPackagesWithTheSameBaseName(): void
     {
         $result = (new YarnClassicLockfile())->withoutPackage(self::LOCK, 'braces');
