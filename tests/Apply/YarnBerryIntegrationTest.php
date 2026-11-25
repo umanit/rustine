@@ -111,8 +111,11 @@ final class YarnBerryIntegrationTest extends TestCase
     {
         $home = $this->root . '/home';
 
-        return new class($home) implements CommandRunner {
-            public function __construct(private readonly string $home)
+        // The sandboxed HOME hides the Yarn activated through Corepack (kept in its cache): point back to the real one.
+        $corepackHome = getenv('COREPACK_HOME') ?: (getenv('XDG_CACHE_HOME') ?: (string) getenv('HOME') . '/.cache') . '/node/corepack';
+
+        return new class($home, $corepackHome) implements CommandRunner {
+            public function __construct(private readonly string $home, private readonly string $corepackHome)
             {
             }
 
@@ -121,6 +124,7 @@ final class YarnBerryIntegrationTest extends TestCase
                 return (new ProcessCommandRunner(120.0))->run($command, $cwd, [
                     ...$env,
                     'HOME' => $this->home,
+                    'COREPACK_HOME' => $this->corepackHome,
                     'YARN_GLOBAL_FOLDER' => $this->home . '/yarn',
                     'YARN_ENABLE_TELEMETRY' => '0',
                     'YARN_ENABLE_GLOBAL_CACHE' => '0',
