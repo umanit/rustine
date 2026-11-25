@@ -19,10 +19,37 @@ final class GitAccessTest extends TestCase
     #[Test]
     public function theTokenTravelsInTheEnvironmentAsABasicAuthHeader(): void
     {
-        $env = (new GitAccess(self::TOKEN))->environment();
+        $env = (new GitAccess(self::TOKEN, inheritedConfigCount: 0))->environment();
 
         self::assertSame('http.extraHeader', $env['GIT_CONFIG_KEY_0']);
         self::assertSame('Authorization: Basic ' . base64_encode('oauth2:' . self::TOKEN), $env['GIT_CONFIG_VALUE_0']);
+        self::assertSame('1', $env['GIT_CONFIG_COUNT']);
+    }
+
+    #[Test]
+    public function theHeaderIsAddedAfterTheConfigurationTheRunnerAlreadyInjects(): void
+    {
+        $env = (new GitAccess(self::TOKEN, inheritedConfigCount: 2))->environment();
+
+        self::assertSame('3', $env['GIT_CONFIG_COUNT']);
+        self::assertSame('http.extraHeader', $env['GIT_CONFIG_KEY_2']);
+        self::assertArrayNotHasKey('GIT_CONFIG_KEY_0', $env, 'the inherited pairs are left alone');
+        self::assertArrayNotHasKey('GIT_CONFIG_KEY_1', $env);
+    }
+
+    #[Test]
+    public function theInheritedCountIsReadFromTheEnvironment(): void
+    {
+        $previous = getenv('GIT_CONFIG_COUNT');
+        putenv('GIT_CONFIG_COUNT=1');
+        try {
+            $env = (new GitAccess(self::TOKEN))->environment();
+        } finally {
+            false === $previous ? putenv('GIT_CONFIG_COUNT') : putenv('GIT_CONFIG_COUNT=' . $previous);
+        }
+
+        self::assertSame('2', $env['GIT_CONFIG_COUNT']);
+        self::assertArrayHasKey('GIT_CONFIG_VALUE_1', $env);
     }
 
     #[Test]
