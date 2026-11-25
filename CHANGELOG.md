@@ -7,8 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-25
+
 ### Added
 
+- `--closed-grace-days` (default 30, `0` to disable): a merge request that someone closed by hand is not opened again
+  while the new run would propose the very same fixes (same fingerprint) and the closing is more recent than that. The
+  merge requests that Rustine closes itself (nothing fixable anymore) carry a marker in their note and do not count.
+  Different fixes open a new merge request. The run reports it as skipped, without a manual action.
+- `--verify` (`RUSTINE_VERIFY`): when Trivy re-checks the fixes. `final` (default) runs it once, after every package has
+  been handled; `each` runs it after each fix; `none` relies on the lockfile only.
 - `--include-dev` (or `RUSTINE_INCLUDE_DEV=1`) on `scan`, `run` and `apply` also scans the development dependencies, which
   stay out by default. The same flag is given to the scan and to the re-scans.
 - The merge request description lists the packages whose version changed in the lockfile, before and after, with the
@@ -19,6 +27,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Every attempt is checked by reading the lockfile back, and Trivy runs **once** at the end to confirm the result
+  (`--verify=final`), instead of a full scan after each attempt of each package. A fix whose CVEs Trivy still reports is
+  flagged for a manual check.
+- `composer require` raises a constraint in the style the project wrote it instead of replacing it with a caret:
+  `6.4.*` becomes `6.5.*`, `~6.3.0` becomes `~6.5.0`, an exact version stays exact, `^` stays `^`. A constraint it cannot
+  read (`||`, ranges) still becomes `^x.y.z`.
+- `package.json` is edited in place: the rest of the file (inline arrays such as `files` or `browserslist`, spacing, key
+  order, line endings) stays byte for byte as it was, so the diff only shows the changed range or `resolutions` entry.
+  A layout it does not handle (an object on a single line) falls back to re-encoding the JSON.
+- On a shallow clone, the branch of a merge request is fetched with `--shallow-exclude=<default branch>`: only its own
+  commits are downloaded to check who made them, instead of the whole history. `--unshallow` remains the fallback for a
+  server that cannot do it.
 - The re-scans of `run` skip the Trivy database update (`--skip-db-update`): the scan that starts the run has just
   refreshed it. `apply` does not, as its report may come from elsewhere.
 - With Yarn Berry 4+, the attempts run with `--mode=update-lockfile` (no link step, `node_modules` untouched until the
@@ -42,6 +62,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The GitLab credentials and other secrets that a tool prints (registry URLs with `user:password@`, `Bearer` and `Basic`
+  values, npm `_authToken` lines) are masked in the end of tool output that is quoted in a merge request.
+- A Yarn Classic `yarn.lock` with CRLF line endings is edited correctly (it was split on LF blank lines, so no entry was
+  ever pruned) and keeps its line endings.
+- The git authentication header is added after the `GIT_CONFIG_*` pairs that the runner may already set (proxy, CA bundle,
+  `safe.directory`…) instead of overwriting them with `GIT_CONFIG_COUNT=1`.
 - A Yarn project whose `package.json` points to a local source that does not exist (`file:`, `link:`, `portal:`, e.g.
   `file:vendor/symfony/ux-live-component/assets` before `composer install`) is refused up front with an explicit error.
   Before, every package failed on a truncated Yarn error, one after the other.
@@ -71,8 +97,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Trivy.
 - `run` fails when the `--report-file` cannot be written, instead of ignoring it.
 
+### Tests
+
+- The real Composer, Yarn Berry 4 and Yarn Classic 1 run against local packages (an inline `package` repository, a
+  registry served by PHP's built-in server) in a real git repository, without network; only Trivy stays faked. They are
+  skipped when the tool is missing, and the CI runs them.
+
 ### Documentation
 
+- A merge request closed by hand, the gap between the scanned checkout and the tip of the default branch, and the
+  `.trivyignore` file to silence a CVE for good are described in the README.
 - The token: removing it from the environment of the child processes prevents leaks, not a malicious program (a process
   can read the environment of its parent). The README lists what code runs during a fix, and compares a project token with
   a group token.
@@ -104,5 +138,6 @@ First release.
 - Merge request titles, descriptions, notes and commit messages in English and French (`--locale` or `RUSTINE_LOCALE`).
 - A single executable PHAR, built and published with its SHA-256 by the GitHub release workflow.
 
-[Unreleased]: https://github.com/umanit/rustine/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/umanit/rustine/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/umanit/rustine/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/umanit/rustine/releases/tag/v0.1.0
