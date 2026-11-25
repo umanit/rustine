@@ -40,14 +40,14 @@ and through the exit code.
 
 ### One merge request per ecosystem, optionally split by severity group
 
-| Run                          | Branch                                    | Content                        |
-|------------------------------|-------------------------------------------|--------------------------------|
-| without `--group`            | `security/rustine-composer`               | Composer, every severity       |
-|                              | `security/rustine-yarn`                   | Yarn, every severity           |
-| `--group=critical-high`      | `security/rustine-composer-critical-high` | Composer, CRITICAL and HIGH    |
-|                              | `security/rustine-yarn-critical-high`     | Yarn, CRITICAL and HIGH        |
-| `--group=others`             | `security/rustine-composer-others`        | Composer, MEDIUM, LOW, UNKNOWN |
-|                              | `security/rustine-yarn-others`            | Yarn, MEDIUM, LOW, UNKNOWN     |
+| Run                     | Branch                                    | Content                        |
+|-------------------------|-------------------------------------------|--------------------------------|
+| without `--group`       | `security/rustine-composer`               | Composer, every severity       |
+|                         | `security/rustine-yarn`                   | Yarn, every severity           |
+| `--group=critical-high` | `security/rustine-composer-critical-high` | Composer, CRITICAL and HIGH    |
+|                         | `security/rustine-yarn-critical-high`     | Yarn, CRITICAL and HIGH        |
+| `--group=others`        | `security/rustine-composer-others`        | Composer, MEDIUM, LOW, UNKNOWN |
+|                         | `security/rustine-yarn-others`            | Yarn, MEDIUM, LOW, UNKNOWN     |
 
 Without `--group`, everything goes in **one** merge request per ecosystem. With `--group` (repeatable), each group is
 its own merge request. A package belongs to the group of the highest severity among *all* its vulnerable instances.
@@ -76,16 +76,17 @@ The branch is rebuilt from the default branch whenever it has to be pushed, so i
 "Same fixes" means the fingerprint written in the description of the merge request (packages, versions, strategies) is
 the one of the new run; a merge request with conflicts is rebuilt anyway. A merge request that someone closed by hand is
 not opened again as long as the new run would propose the very same fixes (same fingerprint) and the closing is less
-than `--closed-grace-days` days old (30 by default, `0` to always open a new one). Different fixes, or a later date, open
+than `--closed-grace-days` days old (30 by default, `0` to always open a new one). Different fixes, or a later date,
+open
 a new merge request. The merge requests that Rustine closes itself (nothing fixable anymore) do not count: they carry
 its note. To silence a CVE for good, put it in a `.trivyignore` file and pass `--trivy-arg=--ignorefile=.trivyignore`.
 
 ### Fix strategies
 
-| Ecosystem    | Attempts, in order                                                                                                                         |
-|--------------|--------------------------------------------------------------------------------------------------------------------------------------------|
-| Yarn Berry   | `yarn up -R <pkg>` (refresh within existing ranges) → direct range bump (`yarn up <pkg>@^x`) or `resolutions` (see below)                  |
-| Yarn Classic | prune the `<pkg>` entries of `yarn.lock` and `yarn install` → direct range bump in `package.json` or `resolutions["**/<pkg>"]`             |
+| Ecosystem    | Attempts, in order                                                                                                                                                                                                                                                                 |
+|--------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Yarn Berry   | `yarn up -R <pkg>` (refresh within existing ranges) → direct range bump (`yarn up <pkg>@^x`) or `resolutions` (see below)                                                                                                                                                          |
+| Yarn Classic | prune the `<pkg>` entries of `yarn.lock` and `yarn install` → direct range bump in `package.json` or `resolutions["**/<pkg>"]`                                                                                                                                                     |
 | Composer     | `composer update <pkg> -W` → `composer require <pkg>:<constraint> -W` (the constraint keeps the style of the existing one: `6.4.*` → `6.5.*`, `~6.3.0` → `~6.5.0`, exact stays exact, `^` stays `^`; `--dev` for `require-dev`); on failure `composer why-not` is added to the log |
 
 The description of the merge request lists what actually changed in the lockfile (versions before and after), the
@@ -229,10 +230,10 @@ Options take precedence over the variables GitLab CI provides.
 
 | Option                       | Variable                                 | Default / meaning                                                                                                                                                                                      |
 |------------------------------|------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `--group`                    |                                          | `critical-high` or `others` (repeatable; `run`: default every group in one merge request per ecosystem; `apply`: exactly one) |
+| `--group`                    |                                          | `critical-high` or `others` (repeatable; `run`: default every group in one merge request per ecosystem; `apply`: exactly one)                                                                          |
 | `--ecosystem`                |                                          | `yarn` or `composer` (default: both)                                                                                                                                                                   |
 | `--project`                  |                                          | Project directory (default `.`)                                                                                                                                                                        |
-| `--gitlab-url`               | `CI_API_V4_URL`                          | GitLab API root, or the address of the instance (`/api/v4` is added when missing)                                                                                                                                                                                        |
+| `--gitlab-url`               | `CI_API_V4_URL`                          | GitLab API root, or the address of the instance (`/api/v4` is added when missing)                                                                                                                      |
 | `--project-id`               | `CI_PROJECT_ID`                          | Project id or path                                                                                                                                                                                     |
 | `--default-branch`           | `CI_DEFAULT_BRANCH`                      | Branch the fixes start from and the merge requests target                                                                                                                                              |
 | *(no option, on purpose)*    | `RUSTINE_GITLAB_TOKEN` or `GITLAB_TOKEN` | Access token                                                                                                                                                                                           |
@@ -240,9 +241,9 @@ Options take precedence over the variables GitLab CI provides.
 | `--label`                    |                                          | Label of every merge request (repeatable, default `security`)                                                                                                                                          |
 | `--severity-label-format`    |                                          | Default `severity::{severity}` → `severity::high`                                                                                                                                                      |
 | `--assignee`, `--reviewer`   |                                          | Usernames, applied when a merge request is **created**                                                                                                                                                 |
-| `--notify`                   |                                          | Usernames or groups (repeatable) mentioned (`@name`) in the description, to notify them, without assigning the merge request |
+| `--notify`                   |                                          | Usernames or groups (repeatable) mentioned (`@name`) in the description, to notify them, without assigning the merge request                                                                           |
 | `--max-open-merge-requests`  |                                          | Stops opening new merge requests above this number                                                                                                                                                     |
-| `--closed-grace-days`        | `30`                                     | Does not open again a merge request closed by hand for the same fixes less than this many days ago (`0` = always open)                                                                                 |
+| `--closed-grace-days`        |                                          | Does not open again a merge request closed by hand for the same fixes less than this many days ago (default `30`, `0` = always open)                                                                   |
 | `--git-author-name/-email`   |                                          | Default: the token owner (commit email, else its GitLab private commit email `<id>-<user>@users.noreply.<host>`)                                                                                       |
 | `--remote`                   |                                          | Git remote (default `origin`)                                                                                                                                                                          |
 | `--report-file`              |                                          | Markdown report: status and description of each group                                                                                                                                                  |
@@ -300,11 +301,11 @@ to create and renew per project. Prefer project tokens for the sensitive project
 
 Rustine runs the tools of the project, and so the code they load. Know what that is before giving it a token:
 
-| Tool | Code of the project that runs |
-|------|-------------------------------|
-| Yarn | Lifecycle scripts are disabled, but the plugins listed in `.yarnrc.yml` are loaded (they are committed in `.yarn/plugins/`) |
+| Tool     | Code of the project that runs                                                                                                                                                                                                           |
+|----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Yarn     | Lifecycle scripts are disabled, but the plugins listed in `.yarnrc.yml` are loaded (they are committed in `.yarn/plugins/`)                                                                                                             |
 | Composer | Scripts and plugins are disabled. For a project that sets `extra.symfony.require`, plugins are enabled to let Symfony Flex work: a Flex installed globally is the only plugin loaded, a `vendor/` also loads the plugins of the project |
-| Trivy | None: it only reads the lockfiles |
+| Trivy    | None: it only reads the lockfiles                                                                                                                                                                                                       |
 
 The code comes from the default branch (the job runs there), so it is code that has already been merged, and the
 plugins it can load are the ones the project already trusts in its own CI. The difference with the other jobs
@@ -382,7 +383,8 @@ make full_static_analyze   # PHP_CodeSniffer + Rector + PHPStan (max level) + PH
 ```
 
 Tests use real temporary git repositories and a local bare remote, `MockHttpClient` for GitLab and a fake Trivy: no
-network, no real Yarn or Composer run. See [`AGENTS.md`](AGENTS.md) for the conventions and the architecture.
+network. The integration tests run the real Composer, Yarn (Berry and Classic) and git, and are skipped when a tool is
+missing. See [`AGENTS.md`](AGENTS.md) for the conventions and the architecture.
 
 ## License
 
