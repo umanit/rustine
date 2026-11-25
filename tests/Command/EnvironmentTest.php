@@ -7,6 +7,7 @@ namespace Rustine\Tests\Command;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Rustine\Command\Environment;
+use Rustine\Command\InvalidOptionException;
 
 final class EnvironmentTest extends TestCase
 {
@@ -57,5 +58,59 @@ final class EnvironmentTest extends TestCase
 
         $this->assertSame('default', Environment::string('', self::VARIABLE, 'default'));
         $this->assertSame('default', Environment::string(null, 'RUSTINE_TEST_UNSET_VARIABLE', 'default'));
+    }
+
+    #[Test]
+    public function aListComesFromItsOptionThenFromTheCommaSeparatedVariable(): void
+    {
+        $this->assertSame(['a'], Environment::list(['a'], self::VARIABLE));
+        $this->assertSame([], Environment::list([], 'RUSTINE_TEST_UNSET_VARIABLE'));
+
+        putenv(self::VARIABLE . '=alice, bob ,,carol');
+        $this->assertSame(['alice', 'bob', 'carol'], Environment::list([], self::VARIABLE));
+        $this->assertSame(['x'], Environment::list(['x'], self::VARIABLE));
+    }
+
+    #[Test]
+    public function aListCanBeSplitOnAnotherSeparator(): void
+    {
+        putenv(self::VARIABLE . '=--severity=HIGH,CRITICAL   --skip-db-update');
+
+        $this->assertSame(
+            ['--severity=HIGH,CRITICAL', '--skip-db-update'],
+            Environment::list([], self::VARIABLE, '\s+'),
+        );
+    }
+
+    #[Test]
+    public function anOptionalStringIsNullWhenNothingIsSet(): void
+    {
+        $this->assertNull(Environment::optionalString(null, 'RUSTINE_TEST_UNSET_VARIABLE'));
+        $this->assertSame('opt', Environment::optionalString('opt', self::VARIABLE));
+
+        putenv(self::VARIABLE . '=from-env');
+        $this->assertSame('from-env', Environment::optionalString(null, self::VARIABLE));
+    }
+
+    #[Test]
+    public function anIntegerComesFromItsOptionThenItsVariableThenItsDefault(): void
+    {
+        $this->assertSame(5, Environment::int(5, self::VARIABLE, 30));
+        $this->assertSame(30, Environment::int(null, 'RUSTINE_TEST_UNSET_VARIABLE', 30));
+        $this->assertNull(Environment::int(null, 'RUSTINE_TEST_UNSET_VARIABLE', null));
+
+        putenv(self::VARIABLE . '=0');
+        $this->assertSame(0, Environment::int(null, self::VARIABLE, 30));
+    }
+
+    #[Test]
+    public function anIntegerVariableMustBeANonNegativeInteger(): void
+    {
+        putenv(self::VARIABLE . '=soon');
+
+        $this->expectException(InvalidOptionException::class);
+        $this->expectExceptionMessage(self::VARIABLE);
+
+        Environment::int(null, self::VARIABLE, 30);
     }
 }
