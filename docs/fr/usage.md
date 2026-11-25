@@ -141,9 +141,9 @@ le token : garder la planification sur la branche par défaut, et une variable p
 
 ## Exemple de job
 
-Un template partagé est prévu ; en attendant, un job minimal ressemble à ceci. Préparer les outils est le travail de la
-CI, pas de Rustine : ici `mise` installe les versions du projet avant le démarrage de Rustine (une image qui les
-embarque déjà fonctionne aussi).
+Rustine ne fournit pas de template CI ; un job minimal ressemble à ceci, à adapter à votre propre CI. Préparer les
+outils est le travail de la CI, pas de Rustine : ici `mise` installe les versions du projet avant le démarrage de
+Rustine (une image qui les embarque déjà fonctionne aussi).
 
 ```yaml
 security-bot:critical-high:

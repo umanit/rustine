@@ -318,9 +318,9 @@ is the token: keep the schedule on the default branch, and a protected variable.
 
 ### Example job
 
-A shared template is planned; in the meantime, a minimal job looks like this. Preparing the tools is the job of the CI,
-not of Rustine: here `mise` installs the versions of the project before Rustine starts (an image that already ships
-them works as well).
+Rustine does not ship a CI template; a minimal job looks like this, to adapt to your own CI. Preparing the tools is the
+job of the CI, not of Rustine: here `mise` installs the versions of the project before Rustine starts (an image that
+already ships them works as well).
 
 ```yaml
 security-bot:critical-high:

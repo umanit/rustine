@@ -4,7 +4,8 @@ Rustine is a PHP CLI that opens GitLab merge requests fixing **only** the Compos
 affected by a CVE reported by Trivy. Commands: `scan` (runs Trivy), `plan` (shows the planned fixes, grouped by MR),
 `apply` (Yarn Berry/Classic and Composer: applies the fixes to the working tree, no commit/push) and `run` (the CI entry
 point: scan → plan → apply → commit → push → merge request; `--dry-run` only previews the texts from a report).
-The CI template is not written yet; the PHAR is built by `make phar`.
+This repository does not publish a CI template: the README only gives an example job, and each user adapts it to
+their own CI. The PHAR is built by `make phar`.
 
 ## Environment
 
@@ -39,19 +40,19 @@ considered done. IDE (PHPStorm) warnings are informational only.
 
 ## Architecture (`src/`, namespace `Rustine\`)
 
-| Directory  | Role                                                                                                                                                 |
-|------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `Command/` | Console commands (invokable, `#[AsCommand]` / `#[Option]` attributes)                                                                                |
-| `Trivy/`   | Running Trivy and parsing its JSON report into objects (`TrivyReport`, …)                                                                            |
-| `Version/` | Selecting the smallest fixed version (same major preferred)                                                                                          |
-| `Plan/`    | Planning: grouping fixes by ecosystem and severity group                                                                                             |
-| `Apply/`   | Applying fixes: strategies, tool checks (nothing installed), git guard-rails, lockfile check per attempt, one final re-scan                          |
-| `Git/`     | Branch of one MR: inspect the remote, restart from the default branch, commit the allowed files, lease-guarded push; token kept out of argv and logs |
-| `GitLab/`  | REST v4 client (`GitLabClient` + `HttpGitLabClient`), `GitLabConfig` (options, then CI variables; token from env only)                               |
-| `Sync/`    | `MergeRequestSynchronizer` (one plan: branch + MR state machine), `NoteRenderer`, `SyncSettings`, `RunSummary` (report + exit code)                  |
-| `Report/`  | Title, description and commit message of a merge request (localized)                                                                                 |
+| Directory   | Role                                                                                                                                                 |
+|-------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Command/`  | Console commands (invokable, `#[AsCommand]` / `#[Option]` attributes)                                                                                |
+| `Trivy/`    | Running Trivy and parsing its JSON report into objects (`TrivyReport`, …)                                                                            |
+| `Version/`  | Selecting the smallest fixed version (same major preferred)                                                                                          |
+| `Plan/`     | Planning: grouping fixes by ecosystem and severity group                                                                                             |
+| `Apply/`    | Applying fixes: strategies, tool checks (nothing installed), git guard-rails, lockfile check per attempt, one final re-scan                          |
+| `Git/`      | Branch of one MR: inspect the remote, restart from the default branch, commit the allowed files, lease-guarded push; token kept out of argv and logs |
+| `GitLab/`   | REST v4 client (`GitLabClient` + `HttpGitLabClient`), `GitLabConfig` (options, then CI variables; token from env only)                               |
+| `Sync/`     | `MergeRequestSynchronizer` (one plan: branch + MR state machine), `NoteRenderer`, `SyncSettings`, `RunSummary` (report + exit code)                  |
+| `Report/`   | Title, description and commit message of a merge request (localized)                                                                                 |
 | `Progress/` | `Progress` (one line per step of a run, shown with `-v`), `ConsoleProgress`, `NullProgress`                                                          |
-| `I18n/`    | `TranslatorFactory` (symfony/translation); catalogs in `resources/translations/`                                                                     |
+| `I18n/`     | `TranslatorFactory` (symfony/translation); catalogs in `resources/translations/`                                                                     |
 
 Commands are registered in `src/Application.php`. Code must work inside the PHAR: no `glob()` (it does not support
 `phar://`), no path computed outside `__DIR__`-relative resources; `resources/` is embedded. `tests/` mirrors the
