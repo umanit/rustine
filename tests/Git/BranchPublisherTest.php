@@ -168,6 +168,27 @@ final class BranchPublisherTest extends TestCase
     }
 
     #[Test]
+    public function aShallowCloneIsNotFullyDownloadedToCheckTheOwner(): void
+    {
+        $this->publishOnce("lock v2\n");
+        $other = $this->sandbox->otherClone();
+        foreach (['one', 'two', 'three'] as $name) {
+            file_put_contents($other . '/' . $name . '.txt', $name);
+            $this->sandbox->exec(['git', 'add', '.'], $other);
+            $this->sandbox->exec(['git', 'commit', '--quiet', '-m', 'feat: ' . $name], $other);
+        }
+        $this->sandbox->exec(['git', 'push', '--quiet', 'origin', 'HEAD:main'], $other);
+        $shallow = $this->sandbox->root . '/shallow-bounded';
+        $this->sandbox->exec(['git', 'clone', '--quiet', '--depth=1', '--no-single-branch', 'file://' . $this->sandbox->remote, $shallow], $this->sandbox->root);
+        $git = $this->sandbox->git($shallow);
+
+        $remote = (new BranchPublisher($git, 'main', new GitIdentity('Rustine Bot', 'bot@example.com')))->inspect(self::BRANCH);
+
+        self::assertSame(RemoteBranchState::Rustine, $remote->state);
+        self::assertSame('true', trim($git->run(['rev-parse', '--is-shallow-repository'])), 'the history was not downloaded in full');
+    }
+
+    #[Test]
     public function nothingIsCommittedWhenTheFixesChangedNothing(): void
     {
         $publisher = $this->publisher();

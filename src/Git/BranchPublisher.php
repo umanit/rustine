@@ -50,16 +50,33 @@ final class BranchPublisher
             return new RemoteBranch(RemoteBranchState::Absent);
         }
 
-        // The ownership check walks the commits between the default branch and the Rustine branch: a shallow clone
-        // would make it list unrelated history.
-        if ('true' === trim($this->git->run(['rev-parse', '--is-shallow-repository']))) {
-            $this->git->run(['fetch', '--no-tags', '--unshallow', $this->remote], true);
-        }
-        $this->git->run(['fetch', '--no-tags', $this->remote, $this->refspec($branch)], true);
+        $this->fetchBranch($branch);
 
         $sha = trim($this->git->run(['rev-parse', $this->remoteRef($branch)]));
 
         return new RemoteBranch($this->onlyRustineCommits($branch) ? RemoteBranchState::Rustine : RemoteBranchState::Foreign, $sha);
+    }
+
+    /**
+     * The ownership check walks the commits between the default branch and the Rustine branch: a shallow clone would
+     * make it list unrelated history. Instead of fetching the whole history (long on a big repository), the history of
+     * the branch is deepened only down to the commits the default branch already has, which is exactly the range that
+     * is checked. A server that cannot do that gets the whole history, as a last resort.
+     *
+     * @throws GitException
+     */
+    private function fetchBranch(string $branch): void
+    {
+        if ('true' === trim($this->git->run(['rev-parse', '--is-shallow-repository']))) {
+            $bounded = $this->git->attempt(['fetch', '--no-tags', '--shallow-exclude=refs/heads/' . $this->defaultBranch, $this->remote, $this->refspec($branch)], true);
+            if ($bounded->isSuccessful()) {
+                return;
+            }
+
+            $this->git->run(['fetch', '--no-tags', '--unshallow', $this->remote], true);
+        }
+
+        $this->git->run(['fetch', '--no-tags', $this->remote, $this->refspec($branch)], true);
     }
 
     /**
