@@ -111,7 +111,7 @@ PHP,
 if (null !== $version) {
     $file = $stage . '/src/Application.php';
     $patched = preg_replace(
-        "/(public const VERSION = ')[^']*(';)/",
+        "/(public const (?:string )?VERSION = ')[^']*(';)/",
         '${1}' . $version . '${2}',
         (string) file_get_contents($file),
         1,
