@@ -20,6 +20,7 @@ use Rustine\Plan\SeverityGroup;
 use Rustine\Trivy\Ecosystem;
 use Rustine\Trivy\InvalidTrivyReportException;
 use Rustine\Trivy\TrivyReportParser;
+use Rustine\Trivy\TrivyScanner;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
@@ -46,6 +47,8 @@ final class ApplyCommand
         string $trivyBin = 'trivy',
         #[Option(description: 'Extra Trivy argument for the re-scans (repeatable)')]
         array $trivyArg = [],
+        #[Option(description: 'Also check the development dependencies in the re-scans: pass it when the report was made with it; default: $RUSTINE_INCLUDE_DEV, then no')]
+        bool $includeDev = false,
         #[Option(description: 'Command that runs Composer, e.g. "/usr/bin/php8.1 /usr/local/bin/composer2" (default: $RUSTINE_COMPOSER_BIN, then composer)')]
         ?string $composerBin = null,
         #[Option(description: 'Command that runs Yarn, e.g. "/opt/yarn/bin/yarn" (default: $RUSTINE_YARN_BIN, then yarn)')]
@@ -131,7 +134,7 @@ final class ApplyCommand
 
             return Command::INVALID;
         }
-        $planApplier = new ProjectPlanApplier($runner, $projectDir, $trivyBin, $trivyArg, $composerCommand, $yarnCommand, $nodeCommand, $verifyMode);
+        $planApplier = new ProjectPlanApplier($runner, $projectDir, $trivyBin, TrivyScanner::withDevDependencies($trivyArg, Environment::flag($includeDev, 'RUSTINE_INCLUDE_DEV')), $composerCommand, $yarnCommand, $nodeCommand, $verifyMode);
 
         try {
             $strategy = $planApplier->strategy($plan->ecosystem);

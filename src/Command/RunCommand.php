@@ -75,6 +75,8 @@ final class RunCommand
         string $trivyBin = 'trivy',
         #[Option(description: 'Extra Trivy argument for the scan and the re-scans (repeatable)')]
         array $trivyArg = [],
+        #[Option(description: 'Also scan the development dependencies (require-dev, devDependencies); default: $RUSTINE_INCLUDE_DEV, then no')]
+        bool $includeDev = false,
         #[Option(description: 'When Trivy confirms the fixes: each (after every attempt, slow), final (once at the end) or none (the lockfile alone decides); default: $RUSTINE_VERIFY, then final')]
         ?string $verify = null,
         #[Option(description: 'Command that runs Composer, e.g. "/usr/bin/php8.1 /usr/local/bin/composer2" (default: $RUSTINE_COMPOSER_BIN, then composer)')]
@@ -131,6 +133,7 @@ final class RunCommand
             return Command::FAILURE;
         }
 
+        $trivyArg = TrivyScanner::withDevDependencies($trivyArg, Environment::flag($includeDev, 'RUSTINE_INCLUDE_DEV'));
         $verify = Environment::string($verify, 'RUSTINE_VERIFY', VerifyMode::Final->value);
         $verifyMode = VerifyMode::tryFrom($verify);
         if (null === $verifyMode) {

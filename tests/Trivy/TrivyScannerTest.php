@@ -36,6 +36,15 @@ final class TrivyScannerTest extends TestCase
     }
 
     #[Test]
+    public function developmentDependenciesAreOnlyScannedWhenAsked(): void
+    {
+        self::assertSame(['--skip-db-update'], TrivyScanner::withDevDependencies(['--skip-db-update'], false));
+        self::assertSame(['--skip-db-update', '--include-dev-deps'], TrivyScanner::withDevDependencies(['--skip-db-update'], true));
+        self::assertSame(['--include-dev-deps'], TrivyScanner::withDevDependencies(['--include-dev-deps'], true), 'Never twice.');
+        self::assertNotContains('--include-dev-deps', (new TrivyScanner())->buildCommand('/tmp/out.json'), 'Opt-in: not by default.');
+    }
+
+    #[Test]
     public function itWritesTheReportProducedByTrivy(): void
     {
         $output = $this->dir . '/report.json';

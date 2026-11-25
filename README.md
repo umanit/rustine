@@ -204,7 +204,7 @@ Options take precedence over the variables GitLab CI provides.
 | `--severity-label-format`    |                                          | Default `severity::{severity}` → `severity::high`                                                                                                                                                      |
 | `--assignee`, `--reviewer`   |                                          | Usernames, applied when a merge request is **created**                                                                                                                                                 |
 | `--max-open-merge-requests`  |                                          | Stops opening new merge requests above this number                                                                                                                                                     |
-| `--git-author-name/-email`   |                                          | Default: the token owner (commit email, else its GitLab private commit email `<id>-<user>@users.noreply.<host>`)                                                                                                                                      |
+| `--git-author-name/-email`   |                                          | Default: the token owner (commit email, else its GitLab private commit email `<id>-<user>@users.noreply.<host>`)                                                                                       |
 | `--remote`                   |                                          | Git remote (default `origin`)                                                                                                                                                                          |
 | `--report-file`              |                                          | Markdown report: status and description of each group                                                                                                                                                  |
 | `--report`                   |                                          | Trivy report: written by a real run, read by `--dry-run`                                                                                                                                               |
@@ -212,10 +212,23 @@ Options take precedence over the variables GitLab CI provides.
 | `--yarn-bin`                 | `RUSTINE_YARN_BIN`                       | Command that runs Yarn (default `yarn`), e.g. `/opt/yarn/bin/yarn`; words separated by spaces, no quoting                                                                                              |
 | `--node-bin`                 | `RUSTINE_NODE_BIN`                       | Command that runs Node (default `node`); given by path, its directory goes first on the `PATH` of Yarn                                                                                                 |
 | `--verify`                   | `RUSTINE_VERIFY`                         | When Trivy confirms the fixes: `final` (default, once when every package is handled), `each` (after every attempt the lockfile accepts: slow, the most certain) or `none` (the lockfile alone decides) |
+| `--include-dev`              | `RUSTINE_INCLUDE_DEV`                    | Also scan the development dependencies (`require-dev`, `devDependencies`): see below. Off by default                                                                                                   |
 | `--trivy-bin`, `--trivy-arg` |                                          | Trivy binary and extra arguments (repeatable), e.g. `--trivy-arg=--ignorefile=.trivyignore`                                                                                                            |
 
 Labels are never translated (filters, boards and the open-merge-request limit depend on their names), nor are branch
 names, CVE identifiers, versions or commands.
+
+### Development dependencies
+
+Trivy leaves the development dependencies out by default, and so does Rustine: a vulnerable `require-dev` package gets
+no merge request. `--include-dev` (or `RUSTINE_INCLUDE_DEV=1`) is an opt-in that adds `--include-dev-deps` to every
+Trivy run, the scan and the re-scans alike. Those packages are then fixed like any other (a `require-dev` constraint is
+raised with `composer require --dev`) and listed in the same merge request. It is accepted by `scan`, `run` and `apply`:
+give it to `apply` as well when its report was made with it, otherwise the re-scans do not see the development
+dependencies.
+
+Observed with Trivy 0.72: it marks the development packages of a `composer.lock` (`Dev: true`), while the results on a
+Yarn project were the same with and without the option.
 
 ### Exit codes
 

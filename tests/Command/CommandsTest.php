@@ -98,6 +98,15 @@ final class CommandsTest extends TestCase
     }
 
     #[Test]
+    public function scanLeavesTheDevelopmentDependenciesOutUnlessAsked(): void
+    {
+        self::assertNotContains('--include-dev-deps', $this->scanArguments([]));
+        self::assertContains('--include-dev-deps', $this->scanArguments(['--include-dev' => true]));
+        self::assertContains('--include-dev-deps', $this->scanArguments(['--trivy-arg' => ['--severity=HIGH']], ['RUSTINE_INCLUDE_DEV' => '1']));
+        self::assertContains('--severity=HIGH', $this->scanArguments(['--include-dev' => true, '--trivy-arg' => ['--severity=HIGH']]));
+    }
+
+    #[Test]
     public function scanFailsWhenTrivyFails(): void
     {
         $tester = $this->tester('scan');
@@ -391,6 +400,32 @@ final class CommandsTest extends TestCase
             @unlink($dir . '/composer.json');
             @rmdir($dir);
         }
+    }
+
+    /**
+     * Arguments `scan` gives to Trivy.
+     *
+     * @param array<string, mixed>       $options
+     * @param array<string, string|null> $environment
+     *
+     * @return list<string>
+     */
+    private function scanArguments(array $options, array $environment = []): array
+    {
+        $record = sys_get_temp_dir() . '/rustine-trivy-args-' . bin2hex(random_bytes(4));
+        $script = sys_get_temp_dir() . '/rustine-recording-trivy-' . bin2hex(random_bytes(4));
+        file_put_contents($script, "#!/bin/sh\nprintf '%s\\n' \"\$@\" > " . escapeshellarg($record) . "\nwhile [ \$# -gt 0 ]; do\n  if [ \"\$1\" = \"--output\" ]; then out=\"\$2\"; fi\n  shift\ndone\ncp " . escapeshellarg(__DIR__ . '/../fixtures/trivy/yarn-report.json') . " \"\$out\"\n");
+        chmod($script, 0755);
+        $output = $record . '.json';
+        $this->files = [...$this->files, $script, $record, $output];
+
+        $this->withEnvironment($environment, function () use ($script, $output, $options): void {
+            $tester = $this->tester('scan');
+            $tester->execute(['--project' => sys_get_temp_dir(), '--output' => $output, '--trivy-bin' => $script, ...$options]);
+            self::assertSame(Command::SUCCESS, $tester->getStatusCode());
+        });
+
+        return array_values(array_filter(explode("\n", (string) file_get_contents($record)), static fn (string $a): bool => '' !== $a));
     }
 
     private function tester(string $command, ?HttpClientInterface $http = null): CommandTester

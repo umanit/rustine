@@ -34,6 +34,22 @@ final class EnvironmentTest extends TestCase
     }
 
     #[Test]
+    public function aSwitchIsSetByItsOptionOrByATruthyVariable(): void
+    {
+        self::assertFalse(Environment::flag(false, 'RUSTINE_TEST_UNSET_VARIABLE'));
+        self::assertTrue(Environment::flag(true, 'RUSTINE_TEST_UNSET_VARIABLE'));
+
+        foreach (['1', 'true', 'TRUE', ' yes ', 'on'] as $value) {
+            putenv(self::VARIABLE . '=' . $value);
+            self::assertTrue(Environment::flag(false, self::VARIABLE), $value);
+        }
+        foreach (['0', 'false', 'no', '', 'maybe'] as $value) {
+            putenv(self::VARIABLE . '=' . $value);
+            self::assertFalse(Environment::flag(false, self::VARIABLE), $value);
+        }
+    }
+
+    #[Test]
     public function blankValuesFallBackToTheDefault(): void
     {
         putenv(self::VARIABLE . '=');

@@ -15,6 +15,22 @@ final readonly class TrivyScanner
      */
     public const SKIPPED_DIRS = ['**/vendor', '**/node_modules'];
 
+    /** Without it Trivy leaves out the development dependencies (`require-dev`, `devDependencies`). */
+    public const INCLUDE_DEV_ARG = '--include-dev-deps';
+
+    /**
+     * Extra Trivy arguments for the scan and the re-scans, with the development dependencies when asked: both must
+     * agree, otherwise a fix of a development dependency would be "confirmed" by a re-scan that does not see it.
+     *
+     * @param list<string> $args
+     *
+     * @return list<string>
+     */
+    public static function withDevDependencies(array $args, bool $include): array
+    {
+        return $include && !\in_array(self::INCLUDE_DEV_ARG, $args, true) ? [...$args, self::INCLUDE_DEV_ARG] : $args;
+    }
+
     public function __construct(private string $trivyBin = 'trivy')
     {
     }

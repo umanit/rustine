@@ -26,12 +26,14 @@ final class ScanCommand
         string $trivyBin = 'trivy',
         #[Option(description: 'Extra Trivy argument (repeatable), e.g. --trivy-arg=--skip-db-update')]
         array $trivyArg = [],
+        #[Option(description: 'Also scan the development dependencies (require-dev, devDependencies); default: $RUSTINE_INCLUDE_DEV, then no')]
+        bool $includeDev = false,
     ): int {
         try {
             (new TrivyScanner($trivyBin))->scan(
                 $project,
                 $output,
-                $trivyArg,
+                TrivyScanner::withDevDependencies($trivyArg, Environment::flag($includeDev, 'RUSTINE_INCLUDE_DEV')),
                 static fn (string $buffer) => $io->getErrorStyle()->write($buffer),
             );
         } catch (\Throwable $e) {

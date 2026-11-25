@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `--include-dev` (or `RUSTINE_INCLUDE_DEV=1`) on `scan`, `run` and `apply` also scans the development dependencies, which
+  stay out by default. The same flag is given to the scan and to the re-scans.
 - The merge request description lists the packages whose version changed in the lockfile, before and after, with the
   packages of the fixes in bold: a refresh also moves the dependencies that are not vulnerable, within their ranges.
   A branch kept because the fixes did not change keeps its description, so that it keeps describing the branch.
@@ -38,12 +40,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- The consistency check of Composer (`composer validate`) is also run before the fixes, and only findings that it did not
-  report then fail the final check: an unrelated finding that was already there no longer turns a whole group into a
-  failure. The merge request shows them as already existing. It runs with `--no-plugins`.
 - The commits are authored with the private commit email GitLab generates for the token owner
   (`<id>-<username>@users.noreply.<host>`) when it exposes no commit email, instead of a made-up address that the
   "commit author must be a GitLab user" push rule refuses.
+- The consistency check of Composer (`composer validate`) is also run before the fixes, and only findings that it did not
+  report then fail the final check: an unrelated finding that was already there no longer turns a whole group into a
+  failure. The merge request shows them as already existing. It runs with `--no-plugins`.
 - A project that sets `extra.symfony.require` no longer gets its `symfony/*` components moved to another minor by a
   Composer refresh (`symfony/string` 6.4 → 7.4 in a 6.4 project): only Symfony Flex enforces that setting, and it was
   disabled with the plugins. Composer still runs with `--no-plugins` everywhere else; for such a project the plugins are
