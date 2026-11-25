@@ -14,6 +14,8 @@ use Rustine\GitLab\MergeRequest;
 use Rustine\I18n\TranslatorFactory;
 use Rustine\Plan\GroupPlan;
 use Rustine\Plan\PackageFixStatus;
+use Rustine\Progress\NullProgress;
+use Rustine\Progress\Progress;
 use Rustine\Report\MergeRequestRenderer;
 use Rustine\Sync\MergeRequestSynchronizer;
 use Rustine\Sync\NoteRenderer;
@@ -76,6 +78,33 @@ final class MergeRequestSynchronizerTest extends TestCase
             'main',
             trim($this->sandbox->exec(['git', 'branch', '--show-current'])),
             'the working tree is back where it was',
+        );
+    }
+
+    #[Test]
+    public function itTellsWhatItDoesWhileItWorks(): void
+    {
+        $progress = new class implements Progress {
+            /** @var list<string> */
+            public array $steps = [];
+
+            public function step(string $message): void
+            {
+                $this->steps[] = $message;
+            }
+        };
+
+        $this->sync(progress: $progress);
+
+        $this->assertSame(
+            [
+                'Looking for an open merge request',
+                'Fetching the default branch and the state of security/rustine-yarn-others',
+                'Starting from the default branch',
+                'Committing the fixes',
+                'Opening the merge request',
+            ],
+            $progress->steps,
         );
     }
 
@@ -424,6 +453,7 @@ final class MergeRequestSynchronizerTest extends TestCase
         ?SyncSettings $settings = null,
         ?GroupPlan $plan = null,
         string $locale = 'en',
+        ?Progress $progress = null,
     ): PlanOutcome {
         $translator = new TranslatorFactory()->create($locale);
         $synchronizer = new MergeRequestSynchronizer(
@@ -433,6 +463,7 @@ final class MergeRequestSynchronizerTest extends TestCase
             new MergeRequestRenderer($translator, 'test'),
             new NoteRenderer($translator),
             $settings ?? new SyncSettings('main'),
+            $progress ?? new NullProgress(),
         );
 
         return $synchronizer->sync($plan ?? Fixtures::plan(Fixtures::fix()), Fixtures::report());

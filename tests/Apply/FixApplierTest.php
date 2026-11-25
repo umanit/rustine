@@ -24,6 +24,8 @@ use Rustine\Apply\YarnBerryStrategy;
 use Rustine\Apply\YarnClassicStrategy;
 use Rustine\Plan\DependencyKind;
 use Rustine\Plan\PackageFixStatus;
+use Rustine\Progress\NullProgress;
+use Rustine\Progress\Progress;
 use Rustine\Tests\Apply\Support\FakeRunner;
 use Rustine\Tests\Apply\Support\Fixtures;
 use Rustine\Tests\Apply\Support\QueueRescanner;
@@ -365,6 +367,37 @@ final class FixApplierTest extends TestCase
         $this->assertFalse($result->isHealthy());
         $this->assertTrue($result->hasChanges());
         $this->assertSame(1, $rescanner->calls);
+    }
+
+    #[Test]
+    public function thePackageCounterAlsoCountsThePackagesThatWereAlreadyFixed(): void
+    {
+        $a = Fixtures::fix('aaa', '1.0.0', '1.0.1');
+        $b = Fixtures::fix('bbb', '2.0.0', '2.0.1');
+        $before = Fixtures::report([Fixtures::vulnerability('aaa', '1.0.0'), Fixtures::vulnerability('bbb', '2.0.0')]);
+        $this->lock(['aaa' => ['1.0.0'], 'bbb' => ['2.0.0']]);
+        $this->runner->handler = function (array $command): ?CommandResult {
+            $this->lock(['aaa' => ['1.0.1'], 'bbb' => ['2.0.1']]);
+
+            return null;
+        };
+        $progress = new class implements Progress {
+            /** @var list<string> */
+            public array $steps = [];
+
+            public function step(string $message): void
+            {
+                $this->steps[] = $message;
+            }
+        };
+
+        $this->applier(new QueueRescanner(Fixtures::report()), progress: $progress)->apply(
+            Fixtures::plan($a, $b),
+            $before,
+        );
+
+        $this->assertContains('Fixing aaa 1.0.0 → 1.0.1 (1/2)', $progress->steps);
+        $this->assertContains('Skipping bbb 2.0.0 (2/2): already fixed', $progress->steps);
     }
 
     #[Test]
@@ -851,6 +884,7 @@ final class FixApplierTest extends TestCase
         QueueRescanner $rescanner,
         ?FixStrategy $strategy = null,
         VerifyMode $verify = VerifyMode::Final,
+        ?Progress $progress = null,
     ): FixApplier {
         return new FixApplier(
             $this->runner,
@@ -860,6 +894,7 @@ final class FixApplierTest extends TestCase
             new PackageJsonEditor(),
             $this->dir,
             $verify,
+            $progress ?? new NullProgress(),
         );
     }
 }

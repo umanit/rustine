@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Rustine\Apply;
 
 use Rustine\Plan\GroupPlan;
+use Rustine\Progress\NullProgress;
+use Rustine\Progress\Progress;
 use Rustine\Trivy\Ecosystem;
 use Rustine\Trivy\TrivyReport;
 use Rustine\Trivy\TrivyReportParser;
@@ -22,6 +24,7 @@ final readonly class ProjectPlanApplier implements PlanApplier
      * @param string       $yarnCommand     command that runs Yarn (see {@see YarnRuntime})
      * @param string       $nodeCommand     command that runs Node (see {@see YarnRuntime})
      * @param VerifyMode   $verify          when Trivy confirms the fixes
+     * @param Progress     $progress        told what the run is doing
      */
     public function __construct(
         private CommandRunner $runner,
@@ -32,6 +35,7 @@ final readonly class ProjectPlanApplier implements PlanApplier
         private string $yarnCommand = 'yarn',
         private string $nodeCommand = 'node',
         private VerifyMode $verify = VerifyMode::Final,
+        private Progress $progress = new NullProgress(),
     ) {
     }
 
@@ -89,6 +93,7 @@ final readonly class ProjectPlanApplier implements PlanApplier
 
     public function apply(GroupPlan $plan, TrivyReport $report): AppliedPlan
     {
+        $this->progress->step('Checking the tools of the environment');
         $tools = $this->tools($plan->ecosystem);
         $strategy = $this->strategy($plan->ecosystem, $tools);
 
@@ -105,6 +110,7 @@ final readonly class ProjectPlanApplier implements PlanApplier
             new PackageJsonEditor(),
             $this->projectDir,
             $this->verify,
+            $this->progress,
         );
 
         return new AppliedPlan($applier->apply($plan, $report), $tools);

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `run -v` prints one line per step with the seconds elapsed since the start (fetching, starting from the default
+  branch, each package and attempt, the Trivy check, the consistency check, the push and the merge request), instead of
+  staying silent while Composer, Yarn, git and Trivy work.
+
 ### Changed
 
 - `run` no longer requires `--group`: without it, every severity group goes in a single merge request per ecosystem, on

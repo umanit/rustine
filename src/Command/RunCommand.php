@@ -17,6 +17,8 @@ use Rustine\GitLab\HttpGitLabClient;
 use Rustine\I18n\TranslatorFactory;
 use Rustine\Plan\Planner;
 use Rustine\Plan\SeverityGroup;
+use Rustine\Progress\ConsoleProgress;
+use Rustine\Progress\NullProgress;
 use Rustine\Report\MergeRequestRenderer;
 use Rustine\Sync\MergeRequestSynchronizer;
 use Rustine\Sync\NoteRenderer;
@@ -238,6 +240,7 @@ final readonly class RunCommand
             return Command::SUCCESS;
         }
 
+        $progress = $io->isVerbose() ? new ConsoleProgress($io) : new NullProgress();
         $runner = new ProcessCommandRunner();
         $synchronizer = new MergeRequestSynchronizer(
             $client,
@@ -256,6 +259,7 @@ final readonly class RunCommand
                 $tools->yarn,
                 $tools->node,
                 $verifyMode,
+                $progress,
             ),
             new MergeRequestRenderer($translator, Application::VERSION),
             new NoteRenderer($translator),
@@ -268,6 +272,7 @@ final readonly class RunCommand
                 $maxOpenMergeRequests,
                 $closedGraceDays,
             ),
+            $progress,
         );
 
         $outcomes = [];

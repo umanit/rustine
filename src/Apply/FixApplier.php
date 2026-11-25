@@ -6,6 +6,8 @@ namespace Rustine\Apply;
 
 use Rustine\Plan\GroupPlan;
 use Rustine\Plan\PackageFix;
+use Rustine\Progress\NullProgress;
+use Rustine\Progress\Progress;
 use Rustine\Trivy\Ecosystem;
 use Rustine\Trivy\TrivyReport;
 use Rustine\Version\Version;
@@ -28,6 +30,7 @@ final readonly class FixApplier
         private PackageJsonEditor $editor,
         private string $projectDir,
         private VerifyMode $verify = VerifyMode::Final,
+        private Progress $progress = new NullProgress(),
     ) {
     }
 
@@ -57,6 +60,7 @@ final readonly class FixApplier
     {
         $this->assertSupported($plan);
 
+        $this->progress->step('Checking the project before the fixes');
         $baseline = $this->tree->dirtyPaths();
         $baselineCheck = $this->strategy->checkIsRelativeToBaseline()
             ? $this->runner->run($this->strategy->checkCommand(), $this->projectDir, $this->strategy->checkEnv())
@@ -66,6 +70,8 @@ final readonly class FixApplier
         $locked = $this->lockedVersions($lockfile);
         $changed = false;
         $outcomes = [];
+        $total = \count($plan->fixable());
+        $position = 0;
 
         foreach ($plan->fixes as $fix) {
             if (!$fix->isFixable()) {
@@ -73,6 +79,8 @@ final readonly class FixApplier
 
                 continue;
             }
+
+            $counter = sprintf('(%d/%d)', ++$position, $total);
 
             // The report tells what is vulnerable at the start, then the lockfile follows what the fixes changed.
             if (
@@ -82,6 +90,9 @@ final readonly class FixApplier
                     && !$this->vulnerableInLock($locked ?? [], $fix)
                 )
             ) {
+                $this->progress->step(
+                    sprintf('Skipping %s %s %s: already fixed', $fix->packageName, $fix->installedVersion, $counter),
+                );
                 $outcomes[] = new FixOutcome($fix, FixOutcomeStatus::AlreadyFixed);
 
                 continue;
@@ -89,11 +100,28 @@ final readonly class FixApplier
 
             $unsupported = $this->strategy->unsupportedReason($fix, $this->projectDir);
             if (null !== $unsupported) {
+                $this->progress->step(
+                    sprintf(
+                        'Skipping %s %s %s: not fixed automatically (unsupported source)',
+                        $fix->packageName,
+                        $fix->installedVersion,
+                        $counter,
+                    ),
+                );
                 $outcomes[] = new FixOutcome($fix, FixOutcomeStatus::UnsupportedSource, null, [$unsupported]);
 
                 continue;
             }
 
+            $this->progress->step(
+                sprintf(
+                    'Fixing %s %s → %s %s',
+                    $fix->packageName,
+                    $fix->installedVersion,
+                    $fix->targetVersion ?? '?',
+                    $counter,
+                ),
+            );
             [$outcome, $after] = $this->fixPackage($fix, $locked ?? [], $baseline);
             $outcomes[] = $outcome;
             if (null !== $after) {
@@ -108,10 +136,12 @@ final readonly class FixApplier
         }
 
         if (VerifyMode::Final === $this->verify) {
+            $this->progress->step('Verifying the fixes with Trivy');
             $outcomes = $this->confirmWithTrivy($outcomes);
         }
 
         // The final lockfile must be consistent with the manifest, whatever the sequence of fixes.
+        $this->progress->step('Checking that the lockfile is consistent');
         $check = $this->runner->run($this->strategy->checkCommand(), $this->projectDir, $this->strategy->checkEnv());
 
         $lockAfter = @file_get_contents($lockfile);
@@ -208,6 +238,7 @@ final readonly class FixApplier
             $abandon = false;
 
             try {
+                $this->progress->step('  attempt: ' . $attempt->kind->value);
                 $error = $this->run($attempt);
 
                 if (null === $error) {

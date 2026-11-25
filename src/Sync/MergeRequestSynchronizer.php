@@ -21,6 +21,8 @@ use Rustine\GitLab\MergeRequest;
 use Rustine\GitLab\NewMergeRequest;
 use Rustine\Plan\GroupPlan;
 use Rustine\Plan\PackageFix;
+use Rustine\Progress\NullProgress;
+use Rustine\Progress\Progress;
 use Rustine\Report\MergeRequestContent;
 use Rustine\Report\MergeRequestRenderer;
 use Rustine\Trivy\Severity;
@@ -47,6 +49,7 @@ final readonly class MergeRequestSynchronizer
         private MergeRequestRenderer $renderer,
         private NoteRenderer $notes,
         private SyncSettings $settings,
+        private Progress $progress = new NullProgress(),
     ) {
     }
 
@@ -66,6 +69,7 @@ final readonly class MergeRequestSynchronizer
     private function process(GroupPlan $plan, TrivyReport $report): PlanOutcome
     {
         $branch = $plan->branchName();
+        $this->progress->step('Looking for an open merge request');
         $existing = $this->gitlab->findOpenMergeRequest($branch);
 
         if ([] === $plan->fixable()) {
@@ -81,6 +85,7 @@ final readonly class MergeRequestSynchronizer
             ]);
         }
 
+        $this->progress->step('Fetching the default branch and the state of ' . $branch);
         $remote = $this->git->inspect($branch);
         if (RemoteBranchState::Foreign === $remote->state) {
             if (
@@ -101,6 +106,7 @@ final readonly class MergeRequestSynchronizer
             );
         }
 
+        $this->progress->step('Starting from the default branch');
         $this->git->start($branch);
 
         try {
@@ -124,6 +130,10 @@ final readonly class MergeRequestSynchronizer
                         $this->settings->closedGraceDays,
                     ),
                 ]);
+            }
+
+            if ($applied->result->hasChanges()) {
+                $this->progress->step('Committing the fixes');
             }
 
             $push = $applied->result->hasChanges() && $this->git->commit($content->commitMessage)
@@ -180,6 +190,7 @@ final readonly class MergeRequestSynchronizer
         MergeRequestContent $content,
         PushResult $push,
     ): PlanOutcome {
+        $this->progress->step(null === $existing ? 'Opening the merge request' : 'Synchronizing the merge request');
         $severity = $content->severity;
         $wanted = [
             ...$this->settings->labels,

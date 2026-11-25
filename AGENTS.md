@@ -50,6 +50,7 @@ considered done. IDE (PHPStorm) warnings are informational only.
 | `GitLab/`  | REST v4 client (`GitLabClient` + `HttpGitLabClient`), `GitLabConfig` (options, then CI variables; token from env only)                               |
 | `Sync/`    | `MergeRequestSynchronizer` (one plan: branch + MR state machine), `NoteRenderer`, `SyncSettings`, `RunSummary` (report + exit code)                  |
 | `Report/`  | Title, description and commit message of a merge request (localized)                                                                                 |
+| `Progress/` | `Progress` (one line per step of a run, shown with `-v`), `ConsoleProgress`, `NullProgress`                                                          |
 | `I18n/`    | `TranslatorFactory` (symfony/translation); catalogs in `resources/translations/`                                                                     |
 
 Commands are registered in `src/Application.php`. Code must work inside the PHAR: no `glob()` (it does not support

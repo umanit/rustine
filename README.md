@@ -194,6 +194,29 @@ bin/rustine apply --project=. --report=trivy-report.json --group=others --ecosys
 
 `apply` modifies the working tree of the project (no commit, no push): only try it on a throwaway copy.
 
+### Following a run
+
+Composer, Yarn, git and Trivy print nothing of their own, so a run can look idle for a while. `run -v` writes one line
+per step with the seconds elapsed since the start: fetching, starting from the default branch, each package and attempt,
+the Trivy check, the consistency check, the push and the merge request.
+
+```
+security/rustine-composer
+-------------------------
+  [  0s] Looking for an open merge request
+  [  1s] Fetching the default branch and the state of security/rustine-composer
+  [  2s] Starting from the default branch
+  [  2s] Checking the tools of the environment
+  [  3s] Checking the project before the fixes
+  [  4s] Fixing symfony/http-client v8.1.9 → 8.1.11 (1/3)
+  [  4s]   attempt: lockfile-refresh
+  [  9s] Skipping symfony/mime v8.1.7 (2/3): already fixed
+  [ 11s] Verifying the fixes with Trivy
+  [ 19s] Checking that the lockfile is consistent
+  [ 21s] Committing the fixes
+  [ 23s] Opening the merge request
+```
+
 ### Dry run
 
 `run --dry-run` reads a Trivy report and prints, for each group, the title, the severity, the commit message and the
