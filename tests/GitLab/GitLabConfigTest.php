@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Rustine\Tests\GitLab;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Rustine\GitLab\GitLabConfig;
@@ -20,6 +21,20 @@ final class GitLabConfigTest extends TestCase
         'PATH' => '/usr/bin',
     ];
 
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function instanceAddresses(): iterable
+    {
+        yield 'bare address' => ['https://gitlab.example.com', 'https://gitlab.example.com/api/v4'];
+        yield 'bare address, trailing slash' => ['https://gitlab.example.com/', 'https://gitlab.example.com/api/v4'];
+        yield 'complete' => ['https://gitlab.example.com/api/v4', 'https://gitlab.example.com/api/v4'];
+        yield 'complete, trailing slash' => ['https://gitlab.example.com/api/v4/', 'https://gitlab.example.com/api/v4'];
+        yield 'under a path' => ['https://example.com/gitlab', 'https://example.com/gitlab/api/v4'];
+        yield 'under a path, complete' => ['https://example.com/gitlab/api/v4/', 'https://example.com/gitlab/api/v4'];
+        yield 'surrounded by spaces' => [' https://gitlab.example.com/ ', 'https://gitlab.example.com/api/v4'];
+    }
+
     #[Test]
     public function itReadsTheGitLabCiVariables(): void
     {
@@ -30,6 +45,13 @@ final class GitLabConfigTest extends TestCase
         $this->assertSame('main', $config->defaultBranch);
         $this->assertSame('glpat-x', $config->token);
         $this->assertSame('gitlab.example.com', $config->host());
+    }
+
+    #[Test]
+    #[DataProvider('instanceAddresses')]
+    public function theApiPathIsAddedWhenOnlyTheInstanceAddressIsGiven(string $given, string $expected): void
+    {
+        $this->assertSame($expected, GitLabConfig::resolve(self::ENV, $given)->apiUrl);
     }
 
     #[Test]

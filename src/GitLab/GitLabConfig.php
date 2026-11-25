@@ -60,6 +60,7 @@ final readonly class GitLabConfig
             throw new GitLabConfigException('Missing ' . implode(', ', $missing) . '.');
         }
 
+        $apiUrl = trim($apiUrl);
         if (
             false === filter_var($apiUrl, \FILTER_VALIDATE_URL)
             || !\in_array(parse_url($apiUrl, \PHP_URL_SCHEME), ['http', 'https'], true)
@@ -67,7 +68,7 @@ final readonly class GitLabConfig
             throw new GitLabConfigException(sprintf('"%s" is not a valid GitLab API URL.', $apiUrl));
         }
 
-        return new self(rtrim($apiUrl, '/'), $projectId, $token, $defaultBranch);
+        return new self(self::apiRoot($apiUrl), $projectId, $token, $defaultBranch);
     }
 
     /**
@@ -78,6 +79,17 @@ final readonly class GitLabConfig
     public static function tokenUnsetEnv(): array
     {
         return array_fill_keys(self::TOKEN_VARIABLES, false);
+    }
+
+    /**
+     * The API root, without a trailing slash. `/api/v4` is added when the URL is only the address of the GitLab
+     * instance (`https://gitlab.example.com`, with or without a trailing slash), as `CI_API_V4_URL` always carries it.
+     */
+    private static function apiRoot(string $url): string
+    {
+        $root = rtrim($url, '/');
+
+        return 1 === preg_match('#/api/v\d+$#', $root) ? $root : $root . '/api/v4';
     }
 
     private static function first(string|false|null ...$values): ?string

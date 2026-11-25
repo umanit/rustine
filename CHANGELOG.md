@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `--gitlab-url` accepts the address of the instance alone (`https://gitlab.example.com`, with or without a trailing
+  slash): `/api/v4` is added when it is missing. Before, the request went to a web page and failed with "Response body is
+  empty".
+
 ## [0.2.0] - 2026-11-25
 
 ### Added

@@ -97,8 +97,8 @@ final readonly class RunCommand
         )]
         ?string $nodeBin = null,
         #[Option(
-            description: 'GitLab API root (default: $CI_API_V4_URL). The token comes from $RUSTINE_GITLAB_TOKEN or'
-            . ' $GITLAB_TOKEN',
+            description: 'GitLab API root, or just the address of the instance: /api/v4 is added when missing (default:'
+            . ' $CI_API_V4_URL). The token comes from $RUSTINE_GITLAB_TOKEN or $GITLAB_TOKEN',
         )]
         ?string $gitlabUrl = null,
         #[Option(description: 'GitLab project id or path (default: $CI_PROJECT_ID)')]
