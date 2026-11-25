@@ -24,6 +24,7 @@ final class DependencyChainResolver
 
         $queue = [];
         $parent = [];
+
         foreach ($this->starts($packages) as $id) {
             $queue[] = $id;
             $parent[$id] = null;
@@ -33,6 +34,7 @@ final class DependencyChainResolver
             $current = $queue[$i];
             if ($current === $targetId) {
                 $chain = [];
+
                 for ($node = $current; null !== $node; $node = $parent[$node]) {
                     $chain[] = $node;
                 }
@@ -65,6 +67,7 @@ final class DependencyChainResolver
     private function starts(array $packages): array
     {
         $dependedOn = [];
+
         foreach ($packages as $package) {
             foreach ($package->dependsOn as $child) {
                 $dependedOn[$child] = true;
@@ -72,6 +75,7 @@ final class DependencyChainResolver
         }
 
         $starts = [];
+
         foreach ($packages as $package) {
             if ($this->isRoot($package, $dependedOn)) {
                 foreach ($package->dependsOn as $child) {
@@ -82,7 +86,7 @@ final class DependencyChainResolver
             }
         }
 
-        return array_map('strval', array_keys($starts));
+        return array_map(strval(...), array_keys($starts));
     }
 
     /**

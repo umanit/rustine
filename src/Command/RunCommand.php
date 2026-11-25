@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Rustine\Command;
 
+use Rustine\Application;
 use Rustine\Apply\ComposerStrategy;
 use Rustine\Apply\ProcessCommandRunner;
 use Rustine\Apply\ProjectPlanApplier;
 use Rustine\Apply\VerifyMode;
 use Rustine\Apply\YarnRuntime;
-use Rustine\Application;
 use Rustine\Git\BranchPublisher;
 use Rustine\Git\Git;
 use Rustine\Git\GitAccess;
@@ -40,9 +40,9 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 #[AsCommand(name: 'run', description: 'Entry point of the CI job: one merge request per ecosystem and severity group')]
-final class RunCommand
+final readonly class RunCommand
 {
-    public function __construct(private readonly ?HttpClientInterface $httpClient = null)
+    public function __construct(private ?HttpClientInterface $httpClient = null)
     {
     }
 
@@ -67,7 +67,9 @@ final class RunCommand
         ?string $ecosystem = null,
         #[Option(description: 'Language of the merge request and commit texts (default: $RUSTINE_LOCALE, then en)')]
         ?string $locale = null,
-        #[Option(description: 'Write the merge request description(s) and the status of each group to this Markdown file')]
+        #[Option(
+            description: 'Write the merge request description(s) and the status of each group to this Markdown file',
+        )]
         ?string $reportFile = null,
         #[Option(description: 'Preview the merge requests from an existing report, without touching git or GitLab')]
         bool $dryRun = false,
@@ -75,27 +77,49 @@ final class RunCommand
         string $trivyBin = 'trivy',
         #[Option(description: 'Extra Trivy argument for the scan and the re-scans (repeatable)')]
         array $trivyArg = [],
-        #[Option(description: 'Also scan the development dependencies (require-dev, devDependencies); default: $RUSTINE_INCLUDE_DEV, then no')]
+        #[Option(
+            description: 'Also scan the development dependencies (require-dev, devDependencies); default:'
+            . ' $RUSTINE_INCLUDE_DEV, then no',
+        )]
         bool $includeDev = false,
-        #[Option(description: 'When Trivy confirms the fixes: each (after every attempt, slow), final (once at the end) or none (the lockfile alone decides); default: $RUSTINE_VERIFY, then final')]
+        #[Option(
+            description: 'When Trivy confirms the fixes: each (after every attempt, slow), final (once at the end) or'
+            . ' none (the lockfile alone decides); default: $RUSTINE_VERIFY, then final',
+        )]
         ?string $verify = null,
-        #[Option(description: 'Command that runs Composer, e.g. "/usr/bin/php8.1 /usr/local/bin/composer2" (default: $RUSTINE_COMPOSER_BIN, then composer)')]
+        #[Option(
+            description: 'Command that runs Composer, e.g. "/usr/bin/php8.1 /usr/local/bin/composer2" (default:' .
+            ' $RUSTINE_COMPOSER_BIN, then composer)',
+        )]
         ?string $composerBin = null,
-        #[Option(description: 'Command that runs Yarn, e.g. "/opt/yarn/bin/yarn" (default: $RUSTINE_YARN_BIN, then yarn)')]
+        #[Option(
+            description: 'Command that runs Yarn, e.g. "/opt/yarn/bin/yarn" (default: $RUSTINE_YARN_BIN, then yarn)',
+        )]
         ?string $yarnBin = null,
-        #[Option(description: 'Command that runs Node, e.g. "/opt/node20/bin/node"; given by path, its directory goes first on the PATH of Yarn (default: $RUSTINE_NODE_BIN, then node)')]
+        #[Option(
+            description: 'Command that runs Node, e.g. "/opt/node20/bin/node"; given by path, its directory goes first'
+            . ' on the PATH of Yarn (default: $RUSTINE_NODE_BIN, then node)',
+        )]
         ?string $nodeBin = null,
-        #[Option(description: 'GitLab API root (default: $CI_API_V4_URL). The token comes from $RUSTINE_GITLAB_TOKEN or $GITLAB_TOKEN')]
+        #[Option(
+            description: 'GitLab API root (default: $CI_API_V4_URL). The token comes from $RUSTINE_GITLAB_TOKEN or'
+            . ' $GITLAB_TOKEN',
+        )]
         ?string $gitlabUrl = null,
         #[Option(description: 'GitLab project id or path (default: $CI_PROJECT_ID)')]
         ?string $projectId = null,
-        #[Option(description: 'Default branch the fixes start from and the merge requests target (default: $CI_DEFAULT_BRANCH)')]
+        #[Option(
+            description: 'Default branch the fixes start from and the merge requests target (default:'
+            . ' $CI_DEFAULT_BRANCH)',
+        )]
         ?string $defaultBranch = null,
         #[Option(description: 'Git remote to fetch from and push to')]
         string $remote = 'origin',
         #[Option(description: 'Label set on every merge request, never translated (repeatable, default: security)')]
         array $label = [],
-        #[Option(description: 'Label of the highest severity of a merge request; {severity} is replaced by critical, high…')]
+        #[Option(
+            description: 'Label of the highest severity of a merge request; {severity} is replaced by critical, high…',
+        )]
         string $severityLabelFormat = 'severity::{severity}',
         #[Option(description: 'Username assigned to the merge requests Rustine opens (repeatable)')]
         array $assignee = [],
@@ -103,32 +127,48 @@ final class RunCommand
         array $reviewer = [],
         #[Option(description: 'Do not open new merge requests while this many Rustine merge requests are open')]
         ?int $maxOpenMergeRequests = null,
-        #[Option(description: 'Do not open again a merge request closed by hand for the same fixes less than this many days ago (0 = always open)')]
+        #[Option(
+            description: 'Do not open again a merge request closed by hand for the same fixes less than this many days'
+            . ' ago (0 = always open)',
+        )]
         int $closedGraceDays = 30,
         #[Option(description: 'Name of the commits author (default: name of the token owner)')]
         ?string $gitAuthorName = null,
-        #[Option(description: 'Email of the commits author (default: commit email of the token owner, then its GitLab private commit email)')]
+        #[Option(
+            description: 'Email of the commits author (default: commit email of the token owner, then its GitLab'
+            . ' private commit email)',
+        )]
         ?string $gitAuthorEmail = null,
     ): int {
         $factory = new TranslatorFactory();
         $locale = Environment::string($locale, 'RUSTINE_LOCALE', TranslatorFactory::FALLBACK_LOCALE);
         if (!\in_array($locale, $factory->availableLocales(), true)) {
-            $io->error(sprintf('Unknown locale "%s" (available: %s).', $locale, implode(', ', $factory->availableLocales())));
+            $io->error(
+                sprintf('Unknown locale "%s" (available: %s).', $locale, implode(', ', $factory->availableLocales())),
+            );
 
             return Command::FAILURE;
         }
         $translator = $factory->create($locale);
 
         $groups = [];
+
         foreach ($group as $name) {
             $parsed = SeverityGroup::tryFrom($name);
             if (null === $parsed) {
-                $io->error(sprintf('Unknown group "%s" (expected: %s).', $name, implode(', ', array_column(SeverityGroup::cases(), 'value'))));
+                $io->error(
+                    sprintf(
+                        'Unknown group "%s" (expected: %s).',
+                        $name,
+                        implode(', ', array_column(SeverityGroup::cases(), 'value')),
+                    ),
+                );
 
                 return Command::FAILURE;
             }
             $groups[] = $parsed;
         }
+
         if (1 !== \count($groups)) {
             $io->error('Pass exactly one --group: each severity group is a separate merge request.');
 
@@ -139,7 +179,13 @@ final class RunCommand
         $verify = Environment::string($verify, 'RUSTINE_VERIFY', VerifyMode::Final->value);
         $verifyMode = VerifyMode::tryFrom($verify);
         if (null === $verifyMode) {
-            $io->error(sprintf('Unknown verification "%s" (expected: %s).', $verify, implode(', ', array_column(VerifyMode::cases(), 'value'))));
+            $io->error(
+                sprintf(
+                    'Unknown verification "%s" (expected: %s).',
+                    $verify,
+                    implode(', ', array_column(VerifyMode::cases(), 'value')),
+                ),
+            );
 
             return Command::FAILURE;
         }
@@ -164,8 +210,8 @@ final class RunCommand
 
         try {
             $config = GitLabConfig::resolve(getenv(), $gitlabUrl, $projectId, $defaultBranch);
-        } catch (GitLabConfigException $e) {
-            $io->error($e->getMessage());
+        } catch (GitLabConfigException $gitLabConfigException) {
+            $io->error($gitLabConfigException->getMessage());
 
             return Command::FAILURE;
         }
@@ -173,37 +219,57 @@ final class RunCommand
         $composerCommand = Environment::string($composerBin, 'RUSTINE_COMPOSER_BIN', 'composer');
         $yarnCommand = Environment::string($yarnBin, 'RUSTINE_YARN_BIN', 'yarn');
         $nodeCommand = Environment::string($nodeBin, 'RUSTINE_NODE_BIN', 'node');
+
         try {
             ComposerStrategy::fromCommandLine($composerCommand);
             YarnRuntime::fromCommandLines($yarnCommand, $nodeCommand);
-        } catch (\InvalidArgumentException $e) {
-            $io->error($e->getMessage());
+        } catch (\InvalidArgumentException $invalidArgumentException) {
+            $io->error($invalidArgumentException->getMessage());
 
             return Command::FAILURE;
         }
 
-        $client = new HttpGitLabClient($this->httpClient ?? HttpClient::create(), $config->apiUrl, $config->projectId, $config->token);
+        $client = new HttpGitLabClient(
+            $this->httpClient ?? HttpClient::create(),
+            $config->apiUrl,
+            $config->projectId,
+            $config->token,
+        );
+
         try {
             $user = $client->currentUser();
-        } catch (GitLabException $e) {
-            $io->error('Cannot authenticate to GitLab: ' . $e->getMessage());
+        } catch (GitLabException $gitLabException) {
+            $io->error('Cannot authenticate to GitLab: ' . $gitLabException->getMessage());
 
             return Command::FAILURE;
         }
+
         $identity = $user->gitIdentity($config->host(), $gitAuthorName, $gitAuthorEmail);
-        $io->writeln(sprintf('GitLab user: %s; commits authored by %s <%s>', $user->username, $identity->name, $identity->email));
+        $io->writeln(
+            sprintf('GitLab user: %s; commits authored by %s <%s>', $user->username, $identity->name, $identity->email),
+        );
 
         try {
-            (new TrivyScanner($trivyBin))->scan($projectDir, $report, $trivyArg, static fn (string $buffer) => $io->getErrorStyle()->write($buffer));
-            $parsedReport = (new TrivyReportParser())->parseFile($report);
-        } catch (InvalidTrivyReportException|\RuntimeException $e) {
+            new TrivyScanner($trivyBin)->scan(
+                $projectDir,
+                $report,
+                $trivyArg,
+                static fn(string $buffer) => $io->getErrorStyle()->write($buffer),
+            );
+            $parsedReport = new TrivyReportParser()->parseFile($report);
+        } catch (InvalidTrivyReportException | \RuntimeException $e) {
             $io->error($e->getMessage());
 
             return Command::FAILURE;
         }
 
         if ([] !== $parsedReport->ignoredTargets) {
-            $io->writeln(sprintf('Trivy targets ignored (unsupported type, or not at the project root): %s', implode(', ', $parsedReport->ignoredTargets)));
+            $io->writeln(
+                sprintf(
+                    'Trivy targets ignored (unsupported type, or not at the project root): %s',
+                    implode(', ', $parsedReport->ignoredTargets),
+                ),
+            );
         }
 
         $plans = $this->plans($parsedReport, $groups, $wanted);
@@ -216,20 +282,48 @@ final class RunCommand
         $runner = new ProcessCommandRunner();
         $synchronizer = new MergeRequestSynchronizer(
             $client,
-            new BranchPublisher(new Git($runner, $projectDir, new GitAccess($config->token)), $config->defaultBranch, $identity, $remote),
-            new ProjectPlanApplier($runner, $projectDir, $trivyBin, TrivyScanner::forRescan($trivyArg), $composerCommand, $yarnCommand, $nodeCommand, $verifyMode),
+            new BranchPublisher(
+                new Git($runner, $projectDir, new GitAccess($config->token)),
+                $config->defaultBranch,
+                $identity,
+                $remote,
+            ),
+            new ProjectPlanApplier(
+                $runner,
+                $projectDir,
+                $trivyBin,
+                TrivyScanner::forRescan($trivyArg),
+                $composerCommand,
+                $yarnCommand,
+                $nodeCommand,
+                $verifyMode,
+            ),
             new MergeRequestRenderer($translator, Application::VERSION),
             new NoteRenderer($translator),
-            new SyncSettings($config->defaultBranch, [] === $label ? ['security'] : $label, $severityLabelFormat, $assignee, $reviewer, $maxOpenMergeRequests, $closedGraceDays),
+            new SyncSettings(
+                $config->defaultBranch,
+                [] === $label ? ['security'] : $label,
+                $severityLabelFormat,
+                $assignee,
+                $reviewer,
+                $maxOpenMergeRequests,
+                $closedGraceDays,
+            ),
         );
 
         $outcomes = [];
+
         foreach ($plans as $plan) {
             $io->section($plan->branchName());
             $outcome = $synchronizer->sync($plan, $parsedReport);
             $outcomes[] = $outcome;
 
-            $io->writeln($outcome->isFailure() ? '<error>' . $outcome->branch . ': failed</error>' : '  ' . RunSummary::line($outcome));
+            $io->writeln(
+                $outcome->isFailure()
+                    ? '<error>' . $outcome->branch . ': failed</error>'
+                    : '  ' . RunSummary::line($outcome),
+            );
+
             foreach ($outcome->messages as $message) {
                 $io->writeln('  ' . $message);
             }
@@ -258,12 +352,18 @@ final class RunCommand
     /**
      * @param list<SeverityGroup> $groups
      */
-    private function preview(SymfonyStyle $io, TranslatorInterface $translator, string $report, array $groups, ?Ecosystem $wanted, ?string $reportFile): int
-    {
+    private function preview(
+        SymfonyStyle $io,
+        TranslatorInterface $translator,
+        string $report,
+        array $groups,
+        ?Ecosystem $wanted,
+        ?string $reportFile,
+    ): int {
         try {
-            $parsedReport = (new TrivyReportParser())->parseFile($report);
-        } catch (InvalidTrivyReportException $e) {
-            $io->error($e->getMessage());
+            $parsedReport = new TrivyReportParser()->parseFile($report);
+        } catch (InvalidTrivyReportException $invalidTrivyReportException) {
+            $io->error($invalidTrivyReportException->getMessage());
 
             return Command::FAILURE;
         }
@@ -285,12 +385,14 @@ final class RunCommand
 
             $io->section($plan->branchName());
             if (0 === $content->fixedPackages) {
-                $io->writeln('No package is fixable automatically: no merge request would be opened. Items for the job report:');
+                $io->writeln(
+                    'No package is fixable automatically: no merge request would be opened. Items for the job report:',
+                );
             } else {
                 $io->definitionList(
                     ['Branch' => $plan->branchName()],
                     ['Title' => $content->title],
-                    ['Highest severity' => null === $content->severity ? '-' : $content->severity->value],
+                    ['Highest severity' => $content->severity->value ?? '-'],
                     ['Commit' => str_replace("\n", "\n         ", $content->commitMessage)],
                 );
             }
@@ -318,9 +420,12 @@ final class RunCommand
      */
     private function plans(TrivyReport $report, array $groups, ?Ecosystem $wanted): array
     {
-        return array_values(array_filter(
-            (new Planner())->plan($report, $groups),
-            static fn (GroupPlan $plan): bool => null === $wanted || $wanted === $plan->ecosystem,
-        ));
+        return array_values(
+            array_filter(
+                new Planner()->plan($report, $groups),
+                static fn(GroupPlan $plan,
+                ): bool => !$wanted instanceof Ecosystem || $wanted === $plan->ecosystem,
+            ),
+        );
     }
 }

@@ -12,7 +12,7 @@ use Rustine\GitLab\GitLabUser;
 
 final class GitLabConfigTest extends TestCase
 {
-    private const ENV = [
+    private const array ENV = [
         'CI_API_V4_URL' => 'https://gitlab.example.com/api/v4/',
         'CI_PROJECT_ID' => '42',
         'CI_DEFAULT_BRANCH' => 'main',
@@ -25,22 +25,27 @@ final class GitLabConfigTest extends TestCase
     {
         $config = GitLabConfig::resolve(self::ENV);
 
-        self::assertSame('https://gitlab.example.com/api/v4', $config->apiUrl);
-        self::assertSame('42', $config->projectId);
-        self::assertSame('main', $config->defaultBranch);
-        self::assertSame('glpat-x', $config->token);
-        self::assertSame('gitlab.example.com', $config->host());
+        $this->assertSame('https://gitlab.example.com/api/v4', $config->apiUrl);
+        $this->assertSame('42', $config->projectId);
+        $this->assertSame('main', $config->defaultBranch);
+        $this->assertSame('glpat-x', $config->token);
+        $this->assertSame('gitlab.example.com', $config->host());
     }
 
     #[Test]
     public function optionsWinOverTheVariablesAndTheDedicatedTokenWins(): void
     {
-        $config = GitLabConfig::resolve([...self::ENV, 'RUSTINE_GITLAB_TOKEN' => 'glpat-rustine'], 'https://other.example.org/api/v4', '7', 'develop');
+        $config = GitLabConfig::resolve(
+            [...self::ENV, 'RUSTINE_GITLAB_TOKEN' => 'glpat-rustine'],
+            'https://other.example.org/api/v4',
+            '7',
+            'develop',
+        );
 
-        self::assertSame('https://other.example.org/api/v4', $config->apiUrl);
-        self::assertSame('7', $config->projectId);
-        self::assertSame('develop', $config->defaultBranch);
-        self::assertSame('glpat-rustine', $config->token);
+        $this->assertSame('https://other.example.org/api/v4', $config->apiUrl);
+        $this->assertSame('7', $config->projectId);
+        $this->assertSame('develop', $config->defaultBranch);
+        $this->assertSame('glpat-rustine', $config->token);
     }
 
     #[Test]
@@ -49,11 +54,11 @@ final class GitLabConfigTest extends TestCase
         try {
             GitLabConfig::resolve(['CI_PROJECT_ID' => '']);
             self::fail('A GitLabConfigException was expected.');
-        } catch (GitLabConfigException $e) {
-            self::assertStringContainsString('API URL', $e->getMessage());
-            self::assertStringContainsString('project', $e->getMessage());
-            self::assertStringContainsString('default branch', $e->getMessage());
-            self::assertStringContainsString('RUSTINE_GITLAB_TOKEN', $e->getMessage());
+        } catch (GitLabConfigException $gitLabConfigException) {
+            $this->assertStringContainsString('API URL', $gitLabConfigException->getMessage());
+            $this->assertStringContainsString('project', $gitLabConfigException->getMessage());
+            $this->assertStringContainsString('default branch', $gitLabConfigException->getMessage());
+            $this->assertStringContainsString('RUSTINE_GITLAB_TOKEN', $gitLabConfigException->getMessage());
         }
     }
 
@@ -71,10 +76,13 @@ final class GitLabConfigTest extends TestCase
         $withEmail = new GitLabUser(1, 'rustine-bot', 'Rustine Bot', 'bot@example.com');
         $withoutEmail = new GitLabUser(1, 'rustine-bot', 'Rustine Bot', null);
 
-        self::assertSame('bot@example.com', $withEmail->gitIdentity('gitlab.example.com')->email);
-        self::assertSame('1-rustine-bot@users.noreply.gitlab.example.com', $withoutEmail->gitIdentity('gitlab.example.com')->email);
+        $this->assertSame('bot@example.com', $withEmail->gitIdentity('gitlab.example.com')->email);
+        $this->assertSame(
+            '1-rustine-bot@users.noreply.gitlab.example.com',
+            $withoutEmail->gitIdentity('gitlab.example.com')->email,
+        );
         $explicit = $withEmail->gitIdentity('gitlab.example.com', 'Security Bot', 'security@example.com');
-        self::assertSame(['Security Bot', 'security@example.com'], [$explicit->name, $explicit->email]);
-        self::assertSame('Rustine Bot', $withoutEmail->gitIdentity('gitlab.example.com')->name);
+        $this->assertSame(['Security Bot', 'security@example.com'], [$explicit->name, $explicit->email]);
+        $this->assertSame('Rustine Bot', $withoutEmail->gitIdentity('gitlab.example.com')->name);
     }
 }

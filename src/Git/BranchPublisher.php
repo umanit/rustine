@@ -18,10 +18,10 @@ use Rustine\Apply\WorkingTree;
  */
 final class BranchPublisher
 {
-    public const BRANCH_PREFIX = 'security/rustine-';
+    public const string BRANCH_PREFIX = 'security/rustine-';
 
     /** Trailer added to every commit, so that commits made by someone else on the branch can be recognized. */
-    public const TRAILER = 'Generated-by: Rustine';
+    public const string TRAILER = 'Generated-by: Rustine';
 
     /** Where the working tree was before {@see start()}: a branch name or a commit. */
     private ?string $origin = null;
@@ -54,29 +54,10 @@ final class BranchPublisher
 
         $sha = trim($this->git->run(['rev-parse', $this->remoteRef($branch)]));
 
-        return new RemoteBranch($this->onlyRustineCommits($branch) ? RemoteBranchState::Rustine : RemoteBranchState::Foreign, $sha);
-    }
-
-    /**
-     * The ownership check walks the commits between the default branch and the Rustine branch: a shallow clone would
-     * make it list unrelated history. Instead of fetching the whole history (long on a big repository), the history of
-     * the branch is deepened only down to the commits the default branch already has, which is exactly the range that
-     * is checked. A server that cannot do that gets the whole history, as a last resort.
-     *
-     * @throws GitException
-     */
-    private function fetchBranch(string $branch): void
-    {
-        if ('true' === trim($this->git->run(['rev-parse', '--is-shallow-repository']))) {
-            $bounded = $this->git->attempt(['fetch', '--no-tags', '--shallow-exclude=refs/heads/' . $this->defaultBranch, $this->remote, $this->refspec($branch)], true);
-            if ($bounded->isSuccessful()) {
-                return;
-            }
-
-            $this->git->run(['fetch', '--no-tags', '--unshallow', $this->remote], true);
-        }
-
-        $this->git->run(['fetch', '--no-tags', $this->remote, $this->refspec($branch)], true);
+        return new RemoteBranch(
+            $this->onlyRustineCommits($branch) ? RemoteBranchState::Rustine : RemoteBranchState::Foreign,
+            $sha,
+        );
     }
 
     /**
@@ -89,10 +70,17 @@ final class BranchPublisher
         $this->assertRustineBranch($branch);
 
         if ([] !== $this->changedAllowedFiles()) {
-            throw new GitException(sprintf('%s already modified in the working tree: refusing to mix them with the fixes.', implode(', ', $this->changedAllowedFiles())));
+            throw new GitException(
+                sprintf(
+                    '%s already modified in the working tree: refusing to mix them with the fixes.',
+                    implode(', ', $this->changedAllowedFiles()),
+                ),
+            );
         }
         if (!$this->git->attempt(['diff', '--cached', '--quiet'])->isSuccessful()) {
-            throw new GitException('Changes are already staged in the working tree: refusing to commit them in the fix.');
+            throw new GitException(
+                'Changes are already staged in the working tree: refusing to commit them in the fix.',
+            );
         }
 
         $this->origin ??= $this->currentPosition();
@@ -116,10 +104,17 @@ final class BranchPublisher
 
         $this->git->run(['add', '--', ...$files]);
         $this->git->run([
-            '-c', 'user.name=' . $this->identity->name,
-            '-c', 'user.email=' . $this->identity->email,
-            '-c', 'commit.gpgsign=false',
-            'commit', '--quiet', '--no-verify', '-m', rtrim($message) . "\n\n" . self::TRAILER,
+            '-c',
+            'user.name=' . $this->identity->name,
+            '-c',
+            'user.email=' . $this->identity->email,
+            '-c',
+            'commit.gpgsign=false',
+            'commit',
+            '--quiet',
+            '--no-verify',
+            '-m',
+            rtrim($message) . "\n\n" . self::TRAILER,
         ]);
 
         return true;
@@ -136,7 +131,9 @@ final class BranchPublisher
     {
         $this->assertRustineBranch($branch);
         if (RemoteBranchState::Foreign === $remote->state) {
-            throw new GitException(sprintf('"%s" carries commits that Rustine did not create: refusing to overwrite it.', $branch));
+            throw new GitException(
+                sprintf('"%s" carries commits that Rustine did not create: refusing to overwrite it.', $branch),
+            );
         }
 
         if (null !== $remote->sha) {
@@ -147,7 +144,8 @@ final class BranchPublisher
         }
 
         $this->git->run([
-            'push', '--quiet',
+            'push',
+            '--quiet',
             sprintf('--force-with-lease=refs/heads/%s:%s', $branch, $remote->sha ?? ''),
             $this->remote,
             'HEAD:refs/heads/' . $branch,
@@ -163,7 +161,12 @@ final class BranchPublisher
      */
     public function finish(): void
     {
-        $tracked = array_values(array_filter(explode("\0", $this->git->run(['ls-files', '-z', '--', ...WorkingTree::ALLOWED_FILES])), static fn (string $p): bool => '' !== $p));
+        $tracked = array_values(
+            array_filter(
+                explode("\0", $this->git->run(['ls-files', '-z', '--', ...WorkingTree::ALLOWED_FILES])),
+                static fn(string $p): bool => '' !== $p,
+            ),
+        );
         if ([] !== $tracked) {
             $this->git->run(['restore', '--source=HEAD', '--staged', '--worktree', '--', ...$tracked]);
         }
@@ -175,13 +178,47 @@ final class BranchPublisher
     }
 
     /**
+     * The ownership check walks the commits between the default branch and the Rustine branch: a shallow clone would
+     * make it list unrelated history. Instead of fetching the whole history (long on a big repository), the history of
+     * the branch is deepened only down to the commits the default branch already has, which is exactly the range that
+     * is checked. A server that cannot do that gets the whole history, as a last resort.
+     *
+     * @throws GitException
+     */
+    private function fetchBranch(string $branch): void
+    {
+        if ('true' === trim($this->git->run(['rev-parse', '--is-shallow-repository']))) {
+            $bounded = $this->git->attempt(
+                [
+                    'fetch',
+                    '--no-tags',
+                    '--shallow-exclude=refs/heads/' . $this->defaultBranch,
+                    $this->remote,
+                    $this->refspec($branch),
+                ],
+                true,
+            );
+            if ($bounded->isSuccessful()) {
+                return;
+            }
+
+            $this->git->run(['fetch', '--no-tags', '--unshallow', $this->remote], true);
+        }
+
+        $this->git->run(['fetch', '--no-tags', $this->remote, $this->refspec($branch)], true);
+    }
+
+    /**
      * @return list<string> changed manifests and lockfiles (relative to the project)
      */
     private function changedAllowedFiles(): array
     {
-        $status = $this->git->run(['status', '--porcelain', '-z', '--untracked-files=all', '--', ...WorkingTree::ALLOWED_FILES]);
+        $status = $this->git->run(
+            ['status', '--porcelain', '-z', '--untracked-files=all', '--', ...WorkingTree::ALLOWED_FILES],
+        );
 
         $paths = [];
+
         foreach (explode("\0", $status) as $entry) {
             if (\strlen($entry) > 3) {
                 $paths[] = substr($entry, 3);
@@ -193,7 +230,15 @@ final class BranchPublisher
 
     private function onlyRustineCommits(string $branch): bool
     {
-        $shas = array_filter(explode("\n", $this->git->run(['rev-list', $this->remoteRef($this->defaultBranch) . '..' . $this->remoteRef($branch)])));
+        $shas = array_filter(
+            explode(
+                "\n",
+                $this->git->run(
+                    ['rev-list', $this->remoteRef($this->defaultBranch) . '..' . $this->remoteRef($branch)],
+                ),
+            ),
+        );
+
         foreach ($shas as $sha) {
             $trailers = $this->git->run(['show', '--quiet', '--format=%(trailers:key=Generated-by,valueonly)', $sha]);
             if ('Rustine' !== trim($trailers)) {
@@ -215,7 +260,13 @@ final class BranchPublisher
     private function assertRustineBranch(string $branch): void
     {
         if ($branch === $this->defaultBranch || !str_starts_with($branch, self::BRANCH_PREFIX)) {
-            throw new GitException(sprintf('Refusing to touch "%s": only branches named "%s*" may be written.', $branch, self::BRANCH_PREFIX));
+            throw new GitException(
+                sprintf(
+                    'Refusing to touch "%s": only branches named "%s*" may be written.',
+                    $branch,
+                    self::BRANCH_PREFIX,
+                ),
+            );
         }
     }
 

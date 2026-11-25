@@ -11,7 +11,12 @@ namespace Rustine\Apply;
  */
 final class PackageJsonEditor
 {
-    private const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'];
+    private const array DEPENDENCY_FIELDS = [
+        'dependencies',
+        'devDependencies',
+        'optionalDependencies',
+        'peerDependencies',
+    ];
 
     /**
      * Adds or updates a `resolutions` entry. An existing entry for the same package is updated, never duplicated:
@@ -26,6 +31,7 @@ final class PackageJsonEditor
                 foreach ([$key, $base, '**/' . $base] as $candidate) {
                     if (isset($resolutions->{$candidate})) {
                         $key = $candidate;
+
                         break;
                     }
                 }
@@ -38,9 +44,11 @@ final class PackageJsonEditor
             }
 
             $base = str_starts_with($key, '**/') ? substr($key, 3) : $key;
+
             foreach ([$key, $base, '**/' . $base] as $candidate) {
                 if (isset($data->resolutions->{$candidate})) {
                     $key = $candidate;
+
                     break;
                 }
             }
@@ -77,6 +85,28 @@ final class PackageJsonEditor
     }
 
     /**
+     * Specification declared for a package in `dependencies`, `devDependencies`, `optionalDependencies` or
+     * `peerDependencies` (first match), or null if the package is not declared directly.
+     */
+    public function declaredSpec(string $path, string $package): ?string
+    {
+        $content = @file_get_contents($path);
+        $data = false === $content ? null : json_decode($content, false);
+        if (!$data instanceof \stdClass) {
+            return null;
+        }
+
+        foreach (self::DEPENDENCY_FIELDS as $field) {
+            $block = $data->{$field} ?? null;
+            if ($block instanceof \stdClass && isset($block->{$package}) && \is_string($block->{$package})) {
+                return $block->{$package};
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @param \Closure(string, \stdClass): ?string $textEdit new text, or null when the text cannot be edited in place
      * @param \Closure(\stdClass): void            $change   the same change, on the decoded data (fallback)
      */
@@ -89,15 +119,20 @@ final class PackageJsonEditor
 
         try {
             $data = json_decode($content, false, 512, \JSON_THROW_ON_ERROR);
-        } catch (\JsonException $e) {
-            throw new \RuntimeException(sprintf('"%s" is not valid JSON: %s', $path, $e->getMessage()), 0, $e);
+        } catch (\JsonException $jsonException) {
+            throw new \RuntimeException(
+                sprintf('"%s" is not valid JSON: %s', $path, $jsonException->getMessage()),
+                0,
+                $jsonException,
+            );
         }
+
         if (!$data instanceof \stdClass) {
             throw new \RuntimeException(sprintf('"%s" must contain a JSON object.', $path));
         }
 
         $edited = $textEdit($content, clone $data);
-        if (null !== $edited && null !== JsonSpans::parse($edited)) {
+        if (null !== $edited && JsonSpans::parse($edited) instanceof JsonObject) {
             file_put_contents($path, $edited);
 
             return;
@@ -105,13 +140,16 @@ final class PackageJsonEditor
 
         $change($data);
 
-        $json = json_encode($data, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE | \JSON_THROW_ON_ERROR);
+        $json = json_encode(
+            $data,
+            \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE | \JSON_THROW_ON_ERROR,
+        );
         $indent = $this->detectIndent($content);
         if ('    ' !== $indent) {
             // PHP always indents with 4 spaces; JSON strings cannot contain raw newlines, so only structure matches.
             $json = (string) preg_replace_callback(
                 '/^( {4})+/m',
-                static fn (array $m): string => str_repeat($indent, intdiv(\strlen($m[0]), 4)),
+                static fn(array $m): string => str_repeat($indent, intdiv(\strlen($m[0]), 4)),
                 $json,
             );
         }
@@ -129,7 +167,7 @@ final class PackageJsonEditor
     private function setMember(string $content, array $objectPath, string $key, string $value): ?string
     {
         $root = JsonSpans::parse($content);
-        if (null === $root) {
+        if (!$root instanceof JsonObject) {
             return null;
         }
 
@@ -138,10 +176,21 @@ final class PackageJsonEditor
         $encodedKey = json_encode($key, \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE | \JSON_THROW_ON_ERROR);
 
         $object = $root;
+
         foreach ($objectPath as $name) {
             $next = $object->member($name);
-            if (null === $next) {
-                return $this->addMember($content, $root, $name, $eol, static fn (string $indent, string $unit, string $colon): string => '{' . $eol . $indent . $unit . $encodedKey . $colon . $encoded . $eol . $indent . '}');
+            if (!$next instanceof JsonMember) {
+                return $this->addMember(
+                    $content,
+                    $root,
+                    $name,
+                    $eol,
+                    static fn(
+                        string $indent,
+                        string $unit,
+                        string $colon,
+                    ): string => '{' . $eol . $indent . $unit . $encodedKey . $colon . $encoded . $eol . $indent . '}',
+                );
             }
             if (!$next->value instanceof JsonObject) {
                 return null;
@@ -150,17 +199,18 @@ final class PackageJsonEditor
         }
 
         $existing = $object->member($key);
-        if (null !== $existing) {
+        if ($existing instanceof JsonMember) {
             return $existing->value instanceof JsonScalar && $existing->value->isString
                 ? substr_replace($content, $encoded, $existing->valueStart, $existing->valueEnd - $existing->valueStart)
                 : null;
         }
 
-        return $this->addMember($content, $object, $key, $eol, static fn (): string => $encoded);
+        return $this->addMember($content, $object, $key, $eol, static fn(): string => $encoded);
     }
 
     /**
-     * Appends a member after the last one of `$object`, laid out like it. `$render(indent, unit, colon)` gives the value.
+     * Appends a member after the last one of `$object`, laid out like it. `$render(indent, unit, colon)` gives the
+     * value.
      *
      * @param \Closure(string, string, string): string $render
      */
@@ -191,28 +241,6 @@ final class PackageJsonEditor
     private function colonStyle(string $content, JsonMember $member): string
     {
         return substr($content, $member->keyEnd, $member->valueStart - $member->keyEnd);
-    }
-
-    /**
-     * Specification declared for a package in `dependencies`, `devDependencies`, `optionalDependencies` or
-     * `peerDependencies` (first match), or null if the package is not declared directly.
-     */
-    public function declaredSpec(string $path, string $package): ?string
-    {
-        $content = @file_get_contents($path);
-        $data = false === $content ? null : json_decode($content, false);
-        if (!$data instanceof \stdClass) {
-            return null;
-        }
-
-        foreach (self::DEPENDENCY_FIELDS as $field) {
-            $block = $data->{$field} ?? null;
-            if ($block instanceof \stdClass && isset($block->{$package}) && \is_string($block->{$package})) {
-                return $block->{$package};
-            }
-        }
-
-        return null;
     }
 
     private function detectIndent(string $content): string

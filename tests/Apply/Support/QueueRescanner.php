@@ -11,6 +11,7 @@ final class QueueRescanner implements VulnerabilityRescanner
 {
     /** @var list<TrivyReport> */
     private array $reports;
+
     public int $calls = 0;
 
     public function __construct(TrivyReport ...$reports)

@@ -12,14 +12,14 @@ use Rustine\Trivy\Ecosystem;
  * Fix ladder for Yarn Berry (v2+), cheapest and cleanest first.
  *
  * With `$lockfileOnly`, every attempt runs with `--mode=update-lockfile`: Yarn resolves and fetches what the lockfile
- * lacks but skips the link step, and `node_modules` stays as it is. Trivy only reads `yarn.lock`, so linking after every
- * attempt of every package is wasted time. It is not combinable with `--immutable`, hence the final check is a normal
- * install.
+ * lacks but skips the link step, and `node_modules` stays as it is. Trivy only reads `yarn.lock`, so linking after
+ * every attempt of every package is wasted time. It is not combinable with `--immutable`, hence the final check is a
+ * normal install.
  */
 final readonly class YarnBerryStrategy implements FixStrategy
 {
     /** First Yarn major version `--mode=update-lockfile` was checked with (`install` and `up`). */
-    public const LOCKFILE_ONLY_MIN_MAJOR = 4;
+    public const int LOCKFILE_ONLY_MIN_MAJOR = 4;
 
     public function __construct(
         private YarnRuntime $runtime = new YarnRuntime(),
@@ -78,20 +78,16 @@ final readonly class YarnBerryStrategy implements FixStrategy
     }
 
     /**
-     * @return non-empty-list<string>
-     */
-    private function yarn(string ...$arguments): array
-    {
-        return $this->runtime->yarn(...$arguments, ...($this->lockfileOnly ? ['--mode=update-lockfile'] : []));
-    }
-
-    /**
      * Yarn would otherwise refuse to modify the lockfile on CI, and lifecycle scripts have no business running
      * while the bot resolves dependencies.
      */
     public function mutatingEnv(): array
     {
-        return [...$this->runtime->env(), 'YARN_ENABLE_IMMUTABLE_INSTALLS' => 'false', 'YARN_ENABLE_SCRIPTS' => 'false'];
+        return [
+            ...$this->runtime->env(),
+            'YARN_ENABLE_IMMUTABLE_INSTALLS' => 'false',
+            'YARN_ENABLE_SCRIPTS'            => 'false',
+        ];
     }
 
     public function checkCommand(): array
@@ -108,5 +104,13 @@ final readonly class YarnBerryStrategy implements FixStrategy
     {
         // A full install: too slow to run twice, and it only fails for a reason that comes from the lockfile.
         return false;
+    }
+
+    /**
+     * @return non-empty-list<string>
+     */
+    private function yarn(string ...$arguments): array
+    {
+        return $this->runtime->yarn(...$arguments, ...($this->lockfileOnly ? ['--mode=update-lockfile'] : []));
     }
 }

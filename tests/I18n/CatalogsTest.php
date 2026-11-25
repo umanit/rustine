@@ -14,11 +14,21 @@ use Rustine\I18n\TranslatorFactory;
  */
 final class CatalogsTest extends TestCase
 {
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function locales(): iterable
+    {
+        foreach (new TranslatorFactory()->availableLocales() as $locale) {
+            yield $locale => [$locale];
+        }
+    }
+
     #[Test]
     public function englishAndFrenchAreShipped(): void
     {
-        self::assertContains('en', (new TranslatorFactory())->availableLocales());
-        self::assertContains('fr', (new TranslatorFactory())->availableLocales());
+        $this->assertContains('en', new TranslatorFactory()->availableLocales());
+        $this->assertContains('fr', new TranslatorFactory()->availableLocales());
     }
 
     #[Test]
@@ -28,8 +38,8 @@ final class CatalogsTest extends TestCase
         $english = array_keys($this->messages('en'));
         $other = array_keys($this->messages($locale));
 
-        self::assertSame([], array_diff($english, $other), sprintf('Keys missing in "%s".', $locale));
-        self::assertSame([], array_diff($other, $english), sprintf('Keys of "%s" unknown in English.', $locale));
+        $this->assertSame([], array_diff($english, $other), sprintf('Keys missing in "%s".', $locale));
+        $this->assertSame([], array_diff($other, $english), sprintf('Keys of "%s" unknown in English.', $locale));
     }
 
     #[Test]
@@ -42,7 +52,7 @@ final class CatalogsTest extends TestCase
             $expected = $this->placeholders($english);
             $actual = $this->placeholders($messages[$id] ?? '');
 
-            self::assertSame($expected, $actual, sprintf('Placeholders of "%s" differ in "%s".', $id, $locale));
+            $this->assertSame($expected, $actual, sprintf('Placeholders of "%s" differ in "%s".', $id, $locale));
         }
     }
 
@@ -51,20 +61,18 @@ final class CatalogsTest extends TestCase
     public function messagesOnlyUseSimpleIcuArguments(string $locale): void
     {
         foreach ($this->messages($locale) as $id => $message) {
-            self::assertSame(0, preg_match('/\{[^{}]*,/', $message), sprintf('"%s" uses plural/select, which is not supported.', $id));
+            $this->assertDoesNotMatchRegularExpression(
+                '/\{[^{}]*,/',
+                $message,
+                sprintf('"%s" uses plural/select, which is not supported.', $id),
+            );
             // In ICU an apostrophe right before a brace starts a quoted section.
-            self::assertSame(0, preg_match("/'[{}]/", $message), sprintf('"%s" has an apostrophe next to a brace.', $id));
-            self::assertNotSame('', trim($message), sprintf('"%s" is empty.', $id));
-        }
-    }
-
-    /**
-     * @return iterable<string, array{string}>
-     */
-    public static function locales(): iterable
-    {
-        foreach ((new TranslatorFactory())->availableLocales() as $locale) {
-            yield $locale => [$locale];
+            $this->assertDoesNotMatchRegularExpression(
+                "/'[{}]/",
+                $message,
+                sprintf('"%s" has an apostrophe next to a brace.', $id),
+            );
+            $this->assertNotSame('', trim($message), sprintf('"%s" is empty.', $id));
         }
     }
 
@@ -76,7 +84,7 @@ final class CatalogsTest extends TestCase
     private function messages(string $locale): array
     {
         /** @var array<string, string> $messages */
-        $messages = (new TranslatorFactory())->create($locale)->getCatalogue($locale)->all(TranslatorFactory::DOMAIN);
+        $messages = new TranslatorFactory()->create($locale)->getCatalogue($locale)->all(TranslatorFactory::DOMAIN);
 
         return $messages;
     }

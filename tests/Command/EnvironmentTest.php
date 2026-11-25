@@ -10,7 +10,7 @@ use Rustine\Command\Environment;
 
 final class EnvironmentTest extends TestCase
 {
-    private const VARIABLE = 'RUSTINE_TEST_ENVIRONMENT_OPTION';
+    private const string VARIABLE = 'RUSTINE_TEST_ENVIRONMENT_OPTION';
 
     protected function tearDown(): void
     {
@@ -22,7 +22,7 @@ final class EnvironmentTest extends TestCase
     {
         putenv(self::VARIABLE . '=from-env');
 
-        self::assertSame('from-option', Environment::string('from-option', self::VARIABLE, 'default'));
+        $this->assertSame('from-option', Environment::string('from-option', self::VARIABLE, 'default'));
     }
 
     #[Test]
@@ -30,22 +30,23 @@ final class EnvironmentTest extends TestCase
     {
         putenv(self::VARIABLE . '=from-env');
 
-        self::assertSame('from-env', Environment::string(null, self::VARIABLE, 'default'));
+        $this->assertSame('from-env', Environment::string(null, self::VARIABLE, 'default'));
     }
 
     #[Test]
     public function aSwitchIsSetByItsOptionOrByATruthyVariable(): void
     {
-        self::assertFalse(Environment::flag(false, 'RUSTINE_TEST_UNSET_VARIABLE'));
-        self::assertTrue(Environment::flag(true, 'RUSTINE_TEST_UNSET_VARIABLE'));
+        $this->assertFalse(Environment::flag(false, 'RUSTINE_TEST_UNSET_VARIABLE'));
+        $this->assertTrue(Environment::flag(true, 'RUSTINE_TEST_UNSET_VARIABLE'));
 
         foreach (['1', 'true', 'TRUE', ' yes ', 'on'] as $value) {
             putenv(self::VARIABLE . '=' . $value);
-            self::assertTrue(Environment::flag(false, self::VARIABLE), $value);
+            $this->assertTrue(Environment::flag(false, self::VARIABLE), $value);
         }
+
         foreach (['0', 'false', 'no', '', 'maybe'] as $value) {
             putenv(self::VARIABLE . '=' . $value);
-            self::assertFalse(Environment::flag(false, self::VARIABLE), $value);
+            $this->assertFalse(Environment::flag(false, self::VARIABLE), $value);
         }
     }
 
@@ -54,7 +55,7 @@ final class EnvironmentTest extends TestCase
     {
         putenv(self::VARIABLE . '=');
 
-        self::assertSame('default', Environment::string('', self::VARIABLE, 'default'));
-        self::assertSame('default', Environment::string(null, 'RUSTINE_TEST_UNSET_VARIABLE', 'default'));
+        $this->assertSame('default', Environment::string('', self::VARIABLE, 'default'));
+        $this->assertSame('default', Environment::string(null, 'RUSTINE_TEST_UNSET_VARIABLE', 'default'));
     }
 }

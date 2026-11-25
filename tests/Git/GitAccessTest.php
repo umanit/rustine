@@ -14,27 +14,27 @@ use Rustine\Tests\Apply\Support\FakeRunner;
 
 final class GitAccessTest extends TestCase
 {
-    private const TOKEN = 'glpat-s3cr3t-t0ken';
+    private const string TOKEN = 'glpat-s3cr3t-t0ken';
 
     #[Test]
     public function theTokenTravelsInTheEnvironmentAsABasicAuthHeader(): void
     {
-        $env = (new GitAccess(self::TOKEN, inheritedConfigCount: 0))->environment();
+        $env = new GitAccess(self::TOKEN, inheritedConfigCount: 0)->environment();
 
-        self::assertSame('http.extraHeader', $env['GIT_CONFIG_KEY_0']);
-        self::assertSame('Authorization: Basic ' . base64_encode('oauth2:' . self::TOKEN), $env['GIT_CONFIG_VALUE_0']);
-        self::assertSame('1', $env['GIT_CONFIG_COUNT']);
+        $this->assertSame('http.extraHeader', $env['GIT_CONFIG_KEY_0']);
+        $this->assertSame('Authorization: Basic ' . base64_encode('oauth2:' . self::TOKEN), $env['GIT_CONFIG_VALUE_0']);
+        $this->assertSame('1', $env['GIT_CONFIG_COUNT']);
     }
 
     #[Test]
     public function theHeaderIsAddedAfterTheConfigurationTheRunnerAlreadyInjects(): void
     {
-        $env = (new GitAccess(self::TOKEN, inheritedConfigCount: 2))->environment();
+        $env = new GitAccess(self::TOKEN, inheritedConfigCount: 2)->environment();
 
-        self::assertSame('3', $env['GIT_CONFIG_COUNT']);
-        self::assertSame('http.extraHeader', $env['GIT_CONFIG_KEY_2']);
-        self::assertArrayNotHasKey('GIT_CONFIG_KEY_0', $env, 'the inherited pairs are left alone');
-        self::assertArrayNotHasKey('GIT_CONFIG_KEY_1', $env);
+        $this->assertSame('3', $env['GIT_CONFIG_COUNT']);
+        $this->assertSame('http.extraHeader', $env['GIT_CONFIG_KEY_2']);
+        $this->assertArrayNotHasKey('GIT_CONFIG_KEY_0', $env, 'the inherited pairs are left alone');
+        $this->assertArrayNotHasKey('GIT_CONFIG_KEY_1', $env);
     }
 
     #[Test]
@@ -42,14 +42,15 @@ final class GitAccessTest extends TestCase
     {
         $previous = getenv('GIT_CONFIG_COUNT');
         putenv('GIT_CONFIG_COUNT=1');
+
         try {
-            $env = (new GitAccess(self::TOKEN))->environment();
+            $env = new GitAccess(self::TOKEN)->environment();
         } finally {
             false === $previous ? putenv('GIT_CONFIG_COUNT') : putenv('GIT_CONFIG_COUNT=' . $previous);
         }
 
-        self::assertSame('2', $env['GIT_CONFIG_COUNT']);
-        self::assertArrayHasKey('GIT_CONFIG_VALUE_1', $env);
+        $this->assertSame('2', $env['GIT_CONFIG_COUNT']);
+        $this->assertArrayHasKey('GIT_CONFIG_VALUE_1', $env);
     }
 
     #[Test]
@@ -58,7 +59,7 @@ final class GitAccessTest extends TestCase
         $access = new GitAccess(self::TOKEN);
         $text = sprintf('fatal: %s and %s', self::TOKEN, base64_encode('oauth2:' . self::TOKEN));
 
-        self::assertSame('fatal: *** and ***', $access->redact($text));
+        $this->assertSame('fatal: *** and ***', $access->redact($text));
     }
 
     #[Test]
@@ -70,27 +71,30 @@ final class GitAccessTest extends TestCase
         $git->run(['fetch', 'origin'], true);
         $git->run(['status']);
 
-        self::assertStringNotContainsString(self::TOKEN, implode(' ', $runner->commands[0]));
-        self::assertArrayHasKey('GIT_CONFIG_VALUE_0', $runner->envs[0]);
-        self::assertSame(['GIT_TERMINAL_PROMPT' => '0'], $runner->envs[1], 'local commands do not get the token');
+        $this->assertStringNotContainsString(self::TOKEN, implode(' ', $runner->commands[0]));
+        $this->assertArrayHasKey('GIT_CONFIG_VALUE_0', $runner->envs[0]);
+        $this->assertSame(['GIT_TERMINAL_PROMPT' => '0'], $runner->envs[1], 'local commands do not get the token');
     }
 
     #[Test]
     public function errorsDoNotLeakTheToken(): void
     {
-        $runner = new class() extends FakeRunner {
+        $runner = new class () extends FakeRunner {
             public function run(array $command, string $cwd, array $env = []): CommandResult
             {
-                return new CommandResult(128, 'fatal: could not read from https://oauth2:glpat-s3cr3t-t0ken@host/x.git');
+                return new CommandResult(
+                    128,
+                    'fatal: could not read from https://oauth2:glpat-s3cr3t-t0ken@host/x.git',
+                );
             }
         };
 
         try {
-            (new Git($runner, '/p', new GitAccess(self::TOKEN)))->run(['fetch', 'origin'], true);
+            new Git($runner, '/p', new GitAccess(self::TOKEN))->run(['fetch', 'origin'], true);
             self::fail('A GitException was expected.');
-        } catch (GitException $e) {
-            self::assertStringNotContainsString(self::TOKEN, $e->getMessage());
-            self::assertStringContainsString('***', $e->getMessage());
+        } catch (GitException $gitException) {
+            $this->assertStringNotContainsString(self::TOKEN, $gitException->getMessage());
+            $this->assertStringContainsString('***', $gitException->getMessage());
         }
     }
 }

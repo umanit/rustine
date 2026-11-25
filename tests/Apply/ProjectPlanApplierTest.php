@@ -41,12 +41,12 @@ final class ProjectPlanApplierTest extends TestCase
         $applier = new ProjectPlanApplier($runner, $this->dir);
 
         file_put_contents($this->dir . '/yarn.lock', "__metadata:\n  version: 8\n");
-        self::assertInstanceOf(YarnBerryStrategy::class, $applier->strategy(Ecosystem::Yarn));
+        $this->assertInstanceOf(YarnBerryStrategy::class, $applier->strategy(Ecosystem::Yarn));
 
         file_put_contents($this->dir . '/yarn.lock', "# yarn lockfile v1\n");
-        self::assertInstanceOf(YarnClassicStrategy::class, $applier->strategy(Ecosystem::Yarn));
+        $this->assertInstanceOf(YarnClassicStrategy::class, $applier->strategy(Ecosystem::Yarn));
 
-        self::assertSame([], $runner->commands);
+        $this->assertSame([], $runner->commands);
     }
 
     #[Test]
@@ -54,7 +54,7 @@ final class ProjectPlanApplierTest extends TestCase
     {
         $this->expectException(UnsupportedProjectException::class);
 
-        (new ProjectPlanApplier(new FakeRunner(), $this->dir))->strategy(Ecosystem::Yarn);
+        new ProjectPlanApplier(new FakeRunner(), $this->dir)->strategy(Ecosystem::Yarn);
     }
 
     #[Test]
@@ -64,13 +64,19 @@ final class ProjectPlanApplierTest extends TestCase
         $fix = Fixtures::fix();
         $applier = new ProjectPlanApplier(new FakeRunner(), $this->dir);
 
-        $withYarn4 = $applier->strategy(Ecosystem::Yarn, new ToolVersions(['yarn' => '4.14.1']))->attempts($fix, $this->dir);
-        $withYarn3 = $applier->strategy(Ecosystem::Yarn, new ToolVersions(['yarn' => '3.8.0']))->attempts($fix, $this->dir);
+        $withYarn4 = $applier->strategy(Ecosystem::Yarn, new ToolVersions(['yarn' => '4.14.1']))->attempts(
+            $fix,
+            $this->dir,
+        );
+        $withYarn3 = $applier->strategy(Ecosystem::Yarn, new ToolVersions(['yarn' => '3.8.0']))->attempts(
+            $fix,
+            $this->dir,
+        );
         $unknown = $applier->strategy(Ecosystem::Yarn)->attempts($fix, $this->dir);
 
-        self::assertSame(['yarn', 'up', '-R', 'ckeditor4', '--mode=update-lockfile'], $withYarn4[0]->commands[0]);
-        self::assertSame(['yarn', 'up', '-R', 'ckeditor4'], $withYarn3[0]->commands[0]);
-        self::assertSame(['yarn', 'up', '-R', 'ckeditor4'], $unknown[0]->commands[0]);
+        $this->assertSame(['yarn', 'up', '-R', 'ckeditor4', '--mode=update-lockfile'], $withYarn4[0]->commands[0]);
+        $this->assertSame(['yarn', 'up', '-R', 'ckeditor4'], $withYarn3[0]->commands[0]);
+        $this->assertSame(['yarn', 'up', '-R', 'ckeditor4'], $unknown[0]->commands[0]);
     }
 
     #[Test]
@@ -80,13 +86,17 @@ final class ProjectPlanApplierTest extends TestCase
         $runner = $this->composerRunner(globalFlex: false);
 
         try {
-            (new ProjectPlanApplier($runner, $this->dir))->tools(Ecosystem::Composer);
+            new ProjectPlanApplier($runner, $this->dir)->tools(Ecosystem::Composer);
             self::fail('Without Flex the requirement would be ignored: Rustine must stop.');
-        } catch (ToolingException $e) {
-            self::assertStringContainsString('extra.symfony.require to "6.4.*"', $e->getMessage());
-            self::assertStringContainsString('composer global require symfony/flex', $e->getMessage());
+        } catch (ToolingException $toolingException) {
+            $this->assertStringContainsString('extra.symfony.require to "6.4.*"', $toolingException->getMessage());
+            $this->assertStringContainsString('composer global require symfony/flex', $toolingException->getMessage());
         }
-        self::assertContains('composer global show symfony/flex --no-ansi', array_map(static fn (array $c): string => implode(' ', $c), $runner->commands));
+
+        $this->assertContains(
+            'composer global show symfony/flex --no-ansi',
+            array_map(static fn(array $c): string => implode(' ', $c), $runner->commands),
+        );
     }
 
     #[Test]
@@ -94,9 +104,11 @@ final class ProjectPlanApplierTest extends TestCase
     {
         file_put_contents($this->dir . '/composer.json', '{"extra":{"symfony":{"require":"6.4.*"}}}');
 
-        $tools = (new ProjectPlanApplier($this->composerRunner(globalFlex: true), $this->dir))->tools(Ecosystem::Composer);
+        $tools = new ProjectPlanApplier($this->composerRunner(globalFlex: true), $this->dir)->tools(
+            Ecosystem::Composer,
+        );
 
-        self::assertSame('2.8.1', $tools->version('composer'));
+        $this->assertSame('2.8.1', $tools->version('composer'));
     }
 
     #[Test]
@@ -107,8 +119,14 @@ final class ProjectPlanApplierTest extends TestCase
         $runner = $this->composerRunner(globalFlex: false);
 
         try {
-            self::assertSame('2.8.1', (new ProjectPlanApplier($runner, $this->dir))->tools(Ecosystem::Composer)->version('composer'));
-            self::assertNotContains('global', array_map(static fn (array $c): string => $c[1] ?? '', $runner->commands));
+            $this->assertSame(
+                '2.8.1',
+                new ProjectPlanApplier($runner, $this->dir)->tools(Ecosystem::Composer)->version('composer'),
+            );
+            $this->assertNotContains(
+                'global',
+                array_map(static fn(array $c): string => $c[1] ?? '', $runner->commands),
+            );
         } finally {
             rmdir($this->dir . '/vendor/symfony/flex');
             rmdir($this->dir . '/vendor/symfony');
@@ -119,11 +137,19 @@ final class ProjectPlanApplierTest extends TestCase
     #[Test]
     public function aVendorDirectoryOtherThanVendorIsLookedAt(): void
     {
-        file_put_contents($this->dir . '/composer.json', '{"extra":{"symfony":{"require":"6.4.*"}},"config":{"vendor-dir":"lib"}}');
+        file_put_contents(
+            $this->dir . '/composer.json',
+            '{"extra":{"symfony":{"require":"6.4.*"}},"config":{"vendor-dir":"lib"}}',
+        );
         mkdir($this->dir . '/lib/symfony/flex', 0o777, true);
 
         try {
-            self::assertSame('2.8.1', (new ProjectPlanApplier($this->composerRunner(globalFlex: false), $this->dir))->tools(Ecosystem::Composer)->version('composer'));
+            $this->assertSame(
+                '2.8.1',
+                new ProjectPlanApplier($this->composerRunner(globalFlex: false), $this->dir)->tools(
+                    Ecosystem::Composer,
+                )->version('composer'),
+            );
         } finally {
             rmdir($this->dir . '/lib/symfony/flex');
             rmdir($this->dir . '/lib/symfony');
@@ -137,18 +163,11 @@ final class ProjectPlanApplierTest extends TestCase
         file_put_contents($this->dir . '/composer.json', '{"require":{"twig/twig":"^3.0"}}');
         $runner = $this->composerRunner(globalFlex: false);
 
-        self::assertSame('2.8.1', (new ProjectPlanApplier($runner, $this->dir))->tools(Ecosystem::Composer)->version('composer'));
-        self::assertNotContains('global', array_map(static fn (array $c): string => $c[1] ?? '', $runner->commands));
-    }
-
-    private function composerRunner(bool $globalFlex): FakeRunner
-    {
-        $runner = new FakeRunner();
-        $runner->handler = static fn (array $command): CommandResult => 'global' === ($command[1] ?? null)
-            ? new CommandResult($globalFlex ? 0 : 1, '')
-            : new CommandResult(0, "Composer version 2.8.1 2024-10-04 PHP version 8.4.1\n");
-
-        return $runner;
+        $this->assertSame(
+            '2.8.1',
+            new ProjectPlanApplier($runner, $this->dir)->tools(Ecosystem::Composer)->version('composer'),
+        );
+        $this->assertNotContains('global', array_map(static fn(array $c): string => $c[1] ?? '', $runner->commands));
     }
 
     #[Test]
@@ -156,15 +175,25 @@ final class ProjectPlanApplierTest extends TestCase
     {
         file_put_contents($this->dir . '/yarn.lock', "__metadata:\n  version: 8\n");
         $runner = new FakeRunner();
-        $runner->handler = static fn (): CommandResult => new CommandResult(127, "not found\n");
+        $runner->handler = static fn(): CommandResult => new CommandResult(127, "not found\n");
 
         try {
-            (new ProjectPlanApplier($runner, $this->dir))->apply(Fixtures::plan(Fixtures::fix()), Fixtures::report());
+            new ProjectPlanApplier($runner, $this->dir)->apply(Fixtures::plan(Fixtures::fix()), Fixtures::report());
             self::fail('A missing tool must stop the run.');
-        } catch (ToolingException $e) {
-            self::assertStringContainsString('Rustine installs no tool', $e->getMessage());
+        } catch (ToolingException $toolingException) {
+            $this->assertStringContainsString('Rustine installs no tool', $toolingException->getMessage());
         }
 
-        self::assertSame([['node', '--version']], $runner->commands, 'Nothing is installed, nothing else is run.');
+        $this->assertSame([['node', '--version']], $runner->commands, 'Nothing is installed, nothing else is run.');
+    }
+
+    private function composerRunner(bool $globalFlex): FakeRunner
+    {
+        $runner = new FakeRunner();
+        $runner->handler = static fn(array $command): CommandResult => 'global' === ($command[1] ?? null)
+            ? new CommandResult($globalFlex ? 0 : 1, '')
+            : new CommandResult(0, "Composer version 2.8.1 2024-10-04 PHP version 8.4.1\n");
+
+        return $runner;
     }
 }

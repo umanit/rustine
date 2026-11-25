@@ -13,16 +13,18 @@ use Rustine\Trivy\Ecosystem;
 final class LockfileVersions
 {
     /**
-     * @return array<string, list<string>> versions (sorted, unique) by package name; empty when the lockfile is unreadable
+     * @return array<string, list<string>> versions (sorted, unique) by package name; empty when the lockfile is
+     *                       unreadable
      */
     public function parse(Ecosystem $ecosystem, string $content): array
     {
         $versions = Ecosystem::Composer === $ecosystem ? $this->composer($content) : $this->yarn($content);
 
         ksort($versions, \SORT_STRING);
+
         foreach ($versions as $name => $list) {
             $list = array_values(array_unique($list));
-            usort($list, static fn (string $a, string $b): int => version_compare($a, $b));
+            usort($list, static fn(string $a, string $b): int => version_compare($a, $b));
             $versions[$name] = $list;
         }
 
@@ -40,6 +42,7 @@ final class LockfileVersions
         $new = $this->parse($ecosystem, $after);
 
         $changes = [];
+
         foreach (array_keys($old + $new) as $name) {
             $name = (string) $name;
             $gone = array_values(array_diff($old[$name] ?? [], $new[$name] ?? []));
@@ -48,7 +51,8 @@ final class LockfileVersions
                 $changes[] = new LockChange($name, $gone, $appeared);
             }
         }
-        usort($changes, static fn (LockChange $a, LockChange $b): int => strcmp($a->package, $b->package));
+
+        usort($changes, static fn(LockChange $a, LockChange $b): int => strcmp($a->package, $b->package));
 
         return $changes;
     }
@@ -64,9 +68,14 @@ final class LockfileVersions
         }
 
         $versions = [];
+
         foreach (['packages', 'packages-dev'] as $section) {
             foreach (\is_array($data[$section] ?? null) ? $data[$section] : [] as $package) {
-                if (\is_array($package) && \is_string($package['name'] ?? null) && \is_string($package['version'] ?? null)) {
+                if (
+                    \is_array($package)
+                    && \is_string($package['name'] ?? null)
+                    && \is_string($package['version'] ?? null)
+                ) {
                     $versions[$package['name']][] = $package['version'];
                 }
             }
@@ -94,6 +103,7 @@ final class LockfileVersions
 
             if (' ' !== $line[0]) {
                 $name = $this->yarnPackageName($line);
+
                 continue;
             }
 
@@ -111,7 +121,11 @@ final class LockfileVersions
      */
     private function yarnPackageName(string $header): ?string
     {
-        if (!str_ends_with($header, ':') || str_starts_with($header, '__metadata') || str_contains($header, '@workspace:')) {
+        if (
+            !str_ends_with($header, ':')
+            || str_starts_with($header, '__metadata')
+            || str_contains($header, '@workspace:')
+        ) {
             return null;
         }
 

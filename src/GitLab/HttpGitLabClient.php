@@ -13,10 +13,12 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
  */
 final readonly class HttpGitLabClient implements GitLabClient
 {
-    private const PER_PAGE = 100;
-    private const MAX_PAGES = 20;
+    private const int PER_PAGE = 100;
+
+    private const int MAX_PAGES = 20;
 
     private HttpClientInterface $http;
+
     private string $projectPath;
 
     /**
@@ -32,7 +34,7 @@ final readonly class HttpGitLabClient implements GitLabClient
     ) {
         $this->http = $http->withOptions([
             'base_uri' => rtrim($apiUrl, '/') . '/',
-            'headers' => ['PRIVATE-TOKEN' => $token, 'Accept' => 'application/json'],
+            'headers'  => ['PRIVATE-TOKEN' => $token, 'Accept' => 'application/json'],
         ]);
         $this->projectPath = 'projects/' . rawurlencode($projectId);
     }
@@ -45,13 +47,19 @@ final readonly class HttpGitLabClient implements GitLabClient
             $this->int($data, 'id'),
             $this->string($data, 'username'),
             $this->string($data, 'name'),
-            isset($data['commit_email']) && \is_string($data['commit_email']) && '' !== $data['commit_email'] ? $data['commit_email'] : null,
+            isset($data['commit_email']) && \is_string(
+                $data['commit_email'],
+            ) && '' !== $data['commit_email'] ? $data['commit_email'] : null,
         );
     }
 
     public function findOpenMergeRequest(string $sourceBranch): ?MergeRequest
     {
-        $items = $this->request('GET', $this->projectPath . '/merge_requests', ['query' => ['state' => 'opened', 'source_branch' => $sourceBranch]]);
+        $items = $this->request(
+            'GET',
+            $this->projectPath . '/merge_requests',
+            ['query' => ['state' => 'opened', 'source_branch' => $sourceBranch]],
+        );
 
         foreach ($items as $item) {
             if (\is_array($item)) {
@@ -67,14 +75,16 @@ final readonly class HttpGitLabClient implements GitLabClient
 
     public function findClosedMergeRequest(string $sourceBranch, \DateTimeImmutable $since): ?MergeRequest
     {
-        $items = $this->request('GET', $this->projectPath . '/merge_requests', ['query' => [
-            'state' => 'closed',
-            'source_branch' => $sourceBranch,
-            'updated_after' => $since->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z'),
-            'order_by' => 'updated_at',
-            'sort' => 'desc',
-            'per_page' => 1,
-        ]]);
+        $items = $this->request('GET', $this->projectPath . '/merge_requests', [
+            'query' => [
+                'state'         => 'closed',
+                'source_branch' => $sourceBranch,
+                'updated_after' => $since->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z'),
+                'order_by'      => 'updated_at',
+                'sort'          => 'desc',
+                'per_page'      => 1,
+            ],
+        ]);
 
         foreach ($items as $item) {
             if (\is_array($item)) {
@@ -91,6 +101,7 @@ final readonly class HttpGitLabClient implements GitLabClient
     public function listOpenMergeRequests(array $labels): array
     {
         $merged = [];
+
         for ($page = 1; $page <= self::MAX_PAGES; ++$page) {
             $query = ['state' => 'opened', 'per_page' => self::PER_PAGE, 'page' => $page];
             if ([] !== $labels) {
@@ -103,6 +114,7 @@ final readonly class HttpGitLabClient implements GitLabClient
                     $merged[] = $this->mergeRequest($item);
                 }
             }
+
             if (\count($items) < self::PER_PAGE) {
                 break;
             }
@@ -114,10 +126,10 @@ final readonly class HttpGitLabClient implements GitLabClient
     public function createMergeRequest(NewMergeRequest $request): MergeRequest
     {
         $body = [
-            'source_branch' => $request->sourceBranch,
-            'target_branch' => $request->targetBranch,
-            'title' => $request->title,
-            'description' => $request->description,
+            'source_branch'        => $request->sourceBranch,
+            'target_branch'        => $request->targetBranch,
+            'title'                => $request->title,
+            'description'          => $request->description,
             'remove_source_branch' => true,
         ];
         if ([] !== $request->labels) {
@@ -133,8 +145,13 @@ final readonly class HttpGitLabClient implements GitLabClient
         return $this->mergeRequest($this->request('POST', $this->projectPath . '/merge_requests', ['json' => $body]));
     }
 
-    public function updateMergeRequest(int $iid, string $title, string $description, array $addLabels = [], array $removeLabels = []): MergeRequest
-    {
+    public function updateMergeRequest(
+        int $iid,
+        string $title,
+        string $description,
+        array $addLabels = [],
+        array $removeLabels = [],
+    ): MergeRequest {
         $body = ['title' => $title, 'description' => $description];
         if ([] !== $addLabels) {
             $body['add_labels'] = implode(',', $addLabels);
@@ -143,30 +160,46 @@ final readonly class HttpGitLabClient implements GitLabClient
             $body['remove_labels'] = implode(',', $removeLabels);
         }
 
-        return $this->mergeRequest($this->request('PUT', sprintf('%s/merge_requests/%d', $this->projectPath, $iid), ['json' => $body]));
+        return $this->mergeRequest(
+            $this->request('PUT', sprintf('%s/merge_requests/%d', $this->projectPath, $iid), ['json' => $body]),
+        );
     }
 
     public function closeMergeRequest(int $iid): void
     {
-        $this->request('PUT', sprintf('%s/merge_requests/%d', $this->projectPath, $iid), ['json' => ['state_event' => 'close']]);
+        $this->request(
+            'PUT',
+            sprintf('%s/merge_requests/%d', $this->projectPath, $iid),
+            ['json' => ['state_event' => 'close']],
+        );
     }
 
     public function addNote(int $iid, string $body): void
     {
-        $this->request('POST', sprintf('%s/merge_requests/%d/notes', $this->projectPath, $iid), ['json' => ['body' => $body]]);
+        $this->request(
+            'POST',
+            sprintf('%s/merge_requests/%d/notes', $this->projectPath, $iid),
+            ['json' => ['body' => $body]],
+        );
     }
 
     public function listNoteBodies(int $iid): array
     {
         $bodies = [];
+
         for ($page = 1; $page <= self::MAX_PAGES; ++$page) {
-            $notes = $this->request('GET', sprintf('%s/merge_requests/%d/notes', $this->projectPath, $iid), ['query' => ['per_page' => self::PER_PAGE, 'page' => $page]]);
+            $notes = $this->request(
+                'GET',
+                sprintf('%s/merge_requests/%d/notes', $this->projectPath, $iid),
+                ['query' => ['per_page' => self::PER_PAGE, 'page' => $page]],
+            );
 
             foreach ($notes as $note) {
                 if (\is_array($note) && \is_string($note['body'] ?? null)) {
                     $bodies[] = $note['body'];
                 }
             }
+
             if (\count($notes) < self::PER_PAGE) {
                 break;
             }
@@ -201,12 +234,24 @@ final readonly class HttpGitLabClient implements GitLabClient
             $response = $this->http->request($method, $path, $options);
             $status = $response->getStatusCode();
             if ($status >= 400) {
-                throw new GitLabException(sprintf('GitLab answered HTTP %d to %s %s: %s', $status, $method, $path, $this->errorMessage($response)));
+                throw new GitLabException(
+                    sprintf(
+                        'GitLab answered HTTP %d to %s %s: %s',
+                        $status,
+                        $method,
+                        $path,
+                        $this->errorMessage($response),
+                    ),
+                );
             }
 
             return $response->toArray(false);
-        } catch (ExceptionInterface $e) {
-            throw new GitLabException(sprintf('GitLab request %s %s failed: %s', $method, $path, $e->getMessage()), 0, $e);
+        } catch (ExceptionInterface $exception) {
+            throw new GitLabException(
+                sprintf('GitLab request %s %s failed: %s', $method, $path, $exception->getMessage()),
+                0,
+                $exception,
+            );
         }
     }
 
@@ -224,6 +269,7 @@ final readonly class HttpGitLabClient implements GitLabClient
     private function mergeRequest(array $data): MergeRequest
     {
         $labels = [];
+
         foreach (\is_array($data['labels'] ?? null) ? $data['labels'] : [] as $label) {
             if (\is_string($label)) {
                 $labels[] = $label;

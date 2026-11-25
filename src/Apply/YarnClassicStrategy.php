@@ -14,13 +14,12 @@ use Rustine\Trivy\Ecosystem;
 final readonly class YarnClassicStrategy implements FixStrategy
 {
     /** Classic has no environment switch for scripts: the flag goes on each command. */
-    private const FLAGS = ['--non-interactive', '--ignore-scripts'];
+    private const array FLAGS = ['--non-interactive', '--ignore-scripts'];
 
     public function __construct(
         private YarnRuntime $runtime = new YarnRuntime(),
         private YarnSourceGuard $sourceGuard = new YarnSourceGuard(),
-    )
-    {
+    ) {
     }
 
     public function ecosystem(): Ecosystem
@@ -53,12 +52,29 @@ final readonly class YarnClassicStrategy implements FixStrategy
         $range = '^' . $fix->targetVersion;
 
         // `yarn upgrade <pkg>` skips transitive occurrences: drop the lockfile entries and let Yarn resolve again.
-        $attempts = [new Attempt(AttemptKind::LockfileRefresh, [$this->runtime->yarn('install', ...self::FLAGS)], null, $name)];
+        $attempts = [
+            new Attempt(
+                AttemptKind::LockfileRefresh,
+                [$this->runtime->yarn('install', ...self::FLAGS)],
+                null,
+                $name,
+            ),
+        ];
 
         $attempts[] = DependencyKind::Direct === $fix->dependencyKind
             // `yarn upgrade pkg@range` would also re-sort `package.json`: edit the range in place instead.
-            ? new Attempt(AttemptKind::DirectBump, [$this->runtime->yarn('install', ...self::FLAGS)], null, null, [$name, $range])
-            : new Attempt(AttemptKind::Resolution, [$this->runtime->yarn('install', ...self::FLAGS)], ['**/' . $name, $range]);
+            ? new Attempt(
+                AttemptKind::DirectBump,
+                [$this->runtime->yarn('install', ...self::FLAGS)],
+                null,
+                null,
+                [$name, $range],
+            )
+            : new Attempt(
+                AttemptKind::Resolution,
+                [$this->runtime->yarn('install', ...self::FLAGS)],
+                ['**/' . $name, $range],
+            );
 
         return $attempts;
     }

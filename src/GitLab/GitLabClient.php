@@ -55,7 +55,13 @@ interface GitLabClient
      *
      * @throws GitLabException
      */
-    public function updateMergeRequest(int $iid, string $title, string $description, array $addLabels = [], array $removeLabels = []): MergeRequest;
+    public function updateMergeRequest(
+        int $iid,
+        string $title,
+        string $description,
+        array $addLabels = [],
+        array $removeLabels = [],
+    ): MergeRequest;
 
     /**
      * @throws GitLabException

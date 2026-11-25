@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace Rustine\Command;
 
+use Rustine\Apply\ComposerStrategy;
 use Rustine\Apply\FixOutcome;
 use Rustine\Apply\FixOutcomeStatus;
 use Rustine\Apply\FixStrategy;
-use Rustine\Apply\ComposerStrategy;
 use Rustine\Apply\ProcessCommandRunner;
 use Rustine\Apply\ProjectPlanApplier;
-use Rustine\Apply\VerifyMode;
 use Rustine\Apply\ToolingException;
 use Rustine\Apply\UnsupportedProjectException;
+use Rustine\Apply\VerifyMode;
 use Rustine\Apply\YarnRuntime;
 use Rustine\Plan\GroupPlan;
 use Rustine\Plan\Planner;
@@ -26,7 +26,10 @@ use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-#[AsCommand(name: 'apply', description: 'Applies the planned fixes (Yarn, Composer) to the project working tree (no commit, no push)')]
+#[AsCommand(
+    name: 'apply',
+    description: 'Applies the planned fixes (Yarn, Composer) to the project working tree (no commit, no push)',
+)]
 final class ApplyCommand
 {
     /**
@@ -39,7 +42,9 @@ final class ApplyCommand
         string $project = '.',
         #[Option(description: 'Trivy JSON report of the project')]
         string $report = 'trivy-report.json',
-        #[Option(description: 'Severity group to process: critical-high or others (exactly one, as each group is one MR)')]
+        #[Option(
+            description: 'Severity group to process: critical-high or others (exactly one, as each group is one MR)',
+        )]
         array $group = [],
         #[Option(description: 'Ecosystem to process: yarn or composer (required when the group has both)')]
         ?string $ecosystem = null,
@@ -47,29 +52,51 @@ final class ApplyCommand
         string $trivyBin = 'trivy',
         #[Option(description: 'Extra Trivy argument for the re-scans (repeatable)')]
         array $trivyArg = [],
-        #[Option(description: 'Also check the development dependencies in the re-scans: pass it when the report was made with it; default: $RUSTINE_INCLUDE_DEV, then no')]
+        #[Option(
+            description: 'Also check the development dependencies in the re-scans: pass it when the report was made'
+            . ' with it; default: $RUSTINE_INCLUDE_DEV, then no',
+        )]
         bool $includeDev = false,
-        #[Option(description: 'Command that runs Composer, e.g. "/usr/bin/php8.1 /usr/local/bin/composer2" (default: $RUSTINE_COMPOSER_BIN, then composer)')]
+        #[Option(
+            description: 'Command that runs Composer, e.g. "/usr/bin/php8.1 /usr/local/bin/composer2"'
+            . ' (default: $RUSTINE_COMPOSER_BIN, then composer)',
+        )]
         ?string $composerBin = null,
-        #[Option(description: 'Command that runs Yarn, e.g. "/opt/yarn/bin/yarn" (default: $RUSTINE_YARN_BIN, then yarn)')]
+        #[Option(
+            description: 'Command that runs Yarn, e.g. "/opt/yarn/bin/yarn" (default: $RUSTINE_YARN_BIN, then yarn)',
+        )]
         ?string $yarnBin = null,
-        #[Option(description: 'Command that runs Node, e.g. "/opt/node20/bin/node"; given by path, its directory goes first on the PATH of Yarn (default: $RUSTINE_NODE_BIN, then node)')]
+        #[Option(
+            description: 'Command that runs Node, e.g. "/opt/node20/bin/node"; given by path, its directory goes first'
+            . ' on the PATH of Yarn (default: $RUSTINE_NODE_BIN, then node)',
+        )]
         ?string $nodeBin = null,
-        #[Option(description: 'When Trivy confirms the fixes: each (after every attempt, slow), final (once at the end) or none (the lockfile alone decides); default: $RUSTINE_VERIFY, then final')]
+        #[Option(
+            description: 'When Trivy confirms the fixes: each (after every attempt, slow), final (once at the end) or'
+            . ' none (the lockfile alone decides); default: $RUSTINE_VERIFY, then final',
+        )]
         ?string $verify = null,
         #[Option(description: 'Only print the commands that would run; the project is left untouched')]
         bool $dryRun = false,
     ): int {
         $groups = [];
+
         foreach ($group as $name) {
             $parsed = SeverityGroup::tryFrom($name);
             if (null === $parsed) {
-                $io->error(sprintf('Unknown group "%s" (expected: %s).', $name, implode(', ', array_column(SeverityGroup::cases(), 'value'))));
+                $io->error(
+                    sprintf(
+                        'Unknown group "%s" (expected: %s).',
+                        $name,
+                        implode(', ', array_column(SeverityGroup::cases(), 'value')),
+                    ),
+                );
 
                 return Command::INVALID;
             }
             $groups[] = $parsed;
         }
+
         if (1 !== \count($groups)) {
             $io->error('Pass exactly one --group: each severity group is a separate merge request.');
 
@@ -86,7 +113,13 @@ final class ApplyCommand
         $verify = Environment::string($verify, 'RUSTINE_VERIFY', VerifyMode::Final->value);
         $verifyMode = VerifyMode::tryFrom($verify);
         if (null === $verifyMode) {
-            $io->error(sprintf('Unknown verification "%s" (expected: %s).', $verify, implode(', ', array_column(VerifyMode::cases(), 'value'))));
+            $io->error(
+                sprintf(
+                    'Unknown verification "%s" (expected: %s).',
+                    $verify,
+                    implode(', ', array_column(VerifyMode::cases(), 'value')),
+                ),
+            );
 
             return Command::INVALID;
         }
@@ -99,24 +132,29 @@ final class ApplyCommand
         }
 
         try {
-            $parsedReport = (new TrivyReportParser())->parseFile($report);
-        } catch (InvalidTrivyReportException $e) {
-            $io->error($e->getMessage());
+            $parsedReport = new TrivyReportParser()->parseFile($report);
+        } catch (InvalidTrivyReportException $invalidTrivyReportException) {
+            $io->error($invalidTrivyReportException->getMessage());
 
             return Command::FAILURE;
         }
 
-        $plans = array_values(array_filter(
-            (new Planner())->plan($parsedReport, $groups),
-            static fn (GroupPlan $plan): bool => null === $wanted || $wanted === $plan->ecosystem,
-        ));
+        $plans = array_values(
+            array_filter(
+                new Planner()->plan($parsedReport, $groups),
+                static fn(GroupPlan $plan): bool => null === $wanted || $wanted === $plan->ecosystem,
+            ),
+        );
         if ([] === $plans) {
             $io->success('Nothing to fix in this group.');
 
             return Command::SUCCESS;
         }
         if (\count($plans) > 1) {
-            $io->error('This group has several ecosystems (each one is a merge request): pass --ecosystem=yarn or --ecosystem=composer.');
+            $io->error(
+                'This group has several ecosystems (each one is a merge request): pass --ecosystem=yarn or'
+                . ' --ecosystem=composer.',
+            );
 
             return Command::INVALID;
         }
@@ -126,20 +164,31 @@ final class ApplyCommand
         $composerCommand = Environment::string($composerBin, 'RUSTINE_COMPOSER_BIN', 'composer');
         $yarnCommand = Environment::string($yarnBin, 'RUSTINE_YARN_BIN', 'yarn');
         $nodeCommand = Environment::string($nodeBin, 'RUSTINE_NODE_BIN', 'node');
+
         try {
             ComposerStrategy::fromCommandLine($composerCommand);
             YarnRuntime::fromCommandLines($yarnCommand, $nodeCommand);
-        } catch (\InvalidArgumentException $e) {
-            $io->error($e->getMessage());
+        } catch (\InvalidArgumentException $invalidArgumentException) {
+            $io->error($invalidArgumentException->getMessage());
 
             return Command::INVALID;
         }
-        $planApplier = new ProjectPlanApplier($runner, $projectDir, $trivyBin, TrivyScanner::withDevDependencies($trivyArg, Environment::flag($includeDev, 'RUSTINE_INCLUDE_DEV')), $composerCommand, $yarnCommand, $nodeCommand, $verifyMode);
+
+        $planApplier = new ProjectPlanApplier(
+            $runner,
+            $projectDir,
+            $trivyBin,
+            TrivyScanner::withDevDependencies($trivyArg, Environment::flag($includeDev, 'RUSTINE_INCLUDE_DEV')),
+            $composerCommand,
+            $yarnCommand,
+            $nodeCommand,
+            $verifyMode,
+        );
 
         try {
             $strategy = $planApplier->strategy($plan->ecosystem);
-        } catch (UnsupportedProjectException $e) {
-            $io->error($e->getMessage());
+        } catch (UnsupportedProjectException $unsupportedProjectException) {
+            $io->error($unsupportedProjectException->getMessage());
 
             return Command::FAILURE;
         }
@@ -152,11 +201,12 @@ final class ApplyCommand
 
         try {
             $applied = $planApplier->apply($plan, $parsedReport);
-        } catch (UnsupportedProjectException|ToolingException $e) {
+        } catch (UnsupportedProjectException | ToolingException $e) {
             $io->error($e->getMessage());
 
             return Command::FAILURE;
         }
+
         $result = $applied->result;
         $io->writeln(sprintf('Tools of the environment: %s', $applied->tools?->describe() ?? '-'));
 
@@ -182,17 +232,35 @@ final class ApplyCommand
     private function printDryRun(SymfonyStyle $io, GroupPlan $plan, FixStrategy $strategy, string $projectDir): void
     {
         $io->writeln(sprintf('Dry run for %s (nothing is executed):', $plan->branchName()));
+
         foreach ($plan->fixes as $fix) {
             if (!$fix->isFixable()) {
-                $io->writeln(sprintf('  - %s@%s: not fixable automatically (%s)', $fix->packageName, $fix->installedVersion, $fix->status->value));
+                $io->writeln(
+                    sprintf(
+                        '  - %s@%s: not fixable automatically (%s)',
+                        $fix->packageName,
+                        $fix->installedVersion,
+                        $fix->status->value,
+                    ),
+                );
+
                 continue;
             }
             $unsupported = $strategy->unsupportedReason($fix, $projectDir);
             if (null !== $unsupported) {
-                $io->writeln(sprintf('  - %s@%s: needs a manual fix (%s)', $fix->packageName, $fix->installedVersion, $unsupported));
+                $io->writeln(
+                    sprintf(
+                        '  - %s@%s: needs a manual fix (%s)',
+                        $fix->packageName,
+                        $fix->installedVersion,
+                        $unsupported,
+                    ),
+                );
+
                 continue;
             }
             $io->writeln(sprintf('  - %s@%s → %s', $fix->packageName, $fix->installedVersion, $fix->targetVersion));
+
             foreach ($strategy->attempts($fix, $projectDir) as $i => $attempt) {
                 $io->writeln(sprintf('      %d. [%s] %s', $i + 1, $attempt->kind->value, $attempt->describe()));
             }
@@ -206,10 +274,18 @@ final class ApplyCommand
 
         return match ($outcome->status) {
             FixOutcomeStatus::Applied => $outcome->stillReported
-                ? sprintf('  ⚠ %s (%s): Trivy still reports its CVEs, check the result by hand', $label, $outcome->strategy?->value)
+                ? sprintf(
+                    '  ⚠ %s (%s): Trivy still reports its CVEs, check the result by hand',
+                    $label,
+                    $outcome->strategy?->value,
+                )
                 : sprintf('  ✔ %s (%s)', $label, $outcome->strategy?->value),
             FixOutcomeStatus::AlreadyFixed => sprintf('  ✔ %s already fixed by a previous change', $label),
-            FixOutcomeStatus::UnsupportedSource => sprintf("  ✘ %s needs a manual fix\n      %s", $label, implode("\n      ", $outcome->log)),
+            FixOutcomeStatus::UnsupportedSource => sprintf(
+                "  ✘ %s needs a manual fix\n      %s",
+                $label,
+                implode("\n      ", $outcome->log),
+            ),
             FixOutcomeStatus::Skipped => sprintf('  ✘ %s skipped (%s)', $label, $fix->status->value),
             FixOutcomeStatus::Failed => sprintf("  ✘ %s failed\n      %s", $label, implode("\n      ", $outcome->log)),
         };

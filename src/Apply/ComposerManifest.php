@@ -10,7 +10,7 @@ namespace Rustine\Apply;
  */
 final readonly class ComposerManifest
 {
-    private const FIELDS = ['require', 'require-dev'];
+    private const array FIELDS = ['require', 'require-dev'];
 
     /**
      * @param array<string, array{field: string, constraint: string}> $declared
@@ -31,11 +31,13 @@ final readonly class ComposerManifest
         }
 
         $declared = [];
+
         foreach (self::FIELDS as $field) {
             $block = $data[$field] ?? null;
             if (!\is_array($block)) {
                 continue;
             }
+
             foreach ($block as $name => $constraint) {
                 if (\is_string($name) && \is_string($constraint) && !isset($declared[$name])) {
                     $declared[$name] = ['field' => $field, 'constraint' => $constraint];
@@ -43,13 +45,17 @@ final readonly class ComposerManifest
             }
         }
 
-        $symfony = \is_array($data['extra'] ?? null) && \is_array($data['extra']['symfony'] ?? null) ? $data['extra']['symfony'] : [];
+        $symfony = \is_array($data['extra'] ?? null) && \is_array(
+            $data['extra']['symfony'] ?? null,
+        ) ? $data['extra']['symfony'] : [];
         $config = \is_array($data['config'] ?? null) ? $data['config'] : [];
 
         return new self(
             $declared,
             \is_string($symfony['require'] ?? null) && '' !== $symfony['require'] ? $symfony['require'] : null,
-            \is_string($config['vendor-dir'] ?? null) && '' !== $config['vendor-dir'] ? $config['vendor-dir'] : 'vendor',
+            \is_string(
+                $config['vendor-dir'] ?? null,
+            ) && '' !== $config['vendor-dir'] ? $config['vendor-dir'] : 'vendor',
         );
     }
 

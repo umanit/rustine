@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Rustine\Plan;
 
+use Rustine\Trivy\Vulnerability;
+
 final class PlanFormatter
 {
     /**
@@ -13,27 +15,27 @@ final class PlanFormatter
      */
     public function toArray(array $plans): array
     {
-        return array_map(fn (GroupPlan $plan): array => [
-            'branch' => $plan->branchName(),
+        return array_map(static fn(GroupPlan $plan): array => [
+            'branch'    => $plan->branchName(),
             'ecosystem' => $plan->ecosystem->value,
-            'group' => $plan->group->value,
-            'fixes' => array_map(static fn (PackageFix $fix): array => [
-                'package' => $fix->packageName,
-                'installed' => $fix->installedVersion,
-                'target' => $fix->targetVersion,
-                'status' => $fix->status->value,
-                'severity' => $fix->severity->value,
-                'dependency' => $fix->dependencyKind->value,
-                'chain' => $fix->dependencyChain,
-                'vulnerabilities' => array_map(static fn ($v): array => [
-                    'id' => $v->id,
-                    'severity' => $v->severity->value,
-                    'url' => $v->url,
+            'group'     => $plan->group->value,
+            'fixes'     => array_map(static fn(PackageFix $fix): array => [
+                'package'         => $fix->packageName,
+                'installed'       => $fix->installedVersion,
+                'target'          => $fix->targetVersion,
+                'status'          => $fix->status->value,
+                'severity'        => $fix->severity->value,
+                'dependency'      => $fix->dependencyKind->value,
+                'chain'           => $fix->dependencyChain,
+                'vulnerabilities' => array_map(static fn(Vulnerability $v): array => [
+                    'id'            => $v->id,
+                    'severity'      => $v->severity->value,
+                    'url'           => $v->url,
                     'fixedVersions' => $v->fixedVersions,
                 ], $fix->vulnerabilities),
-                'fixed' => $fix->fixedIds,
-                'majorBump' => $fix->majorBumpIds,
-                'withoutFix' => $fix->withoutFixIds,
+                'fixed'           => $fix->fixedIds,
+                'majorBump'       => $fix->majorBumpIds,
+                'withoutFix'      => $fix->withoutFixIds,
             ], $plan->fixes),
         ], $plans);
     }
@@ -48,6 +50,7 @@ final class PlanFormatter
         }
 
         $out = '';
+
         foreach ($plans as $plan) {
             $out .= sprintf(
                 "%s — %d fixable, %d to report\n",
@@ -69,6 +72,7 @@ final class PlanFormatter
                     $this->note($fix),
                 );
             }
+
             $out .= "\n";
         }
 

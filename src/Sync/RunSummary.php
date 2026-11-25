@@ -12,31 +12,17 @@ namespace Rustine\Sync;
  */
 final readonly class RunSummary
 {
-    public const EXIT_OK = 0;
-    public const EXIT_FAILURE = 1;
-    public const EXIT_MANUAL_ACTION = 2;
+    public const int EXIT_OK = 0;
+
+    public const int EXIT_FAILURE = 1;
+
+    public const int EXIT_MANUAL_ACTION = 2;
 
     /**
      * @param list<PlanOutcome> $outcomes
      */
     public function __construct(public array $outcomes)
     {
-    }
-
-    public function exitCode(): int
-    {
-        foreach ($this->outcomes as $outcome) {
-            if ($outcome->isFailure()) {
-                return self::EXIT_FAILURE;
-            }
-        }
-        foreach ($this->outcomes as $outcome) {
-            if ($outcome->needsManualAction()) {
-                return self::EXIT_MANUAL_ACTION;
-            }
-        }
-
-        return self::EXIT_OK;
     }
 
     public static function line(PlanOutcome $outcome): string
@@ -50,11 +36,34 @@ final readonly class RunSummary
             PlanAction::NoFix => 'nothing fixable automatically, no merge request',
             PlanAction::SkippedLimit => 'skipped, too many open merge requests',
             PlanAction::SkippedClosed => 'skipped, the same merge request was closed recently',
-            PlanAction::SkippedForeign => 'skipped, the branch has commits that are not Rustine\'s',
+            PlanAction::SkippedForeign => "skipped, the branch has commits that are not Rustine's",
             PlanAction::Failed => 'FAILED',
         };
 
-        return sprintf('%s: %s%s%s', $outcome->branch, $label, null === $outcome->mergeRequestUrl ? '' : ' ' . $outcome->mergeRequestUrl, $outcome->needsManualAction() ? ' (manual action required)' : '');
+        return sprintf(
+            '%s: %s%s%s',
+            $outcome->branch,
+            $label,
+            null === $outcome->mergeRequestUrl ? '' : ' ' . $outcome->mergeRequestUrl,
+            $outcome->needsManualAction() ? ' (manual action required)' : '',
+        );
+    }
+
+    public function exitCode(): int
+    {
+        foreach ($this->outcomes as $outcome) {
+            if ($outcome->isFailure()) {
+                return self::EXIT_FAILURE;
+            }
+        }
+
+        foreach ($this->outcomes as $outcome) {
+            if ($outcome->needsManualAction()) {
+                return self::EXIT_MANUAL_ACTION;
+            }
+        }
+
+        return self::EXIT_OK;
     }
 
     /**
@@ -64,11 +73,14 @@ final readonly class RunSummary
     public function toMarkdown(): string
     {
         $sections = [];
+
         foreach ($this->outcomes as $outcome) {
             $section = sprintf("<!-- %s -->\n**%s**", $outcome->branch, self::line($outcome));
+
             foreach ($outcome->messages as $message) {
                 $section .= "\n\n> " . str_replace("\n", "\n> ", $message);
             }
+
             if (null !== $outcome->content) {
                 $section .= "\n\n" . $outcome->content->description;
             }

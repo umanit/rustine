@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-/**
+/*
  * Builds build/rustine.phar.
  *
  *   php -d phar.readonly=0 tools/build-phar.php [--version=1.2.3] [--output=build/rustine.phar]
@@ -37,11 +37,12 @@ function run(array $command, string $cwd): void
     }
 }
 
-function removeTree(string $dir): void
+function remove_tree(string $dir): void
 {
     if (!is_dir($dir)) {
         return;
     }
+
     foreach (
         new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
@@ -50,12 +51,14 @@ function removeTree(string $dir): void
     ) {
         $item->isDir() && !$item->isLink() ? rmdir($item->getPathname()) : unlink($item->getPathname());
     }
+
     rmdir($dir);
 }
 
-function copyTree(string $from, string $to): void
+function copy_tree(string $from, string $to): void
 {
     mkdir($to, 0777, true);
+
     foreach (
         new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($from, FilesystemIterator::SKIP_DOTS),
@@ -68,12 +71,12 @@ function copyTree(string $from, string $to): void
 }
 
 $stage = $root . '/build/stage';
-removeTree($stage);
+remove_tree($stage);
 mkdir($stage, 0777, true);
 
 echo "Staging sources and production dependencies…\n";
-copyTree($root . '/src', $stage . '/src');
-copyTree($root . '/resources', $stage . '/resources');
+copy_tree($root . '/src', $stage . '/src');
+copy_tree($root . '/resources', $stage . '/resources');
 mkdir($stage . '/bin');
 copy($root . '/composer.json', $stage . '/composer.json');
 copy($root . '/composer.lock', $stage . '/composer.lock');
@@ -128,29 +131,28 @@ $phar = new Phar($output, 0, 'rustine.phar');
 $phar->setSignatureAlgorithm(Phar::SHA256);
 $phar->startBuffering();
 
-$skippedDirectories = ['tests', 'Tests', 'test', 'Test', 'docs', 'doc', 'examples', '.git', '.github'];
-$skippedFiles = '/^(README|CHANGELOG|UPGRADE|CONTRIBUTING|SECURITY)(\.[a-z]+)?$|^phpunit\.xml(\.dist)?$|^phpstan(\.dist)?\.neon$|^\.|^composer\.(json|lock)$/i';
 $count = 0;
 
 $iterator = new RecursiveIteratorIterator(
     new RecursiveCallbackFilterIterator(
         new RecursiveDirectoryIterator($stage, FilesystemIterator::SKIP_DOTS),
-        static function (SplFileInfo $file) use ($skippedDirectories, $skippedFiles, $stage): bool {
+        static function (SplFileInfo $file): bool {
+            $skippedDirectories = ['tests', 'Tests', 'test', 'Test', 'docs', 'doc', 'examples', '.git', '.github'];
+            $skippedFiles = '/^(README|CHANGELOG|UPGRADE|CONTRIBUTING|SECURITY)(\.[a-z]+)?$|^phpunit\.xml(\.dist)?$|'
+                . '^phpstan(\.dist)?\.neon$|^\.|^composer\.(json|lock)$/i';
+
             if ($file->isDir()) {
-                return !in_array($file->getFilename(), $skippedDirectories, true) || !str_contains(
-                        $file->getPathname(),
-                        '/vendor/',
-                    );
+                return !in_array($file->getFilename(), $skippedDirectories, true)
+                    || !str_contains($file->getPathname(), '/vendor/');
             }
 
-            // Package manifests of dependencies are useless at runtime; the project's own composer.json is not embedded.
-            return 1 !== preg_match($skippedFiles, $file->getFilename()) || str_ends_with(
-                    $file->getPathname(),
-                    '/vendor/composer/installed.json',
-                );
+            // Package manifests of dependencies are useless at runtime; the project's own composer.json is not embedded
+            return 1 !== preg_match($skippedFiles, $file->getFilename())
+                || str_ends_with($file->getPathname(), '/vendor/composer/installed.json');
         },
     ),
 );
+
 foreach ($iterator as $file) {
     /** @var SplFileInfo $file */
     $phar->addFile($file->getPathname(), substr($file->getPathname(), strlen($stage) + 1));
@@ -164,12 +166,13 @@ $phar->setStub(
 Phar::mapPhar('rustine.phar');
 require 'phar://rustine.phar/bin/rustine';
 __HALT_COMPILER();
-STUB. "\n",
+STUB
+    . "\n",
 );
 $phar->stopBuffering();
 unset($phar);
 chmod($output, 0755);
-removeTree($stage);
+remove_tree($stage);
 
 printf("%d files, %.1f MB: %s\n", $count, filesize($output) / 1048576, $output);
 
@@ -186,12 +189,13 @@ $check = static function (array $arguments, string $expected) use ($php, $output
 };
 $check(['--version'], 'Rustine');
 $check(['list'], 'apply');
-foreach (
-    [
-        'en' => 'Security: fix Yarn dependencies',
-        'fr' => 'Sécurité : corriger les dépendances Yarn',
-    ] as $locale => $title
-) {
+
+$messages = [
+    'en' => 'Security: fix Yarn dependencies',
+    'fr' => 'Sécurité : corriger les dépendances Yarn',
+];
+
+foreach ($messages as $locale => $title) {
     $check(
         [
             'run',
@@ -203,4 +207,5 @@ foreach (
         $title,
     );
 }
+
 echo "OK\n";

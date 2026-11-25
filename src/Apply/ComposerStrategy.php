@@ -12,16 +12,17 @@ use Rustine\Trivy\Ecosystem;
  *
  * Only `composer.lock` and `composer.json` are touched: nothing is installed (`--no-install`) and no script runs.
  *
- * Plugins are disabled (`--no-plugins`): they are arbitrary code, and Rustine holds a powerful token. The exception is a
- * project that sets `extra.symfony.require`, which only Symfony Flex enforces while Composer resolves: without it an
+ * Plugins are disabled (`--no-plugins`): they are arbitrary code, and Rustine holds a powerful token. The exception is
+ * a project that sets `extra.symfony.require`, which only Symfony Flex enforces while Composer resolves: without it an
  * update moves the `symfony/*` components that the project does not require itself to another minor (checked:
- * `symfony/string` 6.4 → 7.4 in a 6.4 project). Then plugins are enabled, and {@see ProjectPlanApplier} makes sure that
+ * `symfony/string` 6.4 → 7.4 in a 6.4 project). Then plugins are enabled, and {@see ProjectPlanApplier} makes sure
+ * that
  * Flex is installed, ideally globally so that no plugin of the project is loaded. With `--no-install` no recipe is
  * applied, and the scripts that would run them are disabled.
  */
 final readonly class ComposerStrategy implements FixStrategy
 {
-    private const FLAGS = ['--no-install', '--no-interaction', '--no-scripts', '--no-progress'];
+    private const array FLAGS = ['--no-install', '--no-interaction', '--no-scripts', '--no-progress'];
 
     /**
      * @param non-empty-list<string> $composer command that runs Composer, e.g. `['composer']` or
@@ -84,17 +85,28 @@ final readonly class ComposerStrategy implements FixStrategy
         $manifest = ComposerManifest::read($projectDir . '/composer.json');
         $flags = null === $manifest->symfonyRequire() ? [...self::FLAGS, '--no-plugins'] : self::FLAGS;
         $attempts = [
-            new Attempt(AttemptKind::LockfileRefresh, [[...$this->composer, 'update', $name, '--with-all-dependencies', ...$flags]]),
+            new Attempt(
+                AttemptKind::LockfileRefresh,
+                [[...$this->composer, 'update', $name, '--with-all-dependencies', ...$flags]],
+            ),
         ];
 
-        // The constraint of a direct requirement may forbid the fixed version: raise it, in the style the project wrote it.
+        /*
+         * The constraint of a direct requirement may forbid the fixed version: raise it, in the style the project
+         * wrote it.
+         */
         $declaration = $manifest->declaration($name);
         if (null !== $declaration) {
-            $attempts[] = new Attempt(AttemptKind::DirectBump, [[
-                ...$this->composer, 'require', $name . ':' . ComposerConstraint::raise($declaration['constraint'], $fix->targetVersion),
-                ...('require-dev' === $declaration['field'] ? ['--dev'] : []),
-                '--update-with-all-dependencies', ...$flags,
-            ]]);
+            $attempts[] = new Attempt(AttemptKind::DirectBump, [
+                [
+                    ...$this->composer,
+                    'require',
+                    $name . ':' . ComposerConstraint::raise($declaration['constraint'], $fix->targetVersion),
+                    ...('require-dev' === $declaration['field'] ? ['--dev'] : []),
+                    '--update-with-all-dependencies',
+                    ...$flags,
+                ],
+            ]);
         }
 
         return $attempts;
@@ -102,7 +114,13 @@ final readonly class ComposerStrategy implements FixStrategy
 
     public function diagnosis(PackageFix $fix): ?array
     {
-        return null === $fix->targetVersion ? null : [...$this->composer, 'why-not', $fix->packageName, $fix->targetVersion, '--locked'];
+        return null === $fix->targetVersion ? null : [
+            ...$this->composer,
+            'why-not',
+            $fix->packageName,
+            $fix->targetVersion,
+            '--locked',
+        ];
     }
 
     public function mutatingEnv(): array

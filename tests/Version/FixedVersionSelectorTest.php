@@ -7,6 +7,7 @@ namespace Rustine\Tests\Version;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Rustine\Version\FixCandidate;
 use Rustine\Version\FixedVersionSelector;
 use Rustine\Version\Version;
 
@@ -69,18 +70,18 @@ final class FixedVersionSelectorTest extends TestCase
         bool $majorBump,
     ): void {
         $installedVersion = Version::tryParse($installed);
-        self::assertNotNull($installedVersion);
+        $this->assertInstanceOf(Version::class, $installedVersion);
 
-        $candidate = (new FixedVersionSelector())->select($installedVersion, $fixed);
+        $candidate = new FixedVersionSelector()->select($installedVersion, $fixed);
 
         if (null === $expected) {
-            self::assertNull($candidate);
+            $this->assertNull($candidate);
 
             return;
         }
 
-        self::assertNotNull($candidate);
-        self::assertSame($expected, $candidate->version->raw);
-        self::assertSame($majorBump, $candidate->majorBump);
+        $this->assertInstanceOf(FixCandidate::class, $candidate);
+        $this->assertSame($expected, $candidate->version->raw);
+        $this->assertSame($majorBump, $candidate->majorBump);
     }
 }

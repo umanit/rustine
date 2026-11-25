@@ -12,7 +12,7 @@ namespace Rustine\Apply;
  */
 final readonly class ToolProbe
 {
-    private const VERSION = '\d+\.\d+(?:\.\d+)?(?:[-+][\w.+-]*)?';
+    private const string VERSION = '\d+\.\d+(?:\.\d+)?(?:[-+][\w.+-]*)?';
 
     public function __construct(
         private CommandRunner $runner,
@@ -30,12 +30,14 @@ final readonly class ToolProbe
 
         $flavor = YarnFlavor::ofVersion($yarn);
         if ($lockfile !== $flavor) {
-            throw new ToolingException(sprintf(
-                'yarn.lock is a Yarn %s lockfile but the environment provides Yarn %s. Rustine installs no tool: '
-                . 'the environment must provide the Yarn version of the project.',
-                YarnFlavor::Berry === $lockfile ? 'Berry (2+)' : 'Classic (1.x)',
-                $yarn,
-            ));
+            throw new ToolingException(
+                sprintf(
+                    'yarn.lock is a Yarn %s lockfile but the environment provides Yarn %s. Rustine installs no tool: '
+                    . 'the environment must provide the Yarn version of the project.',
+                    YarnFlavor::Berry === $lockfile ? 'Berry (2+)' : 'Classic (1.x)',
+                    $yarn,
+                ),
+            );
         }
 
         return new ToolVersions(['node' => $node, 'yarn' => $yarn]);
@@ -50,7 +52,10 @@ final readonly class ToolProbe
     {
         $output = $this->output([...$composer, '--version', '--no-ansi'], 'Composer');
 
-        $versions = ['composer' => $this->match('/Composer version (' . self::VERSION . ')/', $output) ?? $this->firstLine($output)];
+        $versions = [
+            'composer' => $this->match('/Composer version (' . self::VERSION . ')/', $output)
+                ?? $this->firstLine($output),
+        ];
         $php = $this->match('/PHP version (' . self::VERSION . ')/', $output);
         if (null !== $php) {
             $versions['php'] = $php;
@@ -85,15 +90,17 @@ final readonly class ToolProbe
             return $result->output;
         }
 
-        throw new ToolingException(sprintf(
-            '%s is not available: `%s` failed (exit %d)%s. Rustine installs no tool: the environment that runs it must '
-            . 'provide %s, in the version the project expects.',
-            $tool,
-            implode(' ', $command),
-            $result->exitCode,
-            '' === trim($result->output) ? '' : ': ' . $this->firstLine($result->output),
-            $tool,
-        ));
+        throw new ToolingException(
+            sprintf(
+                '%s is not available: `%s` failed (exit %d)%s. Rustine installs no tool: the environment that'
+                . ' runs it must provide %s, in the version the project expects.',
+                $tool,
+                implode(' ', $command),
+                $result->exitCode,
+                '' === trim($result->output) ? '' : ': ' . $this->firstLine($result->output),
+                $tool,
+            ),
+        );
     }
 
     private function match(string $pattern, string $output): ?string

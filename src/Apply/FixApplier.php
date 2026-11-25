@@ -18,17 +18,36 @@ use Rustine\Version\Version;
  * be fixed never blocks the others. By default Trivy is run once, at the end, to confirm that the CVEs are gone: a scan
  * after every attempt would cost minutes per package (see {@see VerifyMode}).
  */
-final class FixApplier
+final readonly class FixApplier
 {
     public function __construct(
-        private readonly CommandRunner $runner,
-        private readonly WorkingTree $tree,
-        private readonly VulnerabilityRescanner $rescanner,
-        private readonly FixStrategy $strategy,
-        private readonly PackageJsonEditor $editor,
-        private readonly string $projectDir,
-        private readonly VerifyMode $verify = VerifyMode::Final,
+        private CommandRunner $runner,
+        private WorkingTree $tree,
+        private VulnerabilityRescanner $rescanner,
+        private FixStrategy $strategy,
+        private PackageJsonEditor $editor,
+        private string $projectDir,
+        private VerifyMode $verify = VerifyMode::Final,
     ) {
+    }
+
+    /**
+     * What tools print ends up in the merge request: credentials of a registry URL (`https://user:pass@host`), of an
+     * `Authorization` header or of an npm `_authToken` must not.
+     */
+    public static function maskSecrets(string $text): string
+    {
+        $masked = preg_replace(
+            [
+                '#\b([a-z][a-z0-9+.-]*://)[^/\s@]+@#i',
+                '#\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+#',
+                '#(_auth(?:Token)?|_password)\s*=\s*\S+#i',
+            ],
+            ['$1***@', '$1 ***', '$1=***'],
+            $text,
+        );
+
+        return $masked ?? $text;
     }
 
     /**
@@ -51,18 +70,27 @@ final class FixApplier
         foreach ($plan->fixes as $fix) {
             if (!$fix->isFixable()) {
                 $outcomes[] = new FixOutcome($fix, FixOutcomeStatus::Skipped);
+
                 continue;
             }
 
             // The report tells what is vulnerable at the start, then the lockfile follows what the fixes changed.
-            if (!$this->stillReported($initialReport, $fix) || ($changed && !$this->vulnerableInLock($locked ?? [], $fix))) {
+            if (
+                !$this->stillReported($initialReport, $fix)
+                || (
+                    $changed
+                    && !$this->vulnerableInLock($locked ?? [], $fix)
+                )
+            ) {
                 $outcomes[] = new FixOutcome($fix, FixOutcomeStatus::AlreadyFixed);
+
                 continue;
             }
 
             $unsupported = $this->strategy->unsupportedReason($fix, $this->projectDir);
             if (null !== $unsupported) {
                 $outcomes[] = new FixOutcome($fix, FixOutcomeStatus::UnsupportedSource, null, [$unsupported]);
+
                 continue;
             }
 
@@ -89,11 +117,11 @@ final class FixApplier
         $lockAfter = @file_get_contents($lockfile);
         $lockChanges = false === $lockBefore || false === $lockAfter
             ? []
-            : (new LockfileVersions())->changes($plan->ecosystem, $lockBefore, $lockAfter);
+            : new LockfileVersions()->changes($plan->ecosystem, $lockBefore, $lockAfter);
 
         // Findings that were already there before the fixes, and nothing new, are not the fixes' doing.
         $existed = !$check->isSuccessful()
-            && null !== $baselineCheck
+            && $baselineCheck instanceof CommandResult
             && !$baselineCheck->isSuccessful()
             && $check->exitCode === $baselineCheck->exitCode
             && $this->normalize($check->output) === $this->normalize($baselineCheck->output);
@@ -110,7 +138,9 @@ final class FixApplier
     private function assertSupported(GroupPlan $plan): void
     {
         if ($this->strategy->ecosystem() !== $plan->ecosystem) {
-            throw new UnsupportedProjectException(sprintf('The strategy does not handle "%s" plans.', $plan->ecosystem->value));
+            throw new UnsupportedProjectException(
+                sprintf('The strategy does not handle "%s" plans.', $plan->ecosystem->value),
+            );
         }
 
         if (Ecosystem::Yarn === $plan->ecosystem) {
@@ -121,28 +151,34 @@ final class FixApplier
                 );
             }
 
-            $missing = (new YarnLocalSources())->missing($this->projectDir);
+            $missing = new YarnLocalSources()->missing($this->projectDir);
             if ([] !== $missing) {
-                throw new UnsupportedProjectException(sprintf(
-                    'package.json depends on local sources that do not exist (%s): Yarn cannot resolve the project without them. '
-                    . 'Rustine installs nothing: make them available first, e.g. with `composer install --no-scripts` for a path in vendor/.',
-                    implode(', ', $missing),
-                ));
+                throw new UnsupportedProjectException(
+                    sprintf(
+                        'package.json depends on local sources that do not exist (%s): Yarn cannot resolve'
+                        . ' the project without them. Rustine installs nothing: make them available first, e.g. with'
+                        . ' `composer install --no-scripts` for a path in vendor/.',
+                        implode(', ', $missing),
+                    ),
+                );
             }
         }
 
         foreach ($this->strategy->files() as $file) {
             if ($this->tree->isDirty($file)) {
-                throw new UnsupportedProjectException(sprintf('"%s" has uncommitted changes; refusing to modify it.', $file));
+                throw new UnsupportedProjectException(
+                    sprintf('"%s" has uncommitted changes; refusing to modify it.', $file),
+                );
             }
         }
     }
 
     /**
-     * @param array<string, list<string>> $locked   versions the lockfile installs before the fix
+     * @param array<string, list<string>> $locked versions the lockfile installs before the fix
      * @param list<string>                $baseline
      *
-     * @return array{FixOutcome, array<string, list<string>>|null} the versions locked after the fix, null when nothing was kept
+     * @return array{FixOutcome, array<string, list<string>>|null} the versions locked after the fix, null when nothing
+     *                           was kept
      */
     private function fixPackage(PackageFix $fix, array $locked, array &$baseline): array
     {
@@ -155,12 +191,14 @@ final class FixApplier
                 $others = $this->otherMajorVersions($locked, $fix);
                 if ([] !== $others) {
                     $log[] = sprintf(
-                        '%s: skipped, %s is also installed in other majors (%s) and a resolution would force them all to ^%s',
+                        '%s: skipped, %s is also installed in other majors (%s) and a resolution would force'
+                        . ' them all to ^%s',
                         $attempt->kind->value,
                         $fix->packageName,
                         implode(', ', $others),
                         $fix->targetVersion,
                     );
+
                     continue;
                 }
             }
@@ -190,7 +228,11 @@ final class FixApplier
                 }
 
                 // The lockfile accepted the fix: Trivy, the slow judge, is only asked about what is left.
-                if (null === $error && VerifyMode::Each === $this->verify && $this->stillReported($this->rescanner->rescan(), $fix)) {
+                if (
+                    null === $error
+                    && VerifyMode::Each === $this->verify
+                    && $this->stillReported($this->rescanner->rescan(), $fix)
+                ) {
                     $error = 'the CVEs are still reported after the attempt';
                 }
             } catch (\Throwable $e) {
@@ -225,7 +267,13 @@ final class FixApplier
     {
         if (null !== $attempt->pruneLockfile) {
             $lockfile = $this->projectDir . '/yarn.lock';
-            file_put_contents($lockfile, (new YarnClassicLockfile())->withoutPackage((string) file_get_contents($lockfile), $attempt->pruneLockfile));
+            file_put_contents(
+                $lockfile,
+                new YarnClassicLockfile()->withoutPackage(
+                    (string) file_get_contents($lockfile),
+                    $attempt->pruneLockfile,
+                ),
+            );
         }
 
         if (null !== $attempt->rangeEdit) {
@@ -239,7 +287,12 @@ final class FixApplier
         foreach ($attempt->commands as $command) {
             $result = $this->runner->run($command, $this->projectDir, $this->strategy->mutatingEnv());
             if (!$result->isSuccessful()) {
-                return sprintf('`%s` failed (exit %d): %s', implode(' ', $command), $result->exitCode, $this->tail($result->output));
+                return sprintf(
+                    '`%s` failed (exit %d): %s',
+                    implode(' ', $command),
+                    $result->exitCode,
+                    $this->tail($result->output),
+                );
             }
         }
 
@@ -256,14 +309,15 @@ final class FixApplier
     private function otherMajorVersions(array $locked, PackageFix $fix): array
     {
         $target = null === $fix->targetVersion ? null : Version::tryParse($fix->targetVersion);
-        if (null === $target) {
+        if (!$target instanceof Version) {
             return [];
         }
 
         $others = [];
+
         foreach ($locked[$fix->packageName] ?? [] as $version) {
             $parsed = Version::tryParse($version);
-            if (null !== $parsed && !$parsed->isSameLineAs($target)) {
+            if ($parsed instanceof Version && !$parsed->isSameLineAs($target)) {
                 $others[] = $version;
             }
         }
@@ -283,7 +337,7 @@ final class FixApplier
             return null;
         }
 
-        $versions = (new LockfileVersions())->parse($this->strategy->ecosystem(), $content);
+        $versions = new LockfileVersions()->parse($this->strategy->ecosystem(), $content);
 
         return [] === $versions ? null : $versions;
     }
@@ -297,7 +351,12 @@ final class FixApplier
 
         return [] === $remaining
             ? null
-            : sprintf('the lockfile still installs %s %s, below %s', $fix->packageName, implode(', ', $remaining), $fix->targetVersion);
+            : sprintf(
+                'the lockfile still installs %s %s, below %s',
+                $fix->packageName,
+                implode(', ', $remaining),
+                $fix->targetVersion,
+            );
     }
 
     /**
@@ -324,14 +383,14 @@ final class FixApplier
         $target = null === $fix->targetVersion ? null : Version::tryParse($fix->targetVersion);
 
         // Versions that cannot be compared: the only safe check is that the reported one is gone.
-        if (null === $installed || null === $target) {
+        if (!$installed instanceof Version || !$target instanceof Version) {
             return \in_array($fix->installedVersion, $versions, true) ? [$fix->installedVersion] : [];
         }
 
         return array_values(array_filter($versions, static function (string $raw) use ($installed, $target): bool {
             $version = Version::tryParse($raw);
 
-            return null !== $version
+            return $version instanceof Version
                 && $version->isSameLineAs($installed)
                 && $version->compare($installed) >= 0
                 && $target->isGreaterThan($version);
@@ -350,8 +409,18 @@ final class FixApplier
         $report = $this->rescanner->rescan();
 
         return array_map(
-            fn (FixOutcome $outcome): FixOutcome => FixOutcomeStatus::Applied === $outcome->status && $this->stillReported($report, $outcome->fix)
-                ? new FixOutcome($outcome->fix, $outcome->status, $outcome->strategy, $outcome->log, stillReported: true)
+            fn(FixOutcome $outcome,
+            ): FixOutcome => FixOutcomeStatus::Applied === $outcome->status && $this->stillReported(
+                $report,
+                $outcome->fix,
+            )
+                ? new FixOutcome(
+                    $outcome->fix,
+                    $outcome->status,
+                    $outcome->strategy,
+                    $outcome->log,
+                    stillReported: true,
+                )
                 : $outcome,
             $outcomes,
         );
@@ -376,7 +445,11 @@ final class FixApplier
             }
 
             $reported = Version::tryParse($vulnerability->installedVersion);
-            if (null === $installed || null === $reported || $reported->isSameLineAs($installed)) {
+            if (
+                !$installed instanceof Version
+                || !$reported instanceof Version
+                || $reported->isSameLineAs($installed)
+            ) {
                 return true;
             }
         }
@@ -390,6 +463,7 @@ final class FixApplier
     private function snapshot(): array
     {
         $snapshot = [];
+
         foreach ($this->strategy->files() as $file) {
             $content = @file_get_contents($this->projectDir . '/' . $file);
             if (false === $content) {
@@ -418,27 +492,10 @@ final class FixApplier
 
     private function tail(string $output, int $count = 5): string
     {
-        $lines = array_values(array_filter(array_map('trim', explode("\n", $output)), static fn (string $l): bool => '' !== $l));
-
-        return self::maskSecrets(implode(' | ', \array_slice($lines, -$count)));
-    }
-
-    /**
-     * What tools print ends up in the merge request: credentials of a registry URL (`https://user:pass@host`), of an
-     * `Authorization` header or of an npm `_authToken` must not.
-     */
-    public static function maskSecrets(string $text): string
-    {
-        $masked = preg_replace(
-            [
-                '#\b([a-z][a-z0-9+.-]*://)[^/\s@]+@#i',
-                '#\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+#',
-                '#(_auth(?:Token)?|_password)\s*=\s*\S+#i',
-            ],
-            ['$1***@', '$1 ***', '$1=***'],
-            $text,
+        $lines = array_values(
+            array_filter(array_map(trim(...), explode("\n", $output)), static fn(string $l): bool => '' !== $l),
         );
 
-        return $masked ?? $text;
+        return self::maskSecrets(implode(' | ', \array_slice($lines, -$count)));
     }
 }

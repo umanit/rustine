@@ -53,7 +53,12 @@ final readonly class ProjectPlanApplier implements PlanApplier
         $runtime = YarnRuntime::fromCommandLines($this->yarnCommand, $this->nodeCommand);
 
         return YarnFlavor::Berry === $this->yarnLockfileFlavor()
-            ? new YarnBerryStrategy($runtime, lockfileOnly: YarnBerryStrategy::supportsLockfileOnly($tools?->version('yarn')))
+            ? new YarnBerryStrategy(
+                $runtime,
+                lockfileOnly: YarnBerryStrategy::supportsLockfileOnly(
+                    $tools?->version('yarn'),
+                ),
+            )
             : new YarnClassicStrategy($runtime);
     }
 
@@ -76,7 +81,10 @@ final readonly class ProjectPlanApplier implements PlanApplier
             return $versions;
         }
 
-        return $probe->yarn($this->yarnLockfileFlavor(), YarnRuntime::fromCommandLines($this->yarnCommand, $this->nodeCommand));
+        return $probe->yarn(
+            $this->yarnLockfileFlavor(),
+            YarnRuntime::fromCommandLines($this->yarnCommand, $this->nodeCommand),
+        );
     }
 
     public function apply(GroupPlan $plan, TrivyReport $report): AppliedPlan
@@ -87,7 +95,12 @@ final readonly class ProjectPlanApplier implements PlanApplier
         $applier = new FixApplier(
             $this->runner,
             new WorkingTree($this->runner, $this->projectDir),
-            new TrivyRescanner(new TrivyScanner($this->trivyBin), new TrivyReportParser(), $this->projectDir, $this->trivyArgs),
+            new TrivyRescanner(
+                new TrivyScanner($this->trivyBin),
+                new TrivyReportParser(),
+                $this->projectDir,
+                $this->trivyArgs,
+            ),
             $strategy,
             new PackageJsonEditor(),
             $this->projectDir,
@@ -120,19 +133,28 @@ final readonly class ProjectPlanApplier implements PlanApplier
         }
 
         // Exits with 0 only when Flex is installed in the global Composer home.
-        if ($this->runner->run([...$composer, 'global', 'show', 'symfony/flex', '--no-ansi'], $this->projectDir, ['COMPOSER_NO_INTERACTION' => '1'])->isSuccessful()) {
+        if (
+            $this->runner->run(
+                [...$composer, 'global', 'show', 'symfony/flex', '--no-ansi'],
+                $this->projectDir,
+                ['COMPOSER_NO_INTERACTION' => '1'],
+            )->isSuccessful()
+        ) {
             return;
         }
 
-        throw new ToolingException(sprintf(
-            'composer.json sets extra.symfony.require to "%s", which only Symfony Flex enforces, and Flex is installed neither '
-            . 'in %s/ nor globally: the update would move Symfony components to another minor version. Rustine installs no tool: '
-            . 'have the environment provide it, preferably globally so that the plugins of the project are not loaded '
-            . '(`composer global config allow-plugins.symfony/flex true && composer global require symfony/flex --no-scripts`), '
-            . 'or run `composer install --no-scripts` first.',
-            $require,
-            $vendor,
-        ));
+        throw new ToolingException(
+            sprintf(
+                'composer.json sets extra.symfony.require to "%s", which only Symfony Flex enforces, and Flex'
+                . ' is installed neither in %s/ nor globally: the update would move Symfony components to another'
+                . ' minor version. Rustine installs no tool: have the environment provide it, preferably globally so'
+                . ' that the plugins of the project are not loaded (`composer global config allow-plugins.symfony/flex'
+                . ' true && composer global require symfony/flex --no-scripts`), or run `composer install --no-scripts`'
+                . ' first.',
+                $require,
+                $vendor,
+            ),
+        );
     }
 
     /**

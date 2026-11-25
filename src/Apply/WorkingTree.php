@@ -10,7 +10,7 @@ namespace Rustine\Apply;
 final readonly class WorkingTree
 {
     /** The only files a fix may change. */
-    public const ALLOWED_FILES = ['composer.json', 'composer.lock', 'package.json', 'yarn.lock'];
+    public const array ALLOWED_FILES = ['composer.json', 'composer.lock', 'package.json', 'yarn.lock'];
 
     public function __construct(
         private CommandRunner $runner,
@@ -34,6 +34,7 @@ final readonly class WorkingTree
 
         $paths = [];
         $entries = explode("\0", $status);
+
         for ($i = 0, $count = \count($entries); $i < $count; ++$i) {
             $entry = $entries[$i];
             if (\strlen($entry) < 4) {
@@ -79,7 +80,7 @@ final readonly class WorkingTree
     {
         $output = $this->git(['ls-files', '-z', '--', '.pnp.cjs', '.pnp.loader.mjs', '.yarn/cache']);
 
-        return array_values(array_filter(explode("\0", $output), static fn (string $p): bool => '' !== $p));
+        return array_values(array_filter(explode("\0", $output), static fn(string $p): bool => '' !== $p));
     }
 
     /**

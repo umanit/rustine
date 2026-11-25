@@ -20,8 +20,10 @@ use Rustine\GitLab\GitLabException;
 use Rustine\GitLab\MergeRequest;
 use Rustine\GitLab\NewMergeRequest;
 use Rustine\Plan\GroupPlan;
+use Rustine\Plan\PackageFix;
 use Rustine\Report\MergeRequestContent;
 use Rustine\Report\MergeRequestRenderer;
+use Rustine\Trivy\Severity;
 use Rustine\Trivy\TrivyReport;
 
 /**
@@ -56,7 +58,7 @@ final readonly class MergeRequestSynchronizer
     {
         try {
             return $this->process($plan, $report);
-        } catch (GitException|GitLabException|UnsupportedProjectException|ToolingException $e) {
+        } catch (GitException | GitLabException | UnsupportedProjectException | ToolingException $e) {
             return new PlanOutcome($plan->branchName(), PlanAction::Failed, null, null, [$e->getMessage()]);
         }
     }
@@ -70,24 +72,37 @@ final readonly class MergeRequestSynchronizer
             return $this->nothingToFix($plan, $existing, $this->withoutFixes($plan));
         }
 
-        if (null === $existing && $this->limitReached()) {
+        if (!$existing instanceof MergeRequest && $this->limitReached()) {
             return new PlanOutcome($branch, PlanAction::SkippedLimit, $this->renderer->render($plan), null, [
-                sprintf('%d open Rustine merge requests: the limit is reached, no new merge request is opened.', $this->settings->maxOpenMergeRequests ?? 0),
+                sprintf(
+                    '%d open Rustine merge requests: the limit is reached, no new merge request is opened.',
+                    $this->settings->maxOpenMergeRequests ?? 0,
+                ),
             ]);
         }
 
         $remote = $this->git->inspect($branch);
         if (RemoteBranchState::Foreign === $remote->state) {
-            if (null !== $existing && !$this->alreadyNoted($existing, NoteRenderer::FOREIGN_MARKER)) {
+            if (
+                $existing instanceof MergeRequest
+                && !$this->alreadyNoted($existing, NoteRenderer::FOREIGN_MARKER)
+            ) {
                 $this->gitlab->addNote($existing->iid, $this->notes->foreign($branch));
             }
 
-            return new PlanOutcome($branch, PlanAction::SkippedForeign, $this->renderer->render($plan), $existing?->webUrl, [
-                sprintf('The branch %s carries commits that Rustine did not create: left untouched.', $branch),
-            ]);
+            return new PlanOutcome(
+                $branch,
+                PlanAction::SkippedForeign,
+                $this->renderer->render($plan),
+                $existing?->webUrl,
+                [
+                    sprintf('The branch %s carries commits that Rustine did not create: left untouched.', $branch),
+                ],
+            );
         }
 
         $this->git->start($branch);
+
         try {
             $applied = $this->applier->apply($plan, $report);
             $content = $this->renderer->render($plan, $applied->result, $applied->tools);
@@ -98,22 +113,32 @@ final readonly class MergeRequestSynchronizer
                 ]);
             }
 
-            if (null === $existing && $applied->result->hasChanges() && $this->dismissedByHand($branch, $content)) {
+            if (
+                !$existing instanceof MergeRequest
+                && $applied->result->hasChanges()
+                && $this->dismissedByHand($branch, $content)
+            ) {
                 return new PlanOutcome($branch, PlanAction::SkippedClosed, $content, null, [
-                    sprintf('A merge request for these very fixes was closed less than %d days ago: not opened again.', $this->settings->closedGraceDays),
+                    sprintf(
+                        'A merge request for these very fixes was closed less than %d days ago: not opened again.',
+                        $this->settings->closedGraceDays,
+                    ),
                 ]);
             }
 
             $push = $applied->result->hasChanges() && $this->git->commit($content->commitMessage)
-                ? ($this->canKeepBranch($existing, $remote, $content) ? PushResult::Kept : $this->git->push($branch, $remote))
+                ? ($this->canKeepBranch($existing, $remote, $content) ? PushResult::Kept : $this->git->push(
+                    $branch,
+                    $remote,
+                ))
                 : null;
         } finally {
             $this->git->finish();
         }
 
-        return null === $push
-            ? $this->nothingToFix($plan, $existing, $content)
-            : $this->syncMergeRequest($branch, $existing, $content, $push);
+        return $push instanceof PushResult
+            ? $this->syncMergeRequest($branch, $existing, $content, $push)
+            : $this->nothingToFix($plan, $existing, $content);
     }
 
     /**
@@ -123,7 +148,7 @@ final readonly class MergeRequestSynchronizer
      */
     private function canKeepBranch(?MergeRequest $existing, RemoteBranch $remote, MergeRequestContent $content): bool
     {
-        return null !== $existing
+        return $existing instanceof MergeRequest
             && null !== $remote->sha
             && !$existing->hasConflicts
             && $content->fingerprint === MergeRequestRenderer::fingerprintOf($existing->description);
@@ -139,35 +164,49 @@ final readonly class MergeRequestSynchronizer
             return false;
         }
 
-        $closed = $this->gitlab->findClosedMergeRequest($branch, new \DateTimeImmutable(sprintf('-%d days', $this->settings->closedGraceDays)));
+        $closed = $this->gitlab->findClosedMergeRequest(
+            $branch,
+            new \DateTimeImmutable(sprintf('-%d days', $this->settings->closedGraceDays)),
+        );
 
-        return null !== $closed
+        return $closed instanceof MergeRequest
             && $content->fingerprint === MergeRequestRenderer::fingerprintOf($closed->description)
             && !$this->alreadyNoted($closed, NoteRenderer::CLOSED_MARKER);
     }
 
-    private function syncMergeRequest(string $branch, ?MergeRequest $existing, MergeRequestContent $content, PushResult $push): PlanOutcome
-    {
+    private function syncMergeRequest(
+        string $branch,
+        ?MergeRequest $existing,
+        MergeRequestContent $content,
+        PushResult $push,
+    ): PlanOutcome {
         $severity = $content->severity;
-        $wanted = [...$this->settings->labels, ...(null === $severity ? [] : [$this->settings->severityLabel($severity)])];
+        $wanted = [
+            ...$this->settings->labels,
+            ...($severity instanceof Severity ? [$this->settings->severityLabel($severity)] : []),
+        ];
 
-        if (null === $existing) {
+        if (!$existing instanceof MergeRequest) {
             $messages = [];
-            $created = $this->gitlab->createMergeRequest(new NewMergeRequest(
-                $branch,
-                $this->settings->defaultBranch,
-                $content->title,
-                $content->description,
-                $wanted,
-                $this->userIds($this->settings->assignees, $messages),
-                $this->userIds($this->settings->reviewers, $messages),
-            ));
+            $created = $this->gitlab->createMergeRequest(
+                new NewMergeRequest(
+                    $branch,
+                    $this->settings->defaultBranch,
+                    $content->title,
+                    $content->description,
+                    $wanted,
+                    $this->userIds($this->settings->assignees, $messages),
+                    $this->userIds($this->settings->reviewers, $messages),
+                ),
+            );
 
             return new PlanOutcome($branch, PlanAction::Created, $content, $created->webUrl, $messages);
         }
 
         $add = array_values(array_diff($wanted, $existing->labels));
-        $remove = null === $severity ? [] : array_values(array_intersect($this->settings->otherSeverityLabels($severity), $existing->labels));
+        $remove = $severity instanceof Severity ? array_values(
+            array_intersect($this->settings->otherSeverityLabels($severity), $existing->labels),
+        ) : [];
         $stale = trim($existing->title) !== trim($content->title)
             || trim($existing->description) !== trim($content->description)
             || [] !== $add
@@ -197,7 +236,7 @@ final readonly class MergeRequestSynchronizer
 
     private function nothingToFix(GroupPlan $plan, ?MergeRequest $existing, MergeRequestContent $content): PlanOutcome
     {
-        if (null === $existing) {
+        if (!$existing instanceof MergeRequest) {
             return new PlanOutcome($plan->branchName(), PlanAction::NoFix, $content);
         }
 
@@ -212,10 +251,18 @@ final readonly class MergeRequestSynchronizer
      */
     private function withoutFixes(GroupPlan $plan): MergeRequestContent
     {
-        return $this->renderer->render($plan, new ApplyResult(array_map(
-            static fn ($fix): FixOutcome => new FixOutcome($fix, FixOutcomeStatus::Skipped),
-            $plan->fixes,
-        )));
+        return $this->renderer->render(
+            $plan,
+            new ApplyResult(
+                array_map(
+                    static fn(PackageFix $fix): FixOutcome => new FixOutcome(
+                        $fix,
+                        FixOutcomeStatus::Skipped,
+                    ),
+                    $plan->fixes,
+                ),
+            ),
+        );
     }
 
     private function limitReached(): bool
@@ -227,7 +274,7 @@ final readonly class MergeRequestSynchronizer
 
         $open = array_filter(
             $this->gitlab->listOpenMergeRequests($this->settings->labels),
-            static fn (MergeRequest $mr): bool => str_starts_with($mr->sourceBranch, BranchPublisher::BRANCH_PREFIX),
+            static fn(MergeRequest $mr): bool => str_starts_with($mr->sourceBranch, BranchPublisher::BRANCH_PREFIX),
         );
 
         return \count($open) >= $max;
@@ -235,28 +282,27 @@ final readonly class MergeRequestSynchronizer
 
     private function alreadyNoted(MergeRequest $mr, string $marker): bool
     {
-        foreach ($this->gitlab->listNoteBodies($mr->iid) as $body) {
-            if (str_contains($body, $marker)) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any(
+            $this->gitlab->listNoteBodies($mr->iid),
+            static fn(string $body): bool => str_contains($body, $marker),
+        );
     }
 
     /**
      * @param list<string> $usernames
-     * @param list<string> $messages  receives a warning for each unknown user
+     * @param list<string> $messages receives a warning for each unknown user
      *
      * @return list<int>
      */
     private function userIds(array $usernames, array &$messages): array
     {
         $ids = [];
+
         foreach ($usernames as $username) {
             $id = $this->gitlab->findUserId($username);
             if (null === $id) {
                 $messages[] = sprintf('GitLab user "%s" not found: ignored.', $username);
+
                 continue;
             }
             $ids[] = $id;

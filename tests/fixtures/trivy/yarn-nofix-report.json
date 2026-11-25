@@ -57,7 +57,7 @@
           "Name": "@babel/plugin-transform-modules-systemjs",
           "Version": "7.27.1",
           "Relationship": "indirect",
-          "DependsOn": []
+          "DependsOn": [ ]
         },
         {
           "ID": "@babel/plugin-transform-object-rest-spread@7.28.4",
@@ -165,28 +165,28 @@
           "Name": "brace-expansion",
           "Version": "1.1.12",
           "Relationship": "indirect",
-          "DependsOn": []
+          "DependsOn": [ ]
         },
         {
           "ID": "brace-expansion@2.0.2",
           "Name": "brace-expansion",
           "Version": "2.0.2",
           "Relationship": "indirect",
-          "DependsOn": []
+          "DependsOn": [ ]
         },
         {
           "ID": "braces@3.0.3",
           "Name": "braces",
           "Version": "3.0.3",
           "Relationship": "indirect",
-          "DependsOn": []
+          "DependsOn": [ ]
         },
         {
           "ID": "browserslist@4.26.3",
           "Name": "browserslist",
           "Version": "4.26.3",
           "Relationship": "indirect",
-          "DependsOn": []
+          "DependsOn": [ ]
         },
         {
           "ID": "cacache@19.0.1",

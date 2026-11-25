@@ -27,19 +27,10 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 final readonly class MergeRequestRenderer
 {
     /** Marks the descriptions written by Rustine and carries the fingerprint used for idempotency. */
-    public const MARKER = 'rustine:v1';
+    public const string MARKER = 'rustine:v1';
 
     /** Rows of the lockfile table: a refresh may move hundreds of packages, GitLab limits a description to 1 MB. */
-    private const MAX_LOCK_ROWS = 200;
-
-    /**
-     * Fingerprint written by a previous run in a description, or null when the description is not (or no longer) one
-     * of Rustine's.
-     */
-    public static function fingerprintOf(string $description): ?string
-    {
-        return 1 === preg_match('/<!-- ' . preg_quote(self::MARKER, '/') . ' fingerprint=([0-9a-f]+) -->/', $description, $m) ? $m[1] : null;
-    }
+    private const int MAX_LOCK_ROWS = 200;
 
     public function __construct(
         private TranslatorInterface $translator,
@@ -47,33 +38,55 @@ final readonly class MergeRequestRenderer
     ) {
     }
 
-    public function render(GroupPlan $plan, ?ApplyResult $result = null, ?ToolVersions $tools = null): MergeRequestContent
+    /**
+     * Fingerprint written by a previous run in a description, or null when the description is not (or no longer) one
+     * of Rustine's.
+     */
+    public static function fingerprintOf(string $description): ?string
     {
+        return 1 === preg_match(
+            '/<!-- ' . preg_quote(self::MARKER, '/') . ' fingerprint=([0-9a-f]+) -->/',
+            $description,
+            $m,
+        ) ? $m[1] : null;
+    }
+
+    public function render(
+        GroupPlan $plan,
+        ?ApplyResult $result = null,
+        ?ToolVersions $tools = null,
+    ): MergeRequestContent {
         $outcomes = $this->outcomesByFix($plan, $result);
         $rows = $this->rows($plan, $result, $outcomes);
         $attention = $this->attention($plan, $outcomes);
         $fingerprint = $this->fingerprint($rows);
 
         $severity = null;
+
         foreach ($rows as $row) {
             $severity = null === $severity ? $row['fix']->severity : Severity::max($severity, $row['fix']->severity);
         }
 
         $params = [
             'ecosystem' => ucfirst($plan->ecosystem->value),
-            'group' => $this->t('group.' . $plan->group->value),
+            'group'     => $this->t('group.' . $plan->group->value),
         ];
 
         $sections = [];
-        if (null === $result) {
+        if (!$result instanceof ApplyResult) {
             $sections[] = '> ' . $this->t('preview');
         }
-        $sections[] = $this->summary($rows, null === $result);
+        $sections[] = $this->summary($rows, !$result instanceof ApplyResult);
         if ([] !== $rows) {
             $sections[] = '## ' . $this->t('section.fixed') . "\n\n" . $this->table($rows);
         }
-        if (null !== $result && [] !== $result->lockChanges) {
-            $sections[] = '## ' . $this->t('section.lock') . "\n\n" . $this->lockChanges($plan, $rows, $result->lockChanges);
+        if ($result instanceof ApplyResult && [] !== $result->lockChanges) {
+            $sections[] = '## ' . $this->t('section.lock') . "\n\n"
+                . $this->lockChanges(
+                    $plan,
+                    $rows,
+                    $result->lockChanges,
+                );
         }
         if ([] !== $attention) {
             $sections[] = '## ' . $this->t('section.attention') . "\n\n" . implode("\n", $attention);
@@ -82,12 +95,12 @@ final readonly class MergeRequestRenderer
         if ([] !== $debt) {
             $sections[] = '## ' . $this->t('section.debt') . "\n\n" . implode("\n", $debt);
         }
-        if (null !== $result && ([] !== $rows || null !== $result->finalCheckError)) {
+        if ($result instanceof ApplyResult && ([] !== $rows || null !== $result->finalCheckError)) {
             $sections[] = '## ' . $this->t('section.verification') . "\n\n" . $this->verification($result);
         }
-        $sections[] = '## ' . $this->t('section.tooling') . "\n\n" . (null === $tools
-            ? $this->t('tooling.none')
-            : $this->t('tooling.used', ['tools' => '`' . $tools->describe() . '`']));
+        $sections[] = '## ' . $this->t('section.tooling') . "\n\n" . ($tools instanceof ToolVersions
+                ? $this->t('tooling.used', ['tools' => '`' . $tools->describe() . '`'])
+                : $this->t('tooling.none'));
         $sections[] = sprintf(
             "---\n%s\n<!-- %s fingerprint=%s -->",
             $this->t('footer', ['version' => $this->version]),
@@ -113,15 +126,17 @@ final readonly class MergeRequestRenderer
      */
     private function outcomesByFix(GroupPlan $plan, ?ApplyResult $result): array
     {
-        if (null === $result) {
+        if (!$result instanceof ApplyResult) {
             return [];
         }
 
         $outcomes = [];
+
         foreach ($plan->fixes as $index => $fix) {
             foreach ($result->outcomes as $outcome) {
                 if ($outcome->fix === $fix) {
                     $outcomes[$index] = $outcome;
+
                     break;
                 }
             }
@@ -140,11 +155,13 @@ final readonly class MergeRequestRenderer
     private function rows(GroupPlan $plan, ?ApplyResult $result, array $outcomes): array
     {
         $rows = [];
+
         foreach ($plan->fixes as $index => $fix) {
-            if (null === $result) {
+            if (!$result instanceof ApplyResult) {
                 if ($fix->isFixable()) {
                     $rows[] = ['fix' => $fix, 'strategy' => null, 'already' => false];
                 }
+
                 continue;
             }
 
@@ -165,6 +182,7 @@ final readonly class MergeRequestRenderer
     private function summary(array $rows, bool $planned): string
     {
         $cves = 0;
+
         foreach ($rows as $row) {
             $cves += \count($row['fix']->fixedIds);
         }
@@ -194,7 +212,9 @@ final readonly class MergeRequestRenderer
             $fix = $row['fix'];
             $strategy = $row['already']
                 ? $this->t('strategy.already')
-                : (null === $row['strategy'] ? $this->t('strategy.planned') : $this->t('strategy.' . $row['strategy']->value));
+                : (null === $row['strategy'] ? $this->t('strategy.planned') : $this->t(
+                    'strategy.' . $row['strategy']->value,
+                ));
 
             $lines[] = sprintf(
                 '| `%s` | `%s` → `%s` | %s | %s | %s | %s |',
@@ -217,14 +237,18 @@ final readonly class MergeRequestRenderer
     private function cves(PackageFix $fix, array $ids): string
     {
         $links = [];
+
         foreach ($ids as $id) {
             $url = null;
+
             foreach ($fix->vulnerabilities as $vulnerability) {
                 if ($vulnerability->id === $id) {
                     $url = $vulnerability->url;
+
                     break;
                 }
             }
+
             $links[] = null === $url ? $id : sprintf('[%s](%s)', $id, $url);
         }
 
@@ -236,10 +260,19 @@ final readonly class MergeRequestRenderer
         return match ($fix->dependencyKind) {
             DependencyKind::Direct => $this->t('dependency.direct'),
             DependencyKind::Transitive => $this->t('dependency.transitive', [
-                'chain' => implode(' → ', array_map(
-                    static fn (string $id): string => '`' . (strrpos($id, '@') > 0 ? substr($id, 0, (int) strrpos($id, '@')) : $id) . '`',
-                    $fix->dependencyChain,
-                )),
+                'chain' => implode(
+                    ' → ',
+                    array_map(
+                        static fn(string $id): string => '`' . (strrpos($id, '@') > 0
+                                ? substr(
+                                    $id,
+                                    0,
+                                    strrpos($id, '@'),
+                                )
+                                : $id) . '`',
+                        $fix->dependencyChain,
+                    ),
+                ),
             ]),
             DependencyKind::Unknown => $this->t('dependency.unknown'),
         };
@@ -255,6 +288,7 @@ final readonly class MergeRequestRenderer
     private function attention(GroupPlan $plan, array $outcomes): array
     {
         $items = [];
+
         foreach ($plan->fixes as $index => $fix) {
             $messages = [];
             $outcome = $outcomes[$index] ?? null;
@@ -264,7 +298,7 @@ final readonly class MergeRequestRenderer
             }
             if ([] !== $fix->majorBumpIds) {
                 $messages[] = $this->t('attention.major_bump', [
-                    'cves' => $this->cves($fix, array_keys($fix->majorBumpIds)),
+                    'cves'     => $this->cves($fix, array_keys($fix->majorBumpIds)),
                     'versions' => '`' . implode('`, `', array_unique(array_values($fix->majorBumpIds))) . '`',
                 ]);
             }
@@ -300,24 +334,38 @@ final readonly class MergeRequestRenderer
      */
     private function lockChanges(GroupPlan $plan, array $rows, array $changes): string
     {
-        $targeted = array_flip(array_map(static fn (array $row): string => $row['fix']->packageName, $rows));
-        $fixed = \count(array_filter($changes, static fn (LockChange $change): bool => isset($targeted[$change->package])));
+        $targeted = array_flip(array_map(static fn(array $row): string => $row['fix']->packageName, $rows));
+        $fixed = \count(
+            array_filter($changes, static fn(LockChange $change): bool => isset($targeted[$change->package])),
+        );
 
         $lines = [
             sprintf('| %s | %s | %s |', $this->t('table.package'), $this->t('lock.before'), $this->t('lock.after')),
             '|---|---|---|',
         ];
+
         foreach (\array_slice($changes, 0, self::MAX_LOCK_ROWS) as $change) {
-            $name = isset($targeted[$change->package]) ? '**`' . $change->package . '`**' : '`' . $change->package . '`';
-            $lines[] = sprintf('| %s | %s | %s |', $name, $this->versions($change->before), $this->versions($change->after));
+            $name = isset($targeted[$change->package])
+                ? '**`' . $change->package . '`**'
+                : '`' . $change->package . '`';
+            $lines[] = sprintf(
+                '| %s | %s | %s |',
+                $name,
+                $this->versions($change->before),
+                $this->versions($change->after),
+            );
         }
+
         if (\count($changes) > self::MAX_LOCK_ROWS) {
             $lines[] = '| ' . $this->t('lock.more', ['count' => \count($changes) - self::MAX_LOCK_ROWS]) . ' | | |';
         }
 
         return sprintf(
             "%s\n\n<details><summary>%s</summary>\n\n%s\n\n</details>",
-            $this->t('lock.summary', ['file' => '`' . $plan->ecosystem->lockFile() . '`', 'changed' => \count($changes), 'fixed' => $fixed]),
+            $this->t(
+                'lock.summary',
+                ['file' => '`' . $plan->ecosystem->lockFile() . '`', 'changed' => \count($changes), 'fixed' => $fixed],
+            ),
             $this->t('lock.show'),
             implode("\n", $lines),
         );
@@ -328,7 +376,10 @@ final readonly class MergeRequestRenderer
      */
     private function versions(array $versions): string
     {
-        return [] === $versions ? '—' : implode(', ', array_map(static fn (string $version): string => '`' . $version . '`', $versions));
+        return [] === $versions ? '—' : implode(
+            ', ',
+            array_map(static fn(string $version): string => '`' . $version . '`', $versions),
+        );
     }
 
     /**
@@ -340,7 +391,7 @@ final readonly class MergeRequestRenderer
             return '';
         }
 
-        $body = implode("\n", array_map(static fn (string $line): string => '  ' . $line, $lines));
+        $body = implode("\n", array_map(static fn(string $line): string => '  ' . $line, $lines));
 
         return sprintf("\n  <details><summary>%s</summary>\n\n  ```text\n%s\n  ```\n\n  </details>", $summary, $body);
     }
@@ -355,6 +406,7 @@ final readonly class MergeRequestRenderer
     private function debt(array $rows): array
     {
         $items = [];
+
         foreach ($rows as $row) {
             if (AttemptKind::Resolution === $row['strategy']) {
                 $items[] = '- ' . $this->t('debt.resolution', ['package' => '`' . $row['fix']->packageName . '`']);
@@ -368,8 +420,10 @@ final readonly class MergeRequestRenderer
     {
         $lines = ['- ' . $this->t('verification.rescan_' . $result->verify->value)];
         $lines[] = match (true) {
-            null !== $result->finalCheckError => '- ' . $this->t('verification.check_failed') . "\n\n  ```text\n  " . $result->finalCheckError . "\n  ```",
-            null !== $result->existingCheckFindings => '- ' . $this->t('verification.check_existing') . "\n\n  ```text\n  " . $result->existingCheckFindings . "\n  ```",
+            null !== $result->finalCheckError => '- ' . $this->t('verification.check_failed')
+                . "\n\n  ```text\n  " . $result->finalCheckError . "\n  ```",
+            null !== $result->existingCheckFindings => '- ' . $this->t('verification.check_existing')
+                . "\n\n  ```text\n  " . $result->existingCheckFindings . "\n  ```",
             default => '- ' . $this->t('verification.check_ok'),
         };
 
@@ -378,7 +432,7 @@ final readonly class MergeRequestRenderer
 
     /**
      * @param list<array{fix: PackageFix, strategy: ?AttemptKind, already: bool}> $rows
-     * @param array<string, string>                                                $params
+     * @param array<string, string>                                               $params
      */
     private function commitMessage(array $rows, array $params): string
     {
@@ -388,6 +442,7 @@ final readonly class MergeRequestRenderer
 
         if ([] !== $rows) {
             $message .= "\n\n" . $this->t('commit.intro');
+
             foreach ($rows as $row) {
                 $fix = $row['fix'];
                 $message .= sprintf(
@@ -411,7 +466,7 @@ final readonly class MergeRequestRenderer
     private function fingerprint(array $rows): string
     {
         $lines = array_map(
-            static fn (array $row): string => implode('|', [
+            static fn(array $row): string => implode('|', [
                 $row['fix']->ecosystem->value,
                 $row['fix']->packageName,
                 $row['fix']->installedVersion,

@@ -32,7 +32,9 @@ final readonly class Git
     {
         $result = $this->attempt($args, $remote);
         if (!$result->isSuccessful()) {
-            throw new GitException($this->redact(sprintf('"git %s" failed: %s', implode(' ', $args), trim($result->output))));
+            throw new GitException(
+                $this->redact(sprintf('"git %s" failed: %s', implode(' ', $args), trim($result->output))),
+            );
         }
 
         return $result->output;
@@ -46,7 +48,7 @@ final readonly class Git
     public function attempt(array $args, bool $remote = false): CommandResult
     {
         $env = ['GIT_TERMINAL_PROMPT' => '0'];
-        if ($remote && null !== $this->access) {
+        if ($remote && $this->access instanceof GitAccess) {
             $env = [...$env, ...$this->access->environment()];
         }
 
@@ -57,6 +59,6 @@ final readonly class Git
 
     private function redact(string $text): string
     {
-        return null === $this->access ? $text : $this->access->redact($text);
+        return $this->access?->redact($text) ?? $text;
     }
 }

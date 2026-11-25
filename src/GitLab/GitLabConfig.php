@@ -13,7 +13,7 @@ namespace Rustine\GitLab;
 final readonly class GitLabConfig
 {
     /** Environment variables that may hold the token, in order of precedence. */
-    public const TOKEN_VARIABLES = ['RUSTINE_GITLAB_TOKEN', 'GITLAB_TOKEN'];
+    public const array TOKEN_VARIABLES = ['RUSTINE_GITLAB_TOKEN', 'GITLAB_TOKEN'];
 
     public function __construct(
         public string $apiUrl,
@@ -29,24 +29,41 @@ final readonly class GitLabConfig
      *
      * @throws GitLabConfigException listing everything that is missing
      */
-    public static function resolve(array $env, ?string $apiUrl = null, ?string $projectId = null, ?string $defaultBranch = null): self
-    {
+    public static function resolve(
+        array $env,
+        ?string $apiUrl = null,
+        ?string $projectId = null,
+        ?string $defaultBranch = null,
+    ): self {
         $apiUrl = self::first($apiUrl, $env['CI_API_V4_URL'] ?? null);
         $projectId = self::first($projectId, $env['CI_PROJECT_ID'] ?? null);
         $defaultBranch = self::first($defaultBranch, $env['CI_DEFAULT_BRANCH'] ?? null);
-        $token = self::first(...array_map(static fn (string $name): string|false|null => $env[$name] ?? null, self::TOKEN_VARIABLES));
+        $token = self::first(
+            ...array_map(static fn(string $name): string|false|null => $env[$name] ?? null, self::TOKEN_VARIABLES),
+        );
 
-        if (null === $apiUrl || null === $projectId || null === $defaultBranch || null === $token) {
+        if (in_array(null, [$apiUrl, $projectId, $defaultBranch, $token], true)) {
             $missing = [];
-            null === $apiUrl && $missing[] = 'the GitLab API URL (--gitlab-url or CI_API_V4_URL)';
-            null === $projectId && $missing[] = 'the project (--project-id or CI_PROJECT_ID)';
-            null === $defaultBranch && $missing[] = 'the default branch (--default-branch or CI_DEFAULT_BRANCH)';
-            null === $token && $missing[] = 'the access token (RUSTINE_GITLAB_TOKEN or GITLAB_TOKEN)';
+            if (null === $apiUrl) {
+                $missing[] = 'the GitLab API URL (--gitlab-url or CI_API_V4_URL)';
+            }
+            if (null === $projectId) {
+                $missing[] = 'the project (--project-id or CI_PROJECT_ID)';
+            }
+            if (null === $defaultBranch) {
+                $missing[] = 'the default branch (--default-branch or CI_DEFAULT_BRANCH)';
+            }
+            if (null === $token) {
+                $missing[] = 'the access token (RUSTINE_GITLAB_TOKEN or GITLAB_TOKEN)';
+            }
 
             throw new GitLabConfigException('Missing ' . implode(', ', $missing) . '.');
         }
 
-        if (false === filter_var($apiUrl, \FILTER_VALIDATE_URL) || !\in_array(parse_url($apiUrl, \PHP_URL_SCHEME), ['http', 'https'], true)) {
+        if (
+            false === filter_var($apiUrl, \FILTER_VALIDATE_URL)
+            || !\in_array(parse_url($apiUrl, \PHP_URL_SCHEME), ['http', 'https'], true)
+        ) {
             throw new GitLabConfigException(sprintf('"%s" is not a valid GitLab API URL.', $apiUrl));
         }
 
@@ -63,11 +80,6 @@ final readonly class GitLabConfig
         return array_fill_keys(self::TOKEN_VARIABLES, false);
     }
 
-    public function host(): string
-    {
-        return (string) parse_url($this->apiUrl, \PHP_URL_HOST);
-    }
-
     private static function first(string|false|null ...$values): ?string
     {
         foreach ($values as $value) {
@@ -77,5 +89,10 @@ final readonly class GitLabConfig
         }
 
         return null;
+    }
+
+    public function host(): string
+    {
+        return (string) parse_url($this->apiUrl, \PHP_URL_HOST);
     }
 }

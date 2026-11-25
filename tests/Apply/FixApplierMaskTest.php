@@ -16,17 +16,23 @@ final class FixApplierMaskTest extends TestCase
      */
     public static function secrets(): iterable
     {
-        yield 'url with user and password' => ['GET https://bot:glpat-abc123@registry.example.com/npm/x failed', 'GET https://***@registry.example.com/npm/x failed'];
+        yield 'url with user and password' => [
+            'GET https://bot:glpat-abc123@registry.example.com/npm/x failed',
+            'GET https://***@registry.example.com/npm/x failed',
+        ];
         yield 'url with a token only' => ['fetch http://tok3n@host/pkg', 'fetch http://***@host/pkg'];
         yield 'authorization header' => ['Authorization: Bearer abc.def-123', 'Authorization: Bearer ***'];
         yield 'npm auth token' => ['//registry/:_authToken=NpmToken123', '//registry/:_authToken=***'];
-        yield 'nothing to hide' => ['https://registry.yarnpkg.com/braces/-/braces-3.0.2.tgz not found', 'https://registry.yarnpkg.com/braces/-/braces-3.0.2.tgz not found'];
+        yield 'nothing to hide' => [
+            'https://registry.yarnpkg.com/braces/-/braces-3.0.2.tgz not found',
+            'https://registry.yarnpkg.com/braces/-/braces-3.0.2.tgz not found',
+        ];
     }
 
     #[Test]
     #[DataProvider('secrets')]
     public function credentialsAreMasked(string $text, string $expected): void
     {
-        self::assertSame($expected, FixApplier::maskSecrets($text));
+        $this->assertSame($expected, FixApplier::maskSecrets($text));
     }
 }

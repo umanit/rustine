@@ -20,11 +20,11 @@ final class TrivyReportParser
     {
         try {
             $data = json_decode($json, true, 512, \JSON_THROW_ON_ERROR);
-        } catch (\JsonException $e) {
+        } catch (\JsonException $jsonException) {
             throw new InvalidTrivyReportException(
-                'The Trivy report is not valid JSON: ' . $e->getMessage(),
+                'The Trivy report is not valid JSON: ' . $jsonException->getMessage(),
                 0,
-                $e,
+                $jsonException,
             );
         }
 
@@ -51,7 +51,7 @@ final class TrivyReportParser
             $ecosystem = Ecosystem::fromTrivyType(\is_string($result['Type'] ?? null) ? $result['Type'] : '');
             // Only the lockfile at the root of the project is handled: a lockfile found deeper (`tools/*/`,
             // `vendor-bin/`, a sub-project, a package of `node_modules/`…) is not the one the fixes would change.
-            if (null === $ecosystem || !$this->isRootLockfile($target, $ecosystem)) {
+            if (!$ecosystem instanceof Ecosystem || !$this->isRootLockfile($target, $ecosystem)) {
                 $ignored[] = $target;
 
                 continue;
@@ -59,14 +59,14 @@ final class TrivyReportParser
 
             foreach ($this->list($result['Packages'] ?? null) as $rawPackage) {
                 $package = $this->parsePackage($rawPackage);
-                if (null !== $package) {
+                if ($package instanceof TrivyPackage) {
                     $packages[$ecosystem->value][$package->id] = $package;
                 }
             }
 
             foreach ($this->list($result['Vulnerabilities'] ?? null) as $rawVuln) {
                 $vulnerability = $this->parseVulnerability($rawVuln, $ecosystem);
-                if (null !== $vulnerability) {
+                if ($vulnerability instanceof Vulnerability) {
                     // Deduplication: the same CVE may appear several times for one package.
                     $vulnerabilities[$vulnerability->packageId . "\0" . $vulnerability->id] = $vulnerability;
                 }
@@ -91,6 +91,7 @@ final class TrivyReportParser
         }
 
         $items = [];
+
         foreach ($value as $item) {
             if (\is_array($item)) {
                 /** @var array<string, mixed> $item */
@@ -143,7 +144,7 @@ final class TrivyReportParser
         $dependsOn = array_values(
             array_filter(
                 \is_array($raw['DependsOn'] ?? null) ? $raw['DependsOn'] : [],
-                'is_string',
+                is_string(...),
             ),
         );
 
@@ -167,7 +168,7 @@ final class TrivyReportParser
 
         return array_values(
             array_filter(
-                array_map('trim', explode(',', $value)),
+                array_map(trim(...), explode(',', $value)),
                 static fn(string $v): bool => '' !== $v,
             ),
         );

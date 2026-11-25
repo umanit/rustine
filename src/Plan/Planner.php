@@ -8,6 +8,7 @@ use Rustine\Trivy\Ecosystem;
 use Rustine\Trivy\Severity;
 use Rustine\Trivy\TrivyReport;
 use Rustine\Trivy\Vulnerability;
+use Rustine\Version\FixCandidate;
 use Rustine\Version\FixedVersionSelector;
 use Rustine\Version\Version;
 
@@ -49,6 +50,7 @@ final readonly class Planner
 
         /** @var array<string, list<PackageFix>> $planned */
         $planned = [];
+
         foreach ($byInstance as $vulnerabilities) {
             $first = $vulnerabilities[0];
             $group = SeverityGroup::forSeverity(
@@ -68,6 +70,7 @@ final readonly class Planner
         ksort($planned);
 
         $plans = [];
+
         foreach ($planned as $key => $fixes) {
             [$ecosystem, $group] = explode("\0", $key);
             usort(
@@ -103,10 +106,21 @@ final readonly class Planner
         [$kind, $chain] = $this->dependency($report, $first);
 
         $installed = Version::tryParse($first->installedVersion);
-        if (null === $installed) {
+        if (!$installed instanceof Version) {
             return new PackageFix(
-                $first->ecosystem, $first->packageName, $first->installedVersion, PackageFixStatus::UnparsableVersion,
-                null, $severity, $group, $kind, $chain, $vulnerabilities, [], [], [],
+                $first->ecosystem,
+                $first->packageName,
+                $first->installedVersion,
+                PackageFixStatus::UnparsableVersion,
+                null,
+                $severity,
+                $group,
+                $kind,
+                $chain,
+                $vulnerabilities,
+                [],
+                [],
+                [],
             );
         }
 
@@ -118,28 +132,39 @@ final readonly class Planner
         foreach ($vulnerabilities as $vulnerability) {
             $candidate = $this->selector->select($installed, $vulnerability->fixedVersions);
 
-            if (null === $candidate) {
+            if (!$candidate instanceof FixCandidate) {
                 $withoutFixIds[] = $vulnerability->id;
             } elseif ($candidate->majorBump) {
                 $majorBumpIds[$vulnerability->id] = $candidate->version->raw;
             } else {
                 $fixedIds[] = $vulnerability->id;
                 // The version covering all CVEs of the same major is the highest of the per-CVE minimums.
-                if (null === $target || $candidate->version->isGreaterThan($target)) {
+                if (!$target instanceof Version || $candidate->version->isGreaterThan($target)) {
                     $target = $candidate->version;
                 }
             }
         }
 
         $status = match (true) {
-            null !== $target => PackageFixStatus::Fixable,
+            $target instanceof Version => PackageFixStatus::Fixable,
             [] !== $majorBumpIds => PackageFixStatus::MajorBumpRequired,
             default => PackageFixStatus::NoFixAvailable,
         };
 
         return new PackageFix(
-            $first->ecosystem, $first->packageName, $first->installedVersion, $status, $target?->raw,
-            $severity, $group, $kind, $chain, $vulnerabilities, $fixedIds, $majorBumpIds, $withoutFixIds,
+            $first->ecosystem,
+            $first->packageName,
+            $first->installedVersion,
+            $status,
+            $target?->raw,
+            $severity,
+            $group,
+            $kind,
+            $chain,
+            $vulnerabilities,
+            $fixedIds,
+            $majorBumpIds,
+            $withoutFixIds,
         );
     }
 

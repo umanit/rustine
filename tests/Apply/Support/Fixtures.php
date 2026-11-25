@@ -29,18 +29,37 @@ final class Fixtures
         $vulnerability = self::vulnerability($name, $installed, $ecosystem);
 
         return new PackageFix(
-            $ecosystem, $name, $installed, $status,
+            $ecosystem,
+            $name,
+            $installed,
+            $status,
             PackageFixStatus::Fixable === $status ? $target : null,
-            Severity::Medium, SeverityGroup::Others, $kind, [], [$vulnerability],
-            PackageFixStatus::Fixable === $status ? [$vulnerability->id] : [], [], [],
+            Severity::Medium,
+            SeverityGroup::Others,
+            $kind,
+            [],
+            [$vulnerability],
+            PackageFixStatus::Fixable === $status ? [$vulnerability->id] : [],
+            [],
+            [],
         );
     }
 
-    public static function vulnerability(string $name = 'ckeditor4', string $installed = '4.22.1', Ecosystem $ecosystem = Ecosystem::Yarn): Vulnerability
-    {
+    public static function vulnerability(
+        string $name = 'ckeditor4',
+        string $installed = '4.22.1',
+        Ecosystem $ecosystem = Ecosystem::Yarn,
+    ): Vulnerability {
         return new Vulnerability(
-            'CVE-2024-0001', $ecosystem, $name, $name . '@' . $installed, $installed,
-            ['4.25.0'], Severity::Medium, null, null,
+            'CVE-2024-0001',
+            $ecosystem,
+            $name,
+            $name . '@' . $installed,
+            $installed,
+            ['4.25.0'],
+            Severity::Medium,
+            null,
+            null,
         );
     }
 
@@ -50,12 +69,13 @@ final class Fixtures
     }
 
     /**
-     * @param list<Vulnerability>        $vulnerabilities
+     * @param list<Vulnerability>         $vulnerabilities
      * @param array<string, list<string>> $installedVersions every installed version per package name
      */
     public static function report(array $vulnerabilities = [], array $installedVersions = []): TrivyReport
     {
         $packages = [];
+
         foreach ($installedVersions as $name => $versions) {
             foreach ($versions as $version) {
                 $id = $name . '@' . $version;

@@ -25,12 +25,15 @@ final class ComposerManifestTest extends TestCase
     #[Test]
     public function itFindsRequirementsInBothBlocks(): void
     {
-        file_put_contents($this->file, '{"require":{"php":"^8.2","twig/twig":"^3.4"},"require-dev":{"phpunit/phpunit":"^11"}}');
+        file_put_contents(
+            $this->file,
+            '{"require":{"php":"^8.2","twig/twig":"^3.4"},"require-dev":{"phpunit/phpunit":"^11"}}',
+        );
         $manifest = ComposerManifest::read($this->file);
 
-        self::assertSame(['field' => 'require', 'constraint' => '^3.4'], $manifest->declaration('twig/twig'));
-        self::assertSame(['field' => 'require-dev', 'constraint' => '^11'], $manifest->declaration('phpunit/phpunit'));
-        self::assertNull($manifest->declaration('symfony/yaml'));
+        $this->assertSame(['field' => 'require', 'constraint' => '^3.4'], $manifest->declaration('twig/twig'));
+        $this->assertSame(['field' => 'require-dev', 'constraint' => '^11'], $manifest->declaration('phpunit/phpunit'));
+        $this->assertNull($manifest->declaration('symfony/yaml'));
     }
 
     #[Test]
@@ -38,27 +41,30 @@ final class ComposerManifestTest extends TestCase
     {
         file_put_contents($this->file, '{"require":{"a/b":"^1.0"},"require-dev":{"a/b":"^1.0"}}');
 
-        self::assertSame('require', ComposerManifest::read($this->file)->declaration('a/b')['field'] ?? null);
+        $this->assertSame('require', ComposerManifest::read($this->file)->declaration('a/b')['field'] ?? null);
     }
 
     #[Test]
     public function aMissingOrBrokenFileDeclaresNothing(): void
     {
-        self::assertNull(ComposerManifest::read('/nonexistent/composer.json')->declaration('a/b'));
+        $this->assertNull(ComposerManifest::read('/nonexistent/composer.json')->declaration('a/b'));
 
         file_put_contents($this->file, '{nope');
-        self::assertNull(ComposerManifest::read($this->file)->declaration('a/b'));
+        $this->assertNull(ComposerManifest::read($this->file)->declaration('a/b'));
     }
 
     #[Test]
     public function itReadsTheSymfonyRequirementAndTheVendorDirectory(): void
     {
-        file_put_contents($this->file, '{"extra":{"symfony":{"require":"6.4.*"}},"config":{"vendor-dir":"lib/vendor"}}');
+        file_put_contents(
+            $this->file,
+            '{"extra":{"symfony":{"require":"6.4.*"}},"config":{"vendor-dir":"lib/vendor"}}',
+        );
 
         $manifest = ComposerManifest::read($this->file);
 
-        self::assertSame('6.4.*', $manifest->symfonyRequire());
-        self::assertSame('lib/vendor', $manifest->vendorDir());
+        $this->assertSame('6.4.*', $manifest->symfonyRequire());
+        $this->assertSame('lib/vendor', $manifest->vendorDir());
     }
 
     #[Test]
@@ -68,7 +74,7 @@ final class ComposerManifestTest extends TestCase
 
         $manifest = ComposerManifest::read($this->file);
 
-        self::assertNull($manifest->symfonyRequire());
-        self::assertSame('vendor', $manifest->vendorDir());
+        $this->assertNull($manifest->symfonyRequire());
+        $this->assertSame('vendor', $manifest->vendorDir());
     }
 }

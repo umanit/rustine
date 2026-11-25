@@ -9,7 +9,8 @@ final readonly class TrivyReport
     /**
      * @param list<Vulnerability>                        $vulnerabilities
      * @param array<string, array<string, TrivyPackage>> $packages       by ecosystem value, then by package ID
-     * @param list<string>                               $ignoredTargets targets whose type is not supported, or lockfiles outside the project root
+     * @param list<string>                               $ignoredTargets targets whose type is not supported, or
+     *                                                                   lockfiles outside the project root
      */
     public function __construct(
         public array $vulnerabilities,

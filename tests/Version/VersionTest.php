@@ -28,25 +28,6 @@ final class VersionTest extends TestCase
         yield 'build ignored' => ['1.0.0+build.5', '1.0.0', 0];
     }
 
-    #[Test]
-    #[DataProvider('comparisons')]
-    public function itComparesVersions(string $a, string $b, int $expected): void
-    {
-        $left = Version::tryParse($a);
-        $right = Version::tryParse($b);
-
-        self::assertNotNull($left);
-        self::assertNotNull($right);
-        self::assertSame($expected, $left->compare($right));
-    }
-
-    #[Test]
-    #[DataProvider('invalid')]
-    public function itRejectsUnparsableVersions(string $raw): void
-    {
-        self::assertNull(Version::tryParse($raw));
-    }
-
     /**
      * @return iterable<string, array{string}>
      */
@@ -58,13 +39,32 @@ final class VersionTest extends TestCase
     }
 
     #[Test]
+    #[DataProvider('comparisons')]
+    public function itComparesVersions(string $a, string $b, int $expected): void
+    {
+        $left = Version::tryParse($a);
+        $right = Version::tryParse($b);
+
+        $this->assertInstanceOf(Version::class, $left);
+        $this->assertInstanceOf(Version::class, $right);
+        $this->assertSame($expected, $left->compare($right));
+    }
+
+    #[Test]
+    #[DataProvider('invalid')]
+    public function itRejectsUnparsableVersions(string $raw): void
+    {
+        $this->assertNull(Version::tryParse($raw));
+    }
+
+    #[Test]
     public function itExposesMajorAndPrerelease(): void
     {
         $version = Version::tryParse('v8.0.0-rc.6');
 
-        self::assertNotNull($version);
-        self::assertSame(8, $version->major());
-        self::assertTrue($version->isPrerelease());
-        self::assertSame('v8.0.0-rc.6', $version->raw);
+        $this->assertInstanceOf(Version::class, $version);
+        $this->assertSame(8, $version->major());
+        $this->assertTrue($version->isPrerelease());
+        $this->assertSame('v8.0.0-rc.6', $version->raw);
     }
 }

@@ -10,7 +10,7 @@ namespace Rustine\Apply;
 final readonly class Attempt
 {
     /**
-     * @param list<list<string>>        $commands       commands to run, in order (before tool wrapping)
+     * @param list<list<string>>         $commands       commands to run, in order (before tool wrapping)
      * @param array{string, string}|null $resolutionEdit [key, range] to write in `resolutions` before the commands
      * @param string|null                $pruneLockfile  package whose entries are removed from `yarn.lock` first
      *                                                   (Yarn Classic: forces a new resolution within the ranges)
@@ -37,6 +37,7 @@ final readonly class Attempt
         if (null !== $this->resolutionEdit) {
             $parts[] = sprintf('package.json: resolutions["%s"] = "%s"', ...$this->resolutionEdit);
         }
+
         foreach ($this->commands as $command) {
             $parts[] = implode(' ', $command);
         }

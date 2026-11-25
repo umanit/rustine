@@ -26,11 +26,13 @@ final readonly class Version
         // Build metadata (`+...`) does not take part in ordering.
         $clean = (string) preg_replace('/\+.*$/', '', $clean);
 
-        if (1 !== preg_match(
+        if (
+            1 !== preg_match(
                 '/^(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:\.(\d+))?(?:[-._]?([0-9A-Za-z][0-9A-Za-z.\-]*))?$/',
                 $clean,
                 $m,
-            )) {
+            )
+        ) {
             return null;
         }
 

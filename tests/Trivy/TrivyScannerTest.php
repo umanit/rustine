@@ -20,35 +20,64 @@ final class TrivyScannerTest extends TestCase
 
     protected function tearDown(): void
     {
-        array_map('unlink', glob($this->dir . '/*') ?: []);
+        array_map(unlink(...), glob($this->dir . '/*') ?: []);
         rmdir($this->dir);
     }
 
     #[Test]
     public function itBuildsACommandThatListsAllPackages(): void
     {
-        $command = (new TrivyScanner('/opt/trivy'))->buildCommand('/tmp/out.json', ['--skip-db-update', '--ignorefile', 'x']);
-
-        self::assertSame(
-            ['/opt/trivy', 'fs', '--no-progress', '--disable-telemetry', '--skip-dirs', '**/vendor,**/node_modules', '--scanners', 'vuln', '--list-all-pkgs', '--format', 'json', '--output', '/tmp/out.json', '--skip-db-update', '--ignorefile', 'x', '.'],
-            $command,
+        $command = new TrivyScanner('/opt/trivy')->buildCommand(
+            '/tmp/out.json',
+            ['--skip-db-update', '--ignorefile', 'x'],
         );
+
+        $this->assertSame([
+            '/opt/trivy',
+            'fs',
+            '--no-progress',
+            '--disable-telemetry',
+            '--skip-dirs',
+            '**/vendor,**/node_modules',
+            '--scanners',
+            'vuln',
+            '--list-all-pkgs',
+            '--format',
+            'json',
+            '--output',
+            '/tmp/out.json',
+            '--skip-db-update',
+            '--ignorefile',
+            'x',
+            '.',
+        ], $command);
     }
 
     #[Test]
     public function developmentDependenciesAreOnlyScannedWhenAsked(): void
     {
-        self::assertSame(['--skip-db-update'], TrivyScanner::withDevDependencies(['--skip-db-update'], false));
-        self::assertSame(['--skip-db-update', '--include-dev-deps'], TrivyScanner::withDevDependencies(['--skip-db-update'], true));
-        self::assertSame(['--include-dev-deps'], TrivyScanner::withDevDependencies(['--include-dev-deps'], true), 'Never twice.');
-        self::assertNotContains('--include-dev-deps', (new TrivyScanner())->buildCommand('/tmp/out.json'), 'Opt-in: not by default.');
+        $this->assertSame(['--skip-db-update'], TrivyScanner::withDevDependencies(['--skip-db-update'], false));
+        $this->assertSame(
+            ['--skip-db-update', '--include-dev-deps'],
+            TrivyScanner::withDevDependencies(['--skip-db-update'], true),
+        );
+        $this->assertSame(
+            ['--include-dev-deps'],
+            TrivyScanner::withDevDependencies(['--include-dev-deps'], true),
+            'Never twice.',
+        );
+        $this->assertNotContains(
+            '--include-dev-deps',
+            new TrivyScanner()->buildCommand('/tmp/out.json'),
+            'Opt-in: not by default.',
+        );
     }
 
     #[Test]
     public function theRescansOfARunSkipTheDatabaseUpdate(): void
     {
-        self::assertSame(['--severity=HIGH', '--skip-db-update'], TrivyScanner::forRescan(['--severity=HIGH']));
-        self::assertSame(['--skip-db-update'], TrivyScanner::forRescan(['--skip-db-update']), 'Never twice.');
+        $this->assertSame(['--severity=HIGH', '--skip-db-update'], TrivyScanner::forRescan(['--severity=HIGH']));
+        $this->assertSame(['--skip-db-update'], TrivyScanner::forRescan(['--skip-db-update']), 'Never twice.');
     }
 
     #[Test]
@@ -56,10 +85,10 @@ final class TrivyScannerTest extends TestCase
     {
         $output = $this->dir . '/report.json';
 
-        (new TrivyScanner(__DIR__ . '/../fixtures/bin/fake-trivy'))->scan($this->dir, $output);
+        new TrivyScanner(__DIR__ . '/../fixtures/bin/fake-trivy')->scan($this->dir, $output);
 
-        self::assertFileExists($output);
-        self::assertJson((string) file_get_contents($output));
+        $this->assertFileExists($output);
+        $this->assertJson((string) file_get_contents($output));
     }
 
     #[Test]
@@ -68,7 +97,7 @@ final class TrivyScannerTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Trivy failed');
 
-        (new TrivyScanner('false'))->scan($this->dir, $this->dir . '/report.json');
+        new TrivyScanner('false')->scan($this->dir, $this->dir . '/report.json');
     }
 
     #[Test]
@@ -76,6 +105,6 @@ final class TrivyScannerTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
 
-        (new TrivyScanner())->scan($this->dir . '/nope', $this->dir . '/report.json');
+        new TrivyScanner()->scan($this->dir . '/nope', $this->dir . '/report.json');
     }
 }

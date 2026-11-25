@@ -13,7 +13,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 final class Application extends BaseApplication
 {
-    public const VERSION = '0.1.0-dev';
+    public const string VERSION = '0.1.0-dev';
 
     public function __construct(?HttpClientInterface $httpClient = null)
     {

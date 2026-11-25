@@ -25,6 +25,7 @@ final class JsonSpans
     public static function parse(string $json): ?JsonObject
     {
         $parser = new self($json);
+
         try {
             $root = $parser->value();
             $parser->skipWhitespace();
@@ -35,9 +36,6 @@ final class JsonSpans
         return $root instanceof JsonObject && $parser->pos === \strlen($json) ? $root : null;
     }
 
-    /**
-     * @return JsonObject|JsonScalar
-     */
     private function value(): JsonObject|JsonScalar
     {
         $this->skipWhitespace();
@@ -58,7 +56,15 @@ final class JsonSpans
             return new JsonScalar($start, $this->pos, true);
         }
 
-        if (1 !== preg_match('/\G-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|\Gtrue|\Gfalse|\Gnull/', $this->json, $m, 0, $this->pos)) {
+        if (
+            1 !== preg_match(
+                '/\G-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|\Gtrue|\Gfalse|\Gnull/',
+                $this->json,
+                $m,
+                0,
+                $this->pos,
+            )
+        ) {
             throw new \UnexpectedValueException('unexpected character');
         }
         $this->pos += \strlen($m[0]);
@@ -86,7 +92,12 @@ final class JsonSpans
             }
             $this->string();
             $keyEnd = $this->pos;
-            $key = json_decode(substr($this->json, $keyStart, $this->pos - $keyStart), false, 512, \JSON_THROW_ON_ERROR);
+            $key = json_decode(
+                substr($this->json, $keyStart, $this->pos - $keyStart),
+                false,
+                512,
+                \JSON_THROW_ON_ERROR,
+            );
             if (!\is_string($key)) {
                 throw new \UnexpectedValueException('key expected');
             }
@@ -115,10 +126,12 @@ final class JsonSpans
     private function skipArray(): void
     {
         $depth = 0;
+
         while ($this->pos < \strlen($this->json)) {
             $char = $this->json[$this->pos];
             if ('"' === $char) {
                 $this->string();
+
                 continue;
             }
             ++$this->pos;
@@ -137,6 +150,7 @@ final class JsonSpans
     private function string(): void
     {
         ++$this->pos;
+
         while ($this->pos < \strlen($this->json)) {
             $char = $this->json[$this->pos++];
             if ('\\' === $char) {

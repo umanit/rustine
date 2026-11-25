@@ -13,10 +13,14 @@ final readonly class TrivyScanner
      * Installed dependencies, at any depth: Rustine only handles the lockfiles of the project root, so what Trivy finds
      * there is ignored anyway, and reading it makes every scan (and every re-scan) slower.
      */
-    public const SKIPPED_DIRS = ['**/vendor', '**/node_modules'];
+    public const array SKIPPED_DIRS = ['**/vendor', '**/node_modules'];
 
     /** Without it Trivy leaves out the development dependencies (`require-dev`, `devDependencies`). */
-    public const INCLUDE_DEV_ARG = '--include-dev-deps';
+    public const string INCLUDE_DEV_ARG = '--include-dev-deps';
+
+    public function __construct(private string $trivyBin = 'trivy')
+    {
+    }
 
     /**
      * Arguments of the re-scans of a run that has just scanned the project itself: the vulnerability database is then
@@ -44,10 +48,6 @@ final readonly class TrivyScanner
         return $include && !\in_array(self::INCLUDE_DEV_ARG, $args, true) ? [...$args, self::INCLUDE_DEV_ARG] : $args;
     }
 
-    public function __construct(private string $trivyBin = 'trivy')
-    {
-    }
-
     /**
      * @param list<string> $extraArgs additional Trivy arguments (e.g. `--skip-db-update`, `--severity`, `--ignorefile`)
      *
@@ -58,14 +58,19 @@ final readonly class TrivyScanner
         // `--list-all-pkgs` is required to tell direct dependencies from transitive ones.
         // `--no-progress` : the progress bar redraws itself with `\r`, which turns into a mess once relayed.
         return [
-            $this->trivyBin, 'fs',
+            $this->trivyBin,
+            'fs',
             '--no-progress',
             '--disable-telemetry',
-            '--skip-dirs', implode(',', self::SKIPPED_DIRS),
-            '--scanners', 'vuln',
+            '--skip-dirs',
+            implode(',', self::SKIPPED_DIRS),
+            '--scanners',
+            'vuln',
             '--list-all-pkgs',
-            '--format', 'json',
-            '--output', $outputFile,
+            '--format',
+            'json',
+            '--output',
+            $outputFile,
             ...$extraArgs,
             '.',
         ];
@@ -74,11 +79,15 @@ final readonly class TrivyScanner
     /**
      * Runs Trivy in the project directory and writes its JSON report to `$outputFile`.
      *
-     * @param list<string>                 $extraArgs
-     * @param (callable(string): void)|null $onOutput  receives Trivy's output as it is produced
+     * @param list<string>                  $extraArgs
+     * @param (callable(string): void)|null $onOutput receives Trivy's output as it is produced
      */
-    public function scan(string $projectDir, string $outputFile, array $extraArgs = [], ?callable $onOutput = null): void
-    {
+    public function scan(
+        string $projectDir,
+        string $outputFile,
+        array $extraArgs = [],
+        ?callable $onOutput = null,
+    ): void {
         if (!is_dir($projectDir)) {
             throw new \InvalidArgumentException(sprintf('Project directory "%s" does not exist.', $projectDir));
         }
@@ -86,10 +95,18 @@ final readonly class TrivyScanner
         // Trivy runs inside the project: a relative output path must not end up there.
         $absoluteOutput = str_starts_with($outputFile, '/') ? $outputFile : (getcwd() ?: '.') . '/' . $outputFile;
 
-        $process = new Process($this->buildCommand($absoluteOutput, $extraArgs), $projectDir, GitLabConfig::tokenUnsetEnv(), null, 1800);
-        $process->run(null === $onOutput ? null : static function (string $type, string $buffer) use ($onOutput): void {
-            $onOutput($buffer);
-        });
+        $process = new Process(
+            $this->buildCommand($absoluteOutput, $extraArgs),
+            $projectDir,
+            GitLabConfig::tokenUnsetEnv(),
+            null,
+            1800,
+        );
+        $process->run(
+            null === $onOutput ? null : static function (string $type, string $buffer) use ($onOutput): void {
+                $onOutput($buffer);
+            },
+        );
 
         if (!$process->isSuccessful()) {
             throw new \RuntimeException(sprintf('Trivy failed (exit code %d).', (int) $process->getExitCode()));

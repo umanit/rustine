@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Rustine\I18n;
 
+use Symfony\Component\Translation\Exception\InvalidArgumentException;
 use Symfony\Component\Translation\Loader\YamlFileLoader;
 use Symfony\Component\Translation\Translator;
 
@@ -15,15 +16,16 @@ use Symfony\Component\Translation\Translator;
  */
 final readonly class TranslatorFactory
 {
-    public const DOMAIN = 'rustine';
-    public const FALLBACK_LOCALE = 'en';
+    public const string DOMAIN = 'rustine';
+
+    public const string FALLBACK_LOCALE = 'en';
 
     public function __construct(private string $directory = __DIR__ . '/../../resources/translations')
     {
     }
 
     /**
-     * @throws \Symfony\Component\Translation\Exception\InvalidArgumentException for a malformed locale
+     * @throws InvalidArgumentException for a malformed locale
      */
     public function create(string $locale = self::FALLBACK_LOCALE): Translator
     {
@@ -50,11 +52,20 @@ final readonly class TranslatorFactory
         if (!is_dir($this->directory)) {
             return [];
         }
+
         foreach (new \DirectoryIterator($this->directory) as $file) {
-            if ($file->isFile() && 1 === preg_match(sprintf('/^%s\+intl-icu\.([A-Za-z_-]+)\.yaml$/', preg_quote(self::DOMAIN, '/')), $file->getFilename(), $m)) {
+            if (
+                $file->isFile()
+                && 1 === preg_match(
+                    sprintf('/^%s\+intl-icu\.([A-Za-z_-]+)\.yaml$/', preg_quote(self::DOMAIN, '/')),
+                    $file->getFilename(),
+                    $m,
+                )
+            ) {
                 $locales[] = $m[1];
             }
         }
+
         sort($locales);
 
         return $locales;

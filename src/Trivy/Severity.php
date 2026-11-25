@@ -17,6 +17,11 @@ enum Severity: string
         return self::tryFrom(strtoupper($value ?? '')) ?? self::Unknown;
     }
 
+    public static function max(self $a, self $b): self
+    {
+        return $a->rank() >= $b->rank() ? $a : $b;
+    }
+
     public function rank(): int
     {
         return match ($this) {
@@ -31,10 +36,5 @@ enum Severity: string
     public function isAtLeast(self $other): bool
     {
         return $this->rank() >= $other->rank();
-    }
-
-    public static function max(self $a, self $b): self
-    {
-        return $a->rank() >= $b->rank() ? $a : $b;
     }
 }

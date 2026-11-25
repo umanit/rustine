@@ -35,6 +35,6 @@ final class ComposerConstraintTest extends TestCase
     #[DataProvider('cases')]
     public function itKeepsTheStyleOfTheConstraint(string $constraint, string $target, string $expected): void
     {
-        self::assertSame($expected, ComposerConstraint::raise($constraint, $target));
+        $this->assertSame($expected, ComposerConstraint::raise($constraint, $target));
     }
 }

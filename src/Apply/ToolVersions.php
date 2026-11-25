@@ -24,6 +24,7 @@ final readonly class ToolVersions
     public function describe(): string
     {
         $parts = [];
+
         foreach ($this->versions as $tool => $version) {
             $parts[] = $tool . ' ' . $version;
         }

@@ -17,9 +17,10 @@ final class FixedVersionSelector
     public function select(Version $installed, array $fixedVersions): ?FixCandidate
     {
         $candidates = [];
+
         foreach ($fixedVersions as $raw) {
             $version = Version::tryParse($raw);
-            if (null === $version || !$version->isGreaterThan($installed)) {
+            if (!$version instanceof Version || !$version->isGreaterThan($installed)) {
                 continue;
             }
 
@@ -30,10 +31,14 @@ final class FixedVersionSelector
             return null;
         }
 
-        usort($candidates, static function (FixCandidate $a, FixCandidate $b): int {
-            return [$a->majorBump, $a->version->isPrerelease()] <=> [$b->majorBump, $b->version->isPrerelease()]
-                ?: $a->version->compare($b->version);
-        });
+        usort(
+            $candidates,
+            static fn(FixCandidate $a, FixCandidate $b): int => [
+                $a->majorBump,
+                $a->version->isPrerelease(),
+            ] <=> [$b->majorBump, $b->version->isPrerelease()]
+                ?: $a->version->compare($b->version),
+        );
 
         return $candidates[0];
     }

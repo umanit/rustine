@@ -23,7 +23,8 @@ final readonly class YarnSourceGuard
         }
 
         return sprintf(
-            'declared as "%s" in package.json, not an npm registry range: update this reference by hand to a version that fixes %s',
+            'declared as "%s" in package.json, not an npm registry range: update this reference by hand to a'
+            . ' version that fixes %s',
             $spec,
             implode(', ', $fix->fixedIds),
         );

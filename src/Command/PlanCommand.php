@@ -30,10 +30,17 @@ final class PlanCommand
         string $format = 'text',
     ): int {
         $groups = [];
+
         foreach ($group as $name) {
             $parsed = SeverityGroup::tryFrom($name);
             if (null === $parsed) {
-                $io->error(sprintf('Unknown group "%s" (expected: %s).', $name, implode(', ', array_column(SeverityGroup::cases(), 'value'))));
+                $io->error(
+                    sprintf(
+                        'Unknown group "%s" (expected: %s).',
+                        $name,
+                        implode(', ', array_column(SeverityGroup::cases(), 'value')),
+                    ),
+                );
 
                 return Command::INVALID;
             }
@@ -47,18 +54,23 @@ final class PlanCommand
         }
 
         try {
-            $parsedReport = (new TrivyReportParser())->parseFile($report);
-        } catch (InvalidTrivyReportException $e) {
-            $io->error($e->getMessage());
+            $parsedReport = new TrivyReportParser()->parseFile($report);
+        } catch (InvalidTrivyReportException $invalidTrivyReportException) {
+            $io->error($invalidTrivyReportException->getMessage());
 
             return Command::FAILURE;
         }
 
-        $plans = (new Planner())->plan($parsedReport, [] === $groups ? null : $groups);
+        $plans = new Planner()->plan($parsedReport, [] === $groups ? null : $groups);
         $formatter = new PlanFormatter();
 
         if ('json' === $format) {
-            $io->writeln(json_encode($formatter->toArray($plans), \JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES));
+            $io->writeln(
+                json_encode(
+                    $formatter->toArray($plans),
+                    \JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES,
+                ),
+            );
         } else {
             $io->write($formatter->toText($plans));
         }

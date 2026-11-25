@@ -17,16 +17,23 @@ final class FakeGitLab implements GitLabClient
 {
     /** @var array<int, MergeRequest> */
     public array $open = [];
+
     /** @var array<int, MergeRequest> */
     public array $closed = [];
+
     /** @var array<int, list<string>> */
     public array $notes = [];
+
     /** @var list<string> */
     public array $writes = [];
+
     /** @var array<string, int> */
     public array $users = [];
+
     public ?NewMergeRequest $lastCreated = null;
+
     public bool $failOnCreate = false;
+
     private int $nextIid = 1;
 
     public function currentUser(): GitLabUser
@@ -58,7 +65,9 @@ final class FakeGitLab implements GitLabClient
 
     public function listOpenMergeRequests(array $labels): array
     {
-        return array_values(array_filter($this->open, static fn (MergeRequest $mr): bool => [] === array_diff($labels, $mr->labels)));
+        return array_values(
+            array_filter($this->open, static fn(MergeRequest $mr): bool => [] === array_diff($labels, $mr->labels)),
+        );
     }
 
     public function createMergeRequest(NewMergeRequest $request): MergeRequest
@@ -68,19 +77,39 @@ final class FakeGitLab implements GitLabClient
         }
         $this->writes[] = 'create ' . $request->sourceBranch;
         $this->lastCreated = $request;
-        $mr = new MergeRequest($this->nextIid, $request->title, $request->description, 'https://gitlab.example.com/mr/' . $this->nextIid, $request->sourceBranch, $request->labels);
+        $mr = new MergeRequest(
+            $this->nextIid,
+            $request->title,
+            $request->description,
+            'https://gitlab.example.com/mr/' . $this->nextIid,
+            $request->sourceBranch,
+            $request->labels,
+        );
         $this->open[$this->nextIid++] = $mr;
 
         return $mr;
     }
 
-    public function updateMergeRequest(int $iid, string $title, string $description, array $addLabels = [], array $removeLabels = []): MergeRequest
-    {
+    public function updateMergeRequest(
+        int $iid,
+        string $title,
+        string $description,
+        array $addLabels = [],
+        array $removeLabels = [],
+    ): MergeRequest {
         $this->writes[] = 'update ' . $iid;
         $old = $this->open[$iid];
         $labels = array_values(array_diff([...$old->labels, ...$addLabels], $removeLabels));
 
-        return $this->open[$iid] = new MergeRequest($iid, $title, $description, $old->webUrl, $old->sourceBranch, $labels, $old->hasConflicts);
+        return $this->open[$iid] = new MergeRequest(
+            $iid,
+            $title,
+            $description,
+            $old->webUrl,
+            $old->sourceBranch,
+            $labels,
+            $old->hasConflicts,
+        );
     }
 
     public function closeMergeRequest(int $iid): void
@@ -109,9 +138,20 @@ final class FakeGitLab implements GitLabClient
     /**
      * @param list<string> $labels
      */
-    public function addExisting(string $branch, string $title = 'old', string $description = 'old', array $labels = ['security']): MergeRequest
-    {
-        return $this->open[$this->nextIid] = new MergeRequest($this->nextIid++, $title, $description, 'https://gitlab.example.com/mr/' . ($this->nextIid - 1), $branch, $labels);
+    public function addExisting(
+        string $branch,
+        string $title = 'old',
+        string $description = 'old',
+        array $labels = ['security'],
+    ): MergeRequest {
+        return $this->open[$this->nextIid] = new MergeRequest(
+            $this->nextIid++,
+            $title,
+            $description,
+            'https://gitlab.example.com/mr/' . ($this->nextIid - 1),
+            $branch,
+            $labels,
+        );
     }
 
     public function closeByHand(int $iid): void

@@ -4,14 +4,18 @@ declare(strict_types=1);
 
 namespace Rustine\Tests\Apply;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Rustine\Apply\ApplyResult;
 use Rustine\Apply\AttemptKind;
 use Rustine\Apply\CommandResult;
 use Rustine\Apply\ComposerStrategy;
 use Rustine\Apply\FixApplier;
+use Rustine\Apply\FixOutcome;
 use Rustine\Apply\FixOutcomeStatus;
 use Rustine\Apply\FixStrategy;
+use Rustine\Apply\LockChange;
 use Rustine\Apply\PackageJsonEditor;
 use Rustine\Apply\UnsupportedProjectException;
 use Rustine\Apply\VerifyMode;
@@ -24,14 +28,18 @@ use Rustine\Tests\Apply\Support\FakeRunner;
 use Rustine\Tests\Apply\Support\Fixtures;
 use Rustine\Tests\Apply\Support\QueueRescanner;
 use Rustine\Trivy\Ecosystem;
+use Rustine\Trivy\TrivyReport;
 
 final class FixApplierTest extends TestCase
 {
-    private const PACKAGE_JSON = "{\n  \"name\": \"app\"\n}\n";
-    private const LOCK = "ckeditor4@^4.0.0:\n  version \"4.22.1\"\n";
-    private const LOCK_FIXED = "ckeditor4@^4.0.0:\n  version \"4.25.0\"\n";
+    private const string PACKAGE_JSON = "{\n  \"name\": \"app\"\n}\n";
+
+    private const string LOCK = "ckeditor4@^4.0.0:\n  version \"4.22.1\"\n";
+
+    private const string LOCK_FIXED = "ckeditor4@^4.0.0:\n  version \"4.25.0\"\n";
 
     private string $dir;
+
     private FakeRunner $runner;
 
     protected function setUp(): void
@@ -55,24 +63,50 @@ final class FixApplierTest extends TestCase
         foreach (['package.json', 'yarn.lock'] as $file) {
             @unlink($this->dir . '/' . $file);
         }
+
         @rmdir($this->dir);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function nonRegistrySpecs(): iterable
+    {
+        yield 'git shorthand' => ['ckeditor/ckeditor4-releases#full/4.22.1'];
+        yield 'git url' => ['git+https://github.com/ckeditor/ckeditor4-releases.git#full/4.22.1'];
+        yield 'https tarball' => ['https://example.com/ckeditor4.tgz'];
+        yield 'npm alias' => ['npm:other-package@^1.0.0'];
+        yield 'local path' => ['file:vendor/ckeditor4'];
+        yield 'workspace' => ['workspace:*'];
     }
 
     #[Test]
     public function itReportsWhatChangedInTheLockfileCollateralChangesIncluded(): void
     {
-        file_put_contents($this->dir . '/yarn.lock', "ckeditor4@^4.0.0:\n  version \"4.22.1\"\n\nlodash@^4.0.0:\n  version \"4.17.20\"\n");
+        file_put_contents(
+            $this->dir . '/yarn.lock',
+            "ckeditor4@^4.0.0:\n  version \"4.22.1\"\n\nlodash@^4.0.0:\n  version \"4.17.20\"\n",
+        );
         $this->runner->handler = function (array $command): ?CommandResult {
-            file_put_contents($this->dir . '/yarn.lock', "ckeditor4@^4.0.0:\n  version \"4.25.0\"\n\nlodash@^4.0.0:\n  version \"4.17.21\"\n");
+            file_put_contents(
+                $this->dir . '/yarn.lock',
+                "ckeditor4@^4.0.0:\n  version \"4.25.0\"\n\nlodash@^4.0.0:\n  version \"4.17.21\"\n",
+            );
 
             return null;
         };
 
-        $result = $this->applier(new QueueRescanner(Fixtures::report()))->apply(Fixtures::plan(Fixtures::fix()), Fixtures::report([Fixtures::vulnerability()]));
+        $result = $this->applier(new QueueRescanner(Fixtures::report()))->apply(
+            Fixtures::plan(Fixtures::fix()),
+            Fixtures::report([Fixtures::vulnerability()]),
+        );
 
-        self::assertSame(
+        $this->assertSame(
             [['ckeditor4', ['4.22.1'], ['4.25.0']], ['lodash', ['4.17.20'], ['4.17.21']]],
-            array_map(static fn ($c): array => [$c->package, $c->before, $c->after], $result->lockChanges),
+            array_map(
+                static fn(LockChange $c): array => [$c->package, $c->before, $c->after],
+                $result->lockChanges,
+            ),
         );
     }
 
@@ -81,27 +115,37 @@ final class FixApplierTest extends TestCase
     {
         $rescanner = new QueueRescanner(Fixtures::report());
 
-        $result = $this->applier($rescanner)->apply(Fixtures::plan(Fixtures::fix()), Fixtures::report([Fixtures::vulnerability()]));
+        $result = $this->applier($rescanner)->apply(
+            Fixtures::plan(Fixtures::fix()),
+            Fixtures::report([Fixtures::vulnerability()]),
+        );
 
-        self::assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
-        self::assertSame(AttemptKind::LockfileRefresh, $result->outcomes[0]->strategy);
-        self::assertSame(["yarn up -R ckeditor4", 'yarn install --immutable'], $this->runner->toolCommands());
-        self::assertSame(self::LOCK_FIXED, file_get_contents($this->dir . '/yarn.lock'));
-        self::assertSame(1, $rescanner->calls, 'Trivy runs once, not after every attempt.');
-        self::assertFalse($result->outcomes[0]->stillReported);
-        self::assertTrue($result->isHealthy());
-        self::assertTrue($result->hasChanges());
+        $this->assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
+        $this->assertSame(AttemptKind::LockfileRefresh, $result->outcomes[0]->strategy);
+        $this->assertSame(["yarn up -R ckeditor4", 'yarn install --immutable'], $this->runner->toolCommands());
+        $this->assertSame(self::LOCK_FIXED, file_get_contents($this->dir . '/yarn.lock'));
+        $this->assertSame(1, $rescanner->calls, 'Trivy runs once, not after every attempt.');
+        $this->assertFalse($result->outcomes[0]->stillReported);
+        $this->assertTrue($result->isHealthy());
+        $this->assertTrue($result->hasChanges());
     }
 
     #[Test]
     public function itRunsYarnInAnEnvironmentThatCannotBlockTheLockfileOrRunScripts(): void
     {
-        $this->applier(new QueueRescanner(Fixtures::report()))->apply(Fixtures::plan(Fixtures::fix()), Fixtures::report([Fixtures::vulnerability()]));
+        $this->applier(new QueueRescanner(Fixtures::report()))->apply(
+            Fixtures::plan(Fixtures::fix()),
+            Fixtures::report([Fixtures::vulnerability()]),
+        );
 
-        $yarnEnvs = array_values(array_filter($this->runner->envs, static fn (array $e): bool => [] !== $e));
-        self::assertSame('false', $yarnEnvs[0]['YARN_ENABLE_IMMUTABLE_INSTALLS']);
-        self::assertSame('false', $yarnEnvs[0]['YARN_ENABLE_SCRIPTS']);
-        self::assertArrayNotHasKey('YARN_ENABLE_IMMUTABLE_INSTALLS', $yarnEnvs[1], 'The final check must stay immutable.');
+        $yarnEnvs = array_values(array_filter($this->runner->envs, static fn(array $e): bool => [] !== $e));
+        $this->assertSame('false', $yarnEnvs[0]['YARN_ENABLE_IMMUTABLE_INSTALLS']);
+        $this->assertSame('false', $yarnEnvs[0]['YARN_ENABLE_SCRIPTS']);
+        $this->assertArrayNotHasKey(
+            'YARN_ENABLE_IMMUTABLE_INSTALLS',
+            $yarnEnvs[1],
+            'The final check must stay immutable.',
+        );
     }
 
     #[Test]
@@ -122,13 +166,13 @@ final class FixApplierTest extends TestCase
 
         $result = $this->applier($rescanner)->apply(Fixtures::plan($fix), $vulnerable);
 
-        self::assertSame(AttemptKind::Resolution, $result->outcomes[0]->strategy);
-        self::assertSame(
+        $this->assertSame(AttemptKind::Resolution, $result->outcomes[0]->strategy);
+        $this->assertSame(
             ['lockfile-refresh: the lockfile still installs braces 3.0.2, below 3.0.3', 'resolution: ok'],
             $result->outcomes[0]->log,
         );
-        self::assertSame(1, $rescanner->calls, 'The failed attempt did not cost a Trivy run.');
-        self::assertSame(
+        $this->assertSame(1, $rescanner->calls, 'The failed attempt did not cost a Trivy run.');
+        $this->assertSame(
             "{\n  \"name\": \"app\",\n  \"resolutions\": {\n    \"braces\": \"^3.0.3\"\n  }\n}\n",
             file_get_contents($this->dir . '/package.json'),
         );
@@ -137,7 +181,10 @@ final class FixApplierTest extends TestCase
     #[Test]
     public function withYarnClassicItPrunesTheLockfileEntriesBeforeInstalling(): void
     {
-        file_put_contents($this->dir . '/yarn.lock', "# yarn lockfile v1\n\n\nbraces@^3.0.2:\n  version \"3.0.2\"\n\nother@^1.0.0:\n  version \"1.0.0\"\n");
+        file_put_contents(
+            $this->dir . '/yarn.lock',
+            "# yarn lockfile v1\n\n\nbraces@^3.0.2:\n  version \"3.0.2\"\n\nother@^1.0.0:\n  version \"1.0.0\"\n",
+        );
         $seenByYarn = null;
         $this->runner->handler = function (array $command) use (&$seenByYarn): ?CommandResult {
             $seenByYarn ??= file_get_contents($this->dir . '/yarn.lock');
@@ -147,16 +194,19 @@ final class FixApplierTest extends TestCase
         $fix = Fixtures::fix('braces', '3.0.2', '3.0.3', DependencyKind::Transitive);
         $vulnerable = Fixtures::report([Fixtures::vulnerability('braces', '3.0.2')]);
 
-        $result = $this->applier(new QueueRescanner(Fixtures::report()), new YarnClassicStrategy())->apply(Fixtures::plan($fix), $vulnerable);
-
-        self::assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
-        // Yarn rewrites the whole file afterwards: only the remaining entries matter here.
-        self::assertStringNotContainsString('braces', (string) $seenByYarn);
-        self::assertStringContainsString("other@^1.0.0:\n  version \"1.0.0\"\n", (string) $seenByYarn);
-        self::assertSame(
-            ['yarn install --non-interactive --ignore-scripts', 'yarn install --frozen-lockfile --non-interactive --ignore-scripts'],
-            $this->runner->toolCommands(),
+        $result = $this->applier(new QueueRescanner(Fixtures::report()), new YarnClassicStrategy())->apply(
+            Fixtures::plan($fix),
+            $vulnerable,
         );
+
+        $this->assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
+        // Yarn rewrites the whole file afterwards: only the remaining entries matter here.
+        $this->assertStringNotContainsString('braces', (string) $seenByYarn);
+        $this->assertStringContainsString("other@^1.0.0:\n  version \"1.0.0\"\n", (string) $seenByYarn);
+        $this->assertSame([
+            'yarn install --non-interactive --ignore-scripts',
+            'yarn install --frozen-lockfile --non-interactive --ignore-scripts',
+        ], $this->runner->toolCommands());
     }
 
     #[Test]
@@ -173,14 +223,14 @@ final class FixApplierTest extends TestCase
         $fix = Fixtures::fix('braces', '3.0.2', '3.0.3', DependencyKind::Transitive);
         $vulnerable = Fixtures::report([Fixtures::vulnerability('braces', '3.0.2')]);
 
-        $result = $this->applier(new QueueRescanner(), new YarnClassicStrategy())->apply(Fixtures::plan($fix), $vulnerable);
-
-        self::assertSame(FixOutcomeStatus::Failed, $result->outcomes[0]->status);
-        self::assertSame($original, file_get_contents($this->dir . '/yarn.lock'));
-        self::assertSame(
-            "{\n  \"name\": \"app\"\n}\n",
-            file_get_contents($this->dir . '/package.json'),
+        $result = $this->applier(new QueueRescanner(), new YarnClassicStrategy())->apply(
+            Fixtures::plan($fix),
+            $vulnerable,
         );
+
+        $this->assertSame(FixOutcomeStatus::Failed, $result->outcomes[0]->status);
+        $this->assertSame($original, file_get_contents($this->dir . '/yarn.lock'));
+        $this->assertSame("{\n  \"name\": \"app\"\n}\n", file_get_contents($this->dir . '/package.json'));
     }
 
     #[Test]
@@ -195,16 +245,14 @@ final class FixApplierTest extends TestCase
 
         $result = $this->applier($rescanner)->apply(Fixtures::plan($fix), $vulnerable);
 
-        self::assertSame(FixOutcomeStatus::Failed, $result->outcomes[0]->status);
-        self::assertSame(
-            [
-                'lockfile-refresh: the lockfile still installs braces 3.0.2, below 3.0.3',
-                'resolution: skipped, braces is also installed in other majors (2.3.2) and a resolution would force them all to ^3.0.3',
-            ],
-            $result->outcomes[0]->log,
-        );
-        self::assertSame(['yarn up -R braces'], $this->runner->toolCommands());
-        self::assertSame(self::PACKAGE_JSON, file_get_contents($this->dir . '/package.json'));
+        $this->assertSame(FixOutcomeStatus::Failed, $result->outcomes[0]->status);
+        $this->assertSame([
+            'lockfile-refresh: the lockfile still installs braces 3.0.2, below 3.0.3',
+            'resolution: skipped, braces is also installed in other majors (2.3.2) and a resolution would force them'
+            . ' all to ^3.0.3',
+        ], $result->outcomes[0]->log);
+        $this->assertSame(['yarn up -R braces'], $this->runner->toolCommands());
+        $this->assertSame(self::PACKAGE_JSON, file_get_contents($this->dir . '/package.json'));
     }
 
     #[Test]
@@ -223,7 +271,7 @@ final class FixApplierTest extends TestCase
 
         $result = $this->applier(new QueueRescanner(Fixtures::report()))->apply(Fixtures::plan($fix), $vulnerable);
 
-        self::assertSame(AttemptKind::Resolution, $result->outcomes[0]->strategy);
+        $this->assertSame(AttemptKind::Resolution, $result->outcomes[0]->strategy);
     }
 
     #[Test]
@@ -245,9 +293,9 @@ final class FixApplierTest extends TestCase
             Fixtures::report([Fixtures::vulnerability('semver', '5.7.1'), $other]),
         );
 
-        self::assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
-        self::assertSame(AttemptKind::LockfileRefresh, $result->outcomes[0]->strategy);
-        self::assertFalse($result->outcomes[0]->stillReported);
+        $this->assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
+        $this->assertSame(AttemptKind::LockfileRefresh, $result->outcomes[0]->strategy);
+        $this->assertFalse($result->outcomes[0]->stillReported);
     }
 
     #[Test]
@@ -262,7 +310,7 @@ final class FixApplierTest extends TestCase
 
         $result = $this->applier($rescanner)->apply(Fixtures::plan($fix), $stillVulnerable);
 
-        self::assertSame(FixOutcomeStatus::Failed, $result->outcomes[0]->status);
+        $this->assertSame(FixOutcomeStatus::Failed, $result->outcomes[0]->status);
     }
 
     #[Test]
@@ -274,14 +322,18 @@ final class FixApplierTest extends TestCase
 
         $result = $this->applier($rescanner)->apply(Fixtures::plan(Fixtures::fix()), $vulnerable);
 
-        self::assertSame(FixOutcomeStatus::Failed, $result->outcomes[0]->status);
-        self::assertSame(0, $rescanner->calls);
-        self::assertCount(2, $result->outcomes[0]->log);
-        self::assertFalse($result->isHealthy());
-        self::assertFalse($result->hasChanges());
-        self::assertSame(self::LOCK, file_get_contents($this->dir . '/yarn.lock'));
-        self::assertSame(self::PACKAGE_JSON, file_get_contents($this->dir . '/package.json'));
-        self::assertNotContains('yarn install --immutable', $this->runner->toolCommands(), 'No final check when nothing changed.');
+        $this->assertSame(FixOutcomeStatus::Failed, $result->outcomes[0]->status);
+        $this->assertSame(0, $rescanner->calls);
+        $this->assertCount(2, $result->outcomes[0]->log);
+        $this->assertFalse($result->isHealthy());
+        $this->assertFalse($result->hasChanges());
+        $this->assertSame(self::LOCK, file_get_contents($this->dir . '/yarn.lock'));
+        $this->assertSame(self::PACKAGE_JSON, file_get_contents($this->dir . '/package.json'));
+        $this->assertNotContains(
+            'yarn install --immutable',
+            $this->runner->toolCommands(),
+            'No final check when nothing changed.',
+        );
     }
 
     #[Test]
@@ -303,13 +355,16 @@ final class FixApplierTest extends TestCase
 
         $result = $this->applier($rescanner)->apply(Fixtures::plan($a, $b), $before);
 
-        self::assertSame(
+        $this->assertSame(
             [FixOutcomeStatus::Failed, FixOutcomeStatus::Applied],
-            array_map(static fn ($o) => $o->status, $result->outcomes),
+            array_map(
+                static fn(FixOutcome $o): FixOutcomeStatus => $o->status,
+                $result->outcomes,
+            ),
         );
-        self::assertFalse($result->isHealthy());
-        self::assertTrue($result->hasChanges());
-        self::assertSame(1, $rescanner->calls);
+        $this->assertFalse($result->isHealthy());
+        $this->assertTrue($result->hasChanges());
+        $this->assertSame(1, $rescanner->calls);
     }
 
     #[Test]
@@ -328,11 +383,14 @@ final class FixApplierTest extends TestCase
 
         $result = $this->applier(new QueueRescanner(Fixtures::report()))->apply(Fixtures::plan($a, $b), $before);
 
-        self::assertSame(
+        $this->assertSame(
             [FixOutcomeStatus::Applied, FixOutcomeStatus::AlreadyFixed],
-            array_map(static fn ($o) => $o->status, $result->outcomes),
+            array_map(
+                static fn(FixOutcome $o): FixOutcomeStatus => $o->status,
+                $result->outcomes,
+            ),
         );
-        self::assertSame(['yarn up -R aaa', 'yarn install --immutable'], $this->runner->toolCommands());
+        $this->assertSame(['yarn up -R aaa', 'yarn install --immutable'], $this->runner->toolCommands());
     }
 
     #[Test]
@@ -342,9 +400,9 @@ final class FixApplierTest extends TestCase
 
         $result = $this->applier(new QueueRescanner($vulnerable))->apply(Fixtures::plan(Fixtures::fix()), $vulnerable);
 
-        self::assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
-        self::assertTrue($result->outcomes[0]->stillReported);
-        self::assertTrue($result->hasChanges(), 'The change is kept: it is up to a human to check it.');
+        $this->assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
+        $this->assertTrue($result->outcomes[0]->stillReported);
+        $this->assertTrue($result->hasChanges(), 'The change is kept: it is up to a human to check it.');
     }
 
     #[Test]
@@ -354,14 +412,20 @@ final class FixApplierTest extends TestCase
         // The lockfile accepts the first attempt, Trivy does not: the next one is tried, and Trivy accepts it.
         $rescanner = new QueueRescanner($vulnerable, Fixtures::report());
 
-        $result = $this->applier($rescanner, verify: VerifyMode::Each)->apply(Fixtures::plan(Fixtures::fix()), $vulnerable);
+        $result = $this->applier($rescanner, verify: VerifyMode::Each)->apply(
+            Fixtures::plan(Fixtures::fix()),
+            $vulnerable,
+        );
 
-        self::assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
-        self::assertSame(AttemptKind::DirectBump, $result->outcomes[0]->strategy);
-        self::assertSame('lockfile-refresh: the CVEs are still reported after the attempt', $result->outcomes[0]->log[0]);
-        self::assertSame(2, $rescanner->calls);
-        self::assertSame(VerifyMode::Each, $result->verify);
-        self::assertFalse($result->outcomes[0]->stillReported, 'No final scan: every attempt was already confirmed.');
+        $this->assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
+        $this->assertSame(AttemptKind::DirectBump, $result->outcomes[0]->strategy);
+        $this->assertSame(
+            'lockfile-refresh: the CVEs are still reported after the attempt',
+            $result->outcomes[0]->log[0],
+        );
+        $this->assertSame(2, $rescanner->calls);
+        $this->assertSame(VerifyMode::Each, $result->verify);
+        $this->assertFalse($result->outcomes[0]->stillReported, 'No final scan: every attempt was already confirmed.');
     }
 
     #[Test]
@@ -370,10 +434,13 @@ final class FixApplierTest extends TestCase
         $rescanner = new QueueRescanner();
         $this->runner->handler = null;
 
-        $result = $this->applier($rescanner, verify: VerifyMode::Each)->apply(Fixtures::plan(Fixtures::fix()), Fixtures::report([Fixtures::vulnerability()]));
+        $result = $this->applier($rescanner, verify: VerifyMode::Each)->apply(
+            Fixtures::plan(Fixtures::fix()),
+            Fixtures::report([Fixtures::vulnerability()]),
+        );
 
-        self::assertSame(FixOutcomeStatus::Failed, $result->outcomes[0]->status);
-        self::assertSame(0, $rescanner->calls);
+        $this->assertSame(FixOutcomeStatus::Failed, $result->outcomes[0]->status);
+        $this->assertSame(0, $rescanner->calls);
     }
 
     #[Test]
@@ -381,11 +448,14 @@ final class FixApplierTest extends TestCase
     {
         $rescanner = new QueueRescanner();
 
-        $result = $this->applier($rescanner, verify: VerifyMode::None)->apply(Fixtures::plan(Fixtures::fix()), Fixtures::report([Fixtures::vulnerability()]));
+        $result = $this->applier($rescanner, verify: VerifyMode::None)->apply(
+            Fixtures::plan(Fixtures::fix()),
+            Fixtures::report([Fixtures::vulnerability()]),
+        );
 
-        self::assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
-        self::assertSame(0, $rescanner->calls);
-        self::assertSame(VerifyMode::None, $result->verify);
+        $this->assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
+        $this->assertSame(0, $rescanner->calls);
+        $this->assertSame(VerifyMode::None, $result->verify);
     }
 
     #[Test]
@@ -397,18 +467,24 @@ final class FixApplierTest extends TestCase
             return null;
         };
 
-        $result = $this->applier(new QueueRescanner())->apply(Fixtures::plan(Fixtures::fix()), Fixtures::report([Fixtures::vulnerability()]));
+        $result = $this->applier(new QueueRescanner())->apply(
+            Fixtures::plan(Fixtures::fix()),
+            Fixtures::report([Fixtures::vulnerability()]),
+        );
 
-        self::assertSame(FixOutcomeStatus::Failed, $result->outcomes[0]->status);
-        self::assertStringContainsString('cannot be read', $result->outcomes[0]->log[0]);
-        self::assertSame(self::LOCK, file_get_contents($this->dir . '/yarn.lock'));
+        $this->assertSame(FixOutcomeStatus::Failed, $result->outcomes[0]->status);
+        $this->assertStringContainsString('cannot be read', $result->outcomes[0]->log[0]);
+        $this->assertSame(self::LOCK, file_get_contents($this->dir . '/yarn.lock'));
     }
 
     #[Test]
-    #[\PHPUnit\Framework\Attributes\DataProvider('nonRegistrySpecs')]
+    #[DataProvider('nonRegistrySpecs')]
     public function itDoesNotTouchDependenciesDeclaredWithANonRegistrySource(string $spec): void
     {
-        file_put_contents($this->dir . '/package.json', json_encode(['dependencies' => ['ckeditor4' => $spec]], \JSON_THROW_ON_ERROR));
+        file_put_contents(
+            $this->dir . '/package.json',
+            json_encode(['dependencies' => ['ckeditor4' => $spec]], \JSON_THROW_ON_ERROR),
+        );
         // A local source that does not exist is refused earlier: here it is there, and simply not to be replaced.
         $local = str_starts_with($spec, 'file:') ? $this->dir . '/' . substr($spec, 5) : null;
         if (null !== $local) {
@@ -417,7 +493,10 @@ final class FixApplierTest extends TestCase
         $rescanner = new QueueRescanner();
 
         try {
-            $result = $this->applier($rescanner)->apply(Fixtures::plan(Fixtures::fix()), Fixtures::report([Fixtures::vulnerability()]));
+            $result = $this->applier($rescanner)->apply(
+                Fixtures::plan(Fixtures::fix()),
+                Fixtures::report([Fixtures::vulnerability()]),
+            );
         } finally {
             if (null !== $local) {
                 rmdir($local);
@@ -425,35 +504,28 @@ final class FixApplierTest extends TestCase
             }
         }
 
-        self::assertSame(FixOutcomeStatus::UnsupportedSource, $result->outcomes[0]->status);
-        self::assertStringContainsString($spec, $result->outcomes[0]->log[0]);
-        self::assertSame([], $this->runner->toolCommands());
-        self::assertSame(0, $rescanner->calls);
-        self::assertTrue($result->isHealthy(), 'A manual fix is reported, not a failure of the bot.');
-        self::assertFalse($result->hasChanges());
-    }
-
-    /**
-     * @return iterable<string, array{string}>
-     */
-    public static function nonRegistrySpecs(): iterable
-    {
-        yield 'git shorthand' => ['ckeditor/ckeditor4-releases#full/4.22.1'];
-        yield 'git url' => ['git+https://github.com/ckeditor/ckeditor4-releases.git#full/4.22.1'];
-        yield 'https tarball' => ['https://example.com/ckeditor4.tgz'];
-        yield 'npm alias' => ['npm:other-package@^1.0.0'];
-        yield 'local path' => ['file:vendor/ckeditor4'];
-        yield 'workspace' => ['workspace:*'];
+        $this->assertSame(FixOutcomeStatus::UnsupportedSource, $result->outcomes[0]->status);
+        $this->assertStringContainsString($spec, $result->outcomes[0]->log[0]);
+        $this->assertSame([], $this->runner->toolCommands());
+        $this->assertSame(0, $rescanner->calls);
+        $this->assertTrue($result->isHealthy(), 'A manual fix is reported, not a failure of the bot.');
+        $this->assertFalse($result->hasChanges());
     }
 
     #[Test]
     public function aRegistryRangeIsStillBumped(): void
     {
-        file_put_contents($this->dir . '/package.json', json_encode(['devDependencies' => ['ckeditor4' => '^4.22.1']], \JSON_THROW_ON_ERROR));
+        file_put_contents(
+            $this->dir . '/package.json',
+            json_encode(['devDependencies' => ['ckeditor4' => '^4.22.1']], \JSON_THROW_ON_ERROR),
+        );
 
-        $result = $this->applier(new QueueRescanner(Fixtures::report()))->apply(Fixtures::plan(Fixtures::fix()), Fixtures::report([Fixtures::vulnerability()]));
+        $result = $this->applier(new QueueRescanner(Fixtures::report()))->apply(
+            Fixtures::plan(Fixtures::fix()),
+            Fixtures::report([Fixtures::vulnerability()]),
+        );
 
-        self::assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
+        $this->assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
     }
 
     #[Test]
@@ -465,12 +537,15 @@ final class FixApplierTest extends TestCase
 
         $result = $this->applier($rescanner)->apply(Fixtures::plan($unfixable, $gone), Fixtures::report());
 
-        self::assertSame(
+        $this->assertSame(
             [FixOutcomeStatus::Skipped, FixOutcomeStatus::AlreadyFixed],
-            array_map(static fn ($o) => $o->status, $result->outcomes),
+            array_map(
+                static fn(FixOutcome $o): FixOutcomeStatus => $o->status,
+                $result->outcomes,
+            ),
         );
-        self::assertSame([], $this->runner->toolCommands());
-        self::assertSame(0, $rescanner->calls);
+        $this->assertSame([], $this->runner->toolCommands());
+        $this->assertSame(0, $rescanner->calls);
     }
 
     #[Test]
@@ -484,24 +559,27 @@ final class FixApplierTest extends TestCase
         };
         $vulnerable = Fixtures::report([Fixtures::vulnerability()]);
 
-        $result = $this->applier(new QueueRescanner(Fixtures::report(), Fixtures::report()))->apply(Fixtures::plan(Fixtures::fix()), $vulnerable);
+        $result = $this->applier(new QueueRescanner(Fixtures::report(), Fixtures::report()))->apply(
+            Fixtures::plan(Fixtures::fix()),
+            $vulnerable,
+        );
 
-        self::assertSame(FixOutcomeStatus::Failed, $result->outcomes[0]->status);
-        self::assertCount(1, $result->outcomes[0]->log, 'The correction is abandoned, not retried.');
-        self::assertStringContainsString('unexpected files changed: src/app.js', $result->outcomes[0]->log[0]);
-        self::assertSame(self::LOCK, file_get_contents($this->dir . '/yarn.lock'));
+        $this->assertSame(FixOutcomeStatus::Failed, $result->outcomes[0]->status);
+        $this->assertCount(1, $result->outcomes[0]->log, 'The correction is abandoned, not retried.');
+        $this->assertStringContainsString('unexpected files changed: src/app.js', $result->outcomes[0]->log[0]);
+        $this->assertSame(self::LOCK, file_get_contents($this->dir . '/yarn.lock'));
     }
 
     #[Test]
     public function aFailingYarnCommandCountsAsAFailedAttempt(): void
     {
-        $this->runner->handler = static fn (array $command): CommandResult => new CommandResult(1, "boom\nYN0035: 404");
+        $this->runner->handler = static fn(array $command): CommandResult => new CommandResult(1, "boom\nYN0035: 404");
         $vulnerable = Fixtures::report([Fixtures::vulnerability()]);
 
         $result = $this->applier(new QueueRescanner())->apply(Fixtures::plan(Fixtures::fix()), $vulnerable);
 
-        self::assertSame(FixOutcomeStatus::Failed, $result->outcomes[0]->status);
-        self::assertStringContainsString('failed (exit 1): boom | YN0035: 404', $result->outcomes[0]->log[0]);
+        $this->assertSame(FixOutcomeStatus::Failed, $result->outcomes[0]->status);
+        $this->assertStringContainsString('failed (exit 1): boom | YN0035: 404', $result->outcomes[0]->log[0]);
     }
 
     #[Test]
@@ -516,10 +594,13 @@ final class FixApplierTest extends TestCase
             return null;
         };
 
-        $result = $this->applier(new QueueRescanner(Fixtures::report()))->apply(Fixtures::plan(Fixtures::fix()), Fixtures::report([Fixtures::vulnerability()]));
+        $result = $this->applier(new QueueRescanner(Fixtures::report()))->apply(
+            Fixtures::plan(Fixtures::fix()),
+            Fixtures::report([Fixtures::vulnerability()]),
+        );
 
-        self::assertSame('YN0028: lockfile would be modified', $result->finalCheckError);
-        self::assertFalse($result->isHealthy());
+        $this->assertSame('YN0028: lockfile would be modified', $result->finalCheckError);
+        $this->assertFalse($result->isHealthy());
     }
 
     #[Test]
@@ -548,21 +629,27 @@ final class FixApplierTest extends TestCase
     public function withComposerAFailureEndsWithTheWhyNotExplanation(): void
     {
         file_put_contents($this->dir . '/composer.json', '{"require":{"twig/twig":"3.4.0"}}');
-        file_put_contents($this->dir . '/composer.lock', self::composerLock('3.4.0'));
-        $this->runner->handler = static fn (array $command): ?CommandResult => \in_array('why-not', $command, true)
+        file_put_contents($this->dir . '/composer.lock', $this->composerLock('3.4.0'));
+        $this->runner->handler = static fn(array $command): ?CommandResult => \in_array('why-not', $command, true)
             ? new CommandResult(1, "twig/twig 3.4.3 requires php >=8.1\nproblem 2")
             : null;
         $fix = Fixtures::fix('twig/twig', '3.4.0', '3.4.3', ecosystem: Ecosystem::Composer);
-        $vulnerable = new \Rustine\Trivy\TrivyReport([Fixtures::vulnerability('twig/twig', '3.4.0', Ecosystem::Composer)], []);
-
-        $result = $this->applier(new QueueRescanner(), new ComposerStrategy())->apply(Fixtures::plan($fix), $vulnerable);
-
-        self::assertSame(FixOutcomeStatus::Failed, $result->outcomes[0]->status);
-        self::assertSame(
-            ['lockfile-refresh', 'direct-bump', 'composer why-not twig/twig 3.4.3 --locked'],
-            array_map(static fn (string $line): string => explode(':', $line)[0], $result->outcomes[0]->log),
+        $vulnerable = new TrivyReport(
+            [Fixtures::vulnerability('twig/twig', '3.4.0', Ecosystem::Composer)],
+            [],
         );
-        self::assertStringContainsString('requires php >=8.1 | problem 2', $result->outcomes[0]->log[2]);
+
+        $result = $this->applier(new QueueRescanner(), new ComposerStrategy())->apply(
+            Fixtures::plan($fix),
+            $vulnerable,
+        );
+
+        $this->assertSame(FixOutcomeStatus::Failed, $result->outcomes[0]->status);
+        $this->assertSame(
+            ['lockfile-refresh', 'direct-bump', 'composer why-not twig/twig 3.4.3 --locked'],
+            array_map(static fn(string $line): string => explode(':', $line)[0], $result->outcomes[0]->log),
+        );
+        $this->assertStringContainsString('requires php >=8.1 | problem 2', $result->outcomes[0]->log[2]);
         @unlink($this->dir . '/composer.json');
         @unlink($this->dir . '/composer.lock');
     }
@@ -571,29 +658,36 @@ final class FixApplierTest extends TestCase
     public function withComposerAFixIsValidatedWithComposerValidate(): void
     {
         file_put_contents($this->dir . '/composer.json', '{"require":{"other/pkg":"^1.0"}}');
-        file_put_contents($this->dir . '/composer.lock', self::composerLock('3.4.0'));
+        file_put_contents($this->dir . '/composer.lock', $this->composerLock('3.4.0'));
         $this->runner->handler = function (array $command): ?CommandResult {
-            file_put_contents($this->dir . '/composer.lock', self::composerLock('3.4.3'));
+            file_put_contents($this->dir . '/composer.lock', $this->composerLock('3.4.3'));
 
             return null;
         };
         $fix = Fixtures::fix('twig/twig', '3.4.0', '3.4.3', DependencyKind::Transitive, ecosystem: Ecosystem::Composer);
-        $vulnerable = new \Rustine\Trivy\TrivyReport([Fixtures::vulnerability('twig/twig', '3.4.0', Ecosystem::Composer)], []);
+        $vulnerable = new TrivyReport(
+            [Fixtures::vulnerability('twig/twig', '3.4.0', Ecosystem::Composer)],
+            [],
+        );
 
-        $result = $this->applier(new QueueRescanner(Fixtures::report()), new ComposerStrategy())->apply(Fixtures::plan($fix), $vulnerable);
+        $result = $this->applier(new QueueRescanner(Fixtures::report()), new ComposerStrategy())->apply(
+            Fixtures::plan($fix),
+            $vulnerable,
+        );
 
-        self::assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
-        self::assertSame(
+        $this->assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
+        $this->assertSame(
             [
                 'composer validate --no-check-publish --no-interaction --no-plugins',
-                'composer update twig/twig --with-all-dependencies --no-install --no-interaction --no-scripts --no-progress --no-plugins',
+                'composer update twig/twig --with-all-dependencies --no-install --no-interaction --no-scripts'
+                . ' --no-progress --no-plugins',
                 'composer validate --no-check-publish --no-interaction --no-plugins',
             ],
             $this->runner->toolCommands(),
             'The check also runs before the fixes: it is compared with the one that follows.',
         );
-        self::assertNull($result->finalCheckError);
-        self::assertNull($result->existingCheckFindings);
+        $this->assertNull($result->finalCheckError);
+        $this->assertNull($result->existingCheckFindings);
         @unlink($this->dir . '/composer.json');
         @unlink($this->dir . '/composer.lock');
     }
@@ -606,10 +700,14 @@ final class FixApplierTest extends TestCase
             after: new CommandResult(2, "# General errors\n  - some   unrelated error\n"),
         );
 
-        self::assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
-        self::assertNull($result->finalCheckError);
-        self::assertSame('# General errors | - some   unrelated error', $result->existingCheckFindings, 'What the final check reported.');
-        self::assertTrue($result->isHealthy());
+        $this->assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
+        $this->assertNull($result->finalCheckError);
+        $this->assertSame(
+            '# General errors | - some   unrelated error',
+            $result->existingCheckFindings,
+            'What the final check reported.',
+        );
+        $this->assertTrue($result->isHealthy());
     }
 
     #[Test]
@@ -617,68 +715,74 @@ final class FixApplierTest extends TestCase
     {
         $result = $this->composerFixWithChecks(
             before: new CommandResult(2, "# General errors\n- some unrelated error\n"),
-            after: new CommandResult(2, "# General errors\n- some unrelated error\n# Lock file errors\n- The lock file is not up to date\n"),
+            after: new CommandResult(
+                2,
+                "# General errors\n- some unrelated error\n# Lock file errors\n- The lock file is not up to date\n",
+            ),
         );
 
-        self::assertStringContainsString('The lock file is not up to date', (string) $result->finalCheckError);
-        self::assertNull($result->existingCheckFindings);
-        self::assertFalse($result->isHealthy());
+        $this->assertStringContainsString('The lock file is not up to date', (string) $result->finalCheckError);
+        $this->assertNull($result->existingCheckFindings);
+        $this->assertFalse($result->isHealthy());
     }
 
     #[Test]
     public function aCheckThatWasCleanAndFailsNowIsAFailure(): void
     {
-        $result = $this->composerFixWithChecks(before: new CommandResult(0, ''), after: new CommandResult(2, "# Lock file errors\n- stale\n"));
+        $result = $this->composerFixWithChecks(
+            before: new CommandResult(0, ''),
+            after: new CommandResult(
+                2,
+                "# Lock file errors\n- stale\n",
+            ),
+        );
 
-        self::assertNotNull($result->finalCheckError);
+        $this->assertNotNull($result->finalCheckError);
     }
 
     #[Test]
     public function aYarnFixOnlyRunsTheCheckOnce(): void
     {
-        $this->applier(new QueueRescanner(Fixtures::report()))->apply(Fixtures::plan(Fixtures::fix()), Fixtures::report([Fixtures::vulnerability()]));
+        $this->applier(new QueueRescanner(Fixtures::report()))->apply(
+            Fixtures::plan(Fixtures::fix()),
+            Fixtures::report([Fixtures::vulnerability()]),
+        );
 
-        self::assertCount(1, array_filter($this->runner->toolCommands(), static fn (string $c): bool => 'yarn install --immutable' === $c));
-    }
-
-    private function composerFixWithChecks(CommandResult $before, CommandResult $after): \Rustine\Apply\ApplyResult
-    {
-        file_put_contents($this->dir . '/composer.json', '{"require":{"other/pkg":"^1.0"}}');
-        file_put_contents($this->dir . '/composer.lock', self::composerLock('3.4.0'));
-        $validations = 0;
-        $this->runner->handler = function (array $command) use (&$validations, $before, $after): ?CommandResult {
-            if ('validate' === $command[1]) {
-                return 0 === $validations++ ? $before : $after;
-            }
-            file_put_contents($this->dir . '/composer.lock', self::composerLock('3.4.3'));
-
-            return null;
-        };
-        $fix = Fixtures::fix('twig/twig', '3.4.0', '3.4.3', DependencyKind::Transitive, ecosystem: Ecosystem::Composer);
-        $vulnerable = new \Rustine\Trivy\TrivyReport([Fixtures::vulnerability('twig/twig', '3.4.0', Ecosystem::Composer)], []);
-
-        try {
-            return $this->applier(new QueueRescanner(Fixtures::report()), new ComposerStrategy())->apply(Fixtures::plan($fix), $vulnerable);
-        } finally {
-            @unlink($this->dir . '/composer.json');
-            @unlink($this->dir . '/composer.lock');
-        }
+        $this->assertCount(
+            1,
+            array_filter(
+                $this->runner->toolCommands(),
+                static fn(string $c): bool => 'yarn install --immutable' === $c,
+            ),
+        );
     }
 
     #[Test]
     public function aYarnProjectWithAMissingLocalSourceIsRefusedBeforeAnyCommand(): void
     {
-        file_put_contents($this->dir . '/package.json', '{"name":"app","dependencies":{"@symfony/ux":"file:vendor/ux/assets"}}');
+        file_put_contents(
+            $this->dir . '/package.json',
+            '{"name":"app","dependencies":{"@symfony/ux":"file:vendor/ux/assets"}}',
+        );
 
         try {
-            $this->applier(new QueueRescanner(Fixtures::report()))->apply(Fixtures::plan(Fixtures::fix()), Fixtures::report([Fixtures::vulnerability()]));
+            $this->applier(new QueueRescanner(Fixtures::report()))->apply(
+                Fixtures::plan(Fixtures::fix()),
+                Fixtures::report([Fixtures::vulnerability()]),
+            );
             self::fail('Yarn cannot resolve a project whose local source is missing.');
-        } catch (UnsupportedProjectException $e) {
-            self::assertStringContainsString('@symfony/ux (file:vendor/ux/assets)', $e->getMessage());
-            self::assertStringContainsString('composer install --no-scripts', $e->getMessage());
+        } catch (UnsupportedProjectException $unsupportedProjectException) {
+            $this->assertStringContainsString(
+                '@symfony/ux (file:vendor/ux/assets)',
+                $unsupportedProjectException->getMessage(),
+            );
+            $this->assertStringContainsString(
+                'composer install --no-scripts',
+                $unsupportedProjectException->getMessage(),
+            );
         }
 
-        self::assertSame([], $this->runner->toolCommands(), 'Nothing was run.');
+        $this->assertSame([], $this->runner->toolCommands(), 'Nothing was run.');
     }
 
     #[Test]
@@ -692,27 +796,62 @@ final class FixApplierTest extends TestCase
         );
     }
 
+    private function composerFixWithChecks(CommandResult $before, CommandResult $after): ApplyResult
+    {
+        file_put_contents($this->dir . '/composer.json', '{"require":{"other/pkg":"^1.0"}}');
+        file_put_contents($this->dir . '/composer.lock', $this->composerLock('3.4.0'));
+        $validations = 0;
+        $this->runner->handler = function (array $command) use (&$validations, $before, $after): ?CommandResult {
+            if ('validate' === $command[1]) {
+                return 0 === $validations++ ? $before : $after;
+            }
+            file_put_contents($this->dir . '/composer.lock', $this->composerLock('3.4.3'));
+
+            return null;
+        };
+        $fix = Fixtures::fix('twig/twig', '3.4.0', '3.4.3', DependencyKind::Transitive, ecosystem: Ecosystem::Composer);
+        $vulnerable = new TrivyReport(
+            [Fixtures::vulnerability('twig/twig', '3.4.0', Ecosystem::Composer)],
+            [],
+        );
+
+        try {
+            return $this->applier(new QueueRescanner(Fixtures::report()), new ComposerStrategy())->apply(
+                Fixtures::plan($fix),
+                $vulnerable,
+            );
+        } finally {
+            @unlink($this->dir . '/composer.json');
+            @unlink($this->dir . '/composer.lock');
+        }
+    }
+
     /**
      * @param array<string, list<string>> $versions
      */
     private function lock(array $versions): void
     {
         $content = '';
+
         foreach ($versions as $name => $list) {
             foreach ($list as $version) {
                 $content .= sprintf("%s@^%s:\n  version \"%s\"\n\n", $name, $version, $version);
             }
         }
+
         file_put_contents($this->dir . '/yarn.lock', $content);
     }
 
-    private static function composerLock(string $twigVersion): string
+    private function composerLock(string $twigVersion): string
     {
         return json_encode(['packages' => [['name' => 'twig/twig', 'version' => $twigVersion]]], \JSON_THROW_ON_ERROR);
     }
 
-    private function applier(QueueRescanner $rescanner, ?FixStrategy $strategy = null, VerifyMode $verify = VerifyMode::Final): FixApplier
-    {
+    private function applier(
+        QueueRescanner $rescanner,
+        ?FixStrategy $strategy = null,
+        VerifyMode $verify = VerifyMode::Final,
+    ): FixApplier {
         return new FixApplier(
             $this->runner,
             new WorkingTree($this->runner, $this->dir),

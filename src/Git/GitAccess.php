@@ -14,8 +14,8 @@ namespace Rustine\Git;
 final readonly class GitAccess
 {
     /**
-     * @param int|null $inheritedConfigCount number of `GIT_CONFIG_KEY_n` / `GIT_CONFIG_VALUE_n` pairs already set by the
-     *                                       runner; null reads `GIT_CONFIG_COUNT` from the environment
+     * @param int|null $inheritedConfigCount number of `GIT_CONFIG_KEY_n` / `GIT_CONFIG_VALUE_n` pairs already set by
+     *                                       the runner; null reads `GIT_CONFIG_COUNT` from the environment
      */
     public function __construct(
         #[\SensitiveParameter]
@@ -36,17 +36,10 @@ final readonly class GitAccess
         $inherited = $this->inheritedConfigCount ?? $this->readInheritedCount();
 
         return [
-            'GIT_CONFIG_COUNT' => (string) ($inherited + 1),
-            'GIT_CONFIG_KEY_' . $inherited => 'http.extraHeader',
+            'GIT_CONFIG_COUNT'               => (string) ($inherited + 1),
+            'GIT_CONFIG_KEY_' . $inherited   => 'http.extraHeader',
             'GIT_CONFIG_VALUE_' . $inherited => 'Authorization: Basic ' . $this->encodedCredentials(),
         ];
-    }
-
-    private function readInheritedCount(): int
-    {
-        $count = getenv('GIT_CONFIG_COUNT');
-
-        return \is_string($count) && 1 === preg_match('/^\d{1,4}$/', $count) ? (int) $count : 0;
     }
 
     /**
@@ -59,6 +52,13 @@ final readonly class GitAccess
         }
 
         return str_replace([$this->encodedCredentials(), $this->token], '***', $text);
+    }
+
+    private function readInheritedCount(): int
+    {
+        $count = getenv('GIT_CONFIG_COUNT');
+
+        return \is_string($count) && 1 === preg_match('/^\d{1,4}$/', $count) ? (int) $count : 0;
     }
 
     private function encodedCredentials(): string

@@ -34,6 +34,6 @@ final readonly class PlanOutcome
     public function needsManualAction(): bool
     {
         return \in_array($this->action, [PlanAction::SkippedLimit, PlanAction::SkippedForeign], true)
-            || (null !== $this->content && $this->content->attentionItems > 0);
+            || ($this->content instanceof MergeRequestContent && $this->content->attentionItems > 0);
     }
 }

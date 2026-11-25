@@ -11,7 +11,7 @@ interface CommandRunner
 {
     /**
      * @param list<string>          $command
-     * @param array<string, string> $env     extra environment variables
+     * @param array<string, string> $env extra environment variables
      */
     public function run(array $command, string $cwd, array $env = []): CommandResult;
 }

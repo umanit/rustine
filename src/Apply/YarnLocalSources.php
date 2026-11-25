@@ -12,7 +12,7 @@ namespace Rustine\Apply;
  */
 final class YarnLocalSources
 {
-    private const FIELDS = ['dependencies', 'devDependencies', 'optionalDependencies', 'resolutions'];
+    private const array FIELDS = ['dependencies', 'devDependencies', 'optionalDependencies', 'resolutions'];
 
     /**
      * What `package.json` declares with a local source whose target does not exist.
@@ -28,9 +28,14 @@ final class YarnLocalSources
         }
 
         $missing = [];
+
         foreach (self::FIELDS as $field) {
             foreach (\is_array($data[$field] ?? null) ? $data[$field] : [] as $name => $spec) {
-                if (!\is_string($name) || !\is_string($spec) || 1 !== preg_match('/^(?:file|link|portal):([^#]+)/', $spec, $m)) {
+                if (
+                    !\is_string($name)
+                    || !\is_string($spec)
+                    || 1 !== preg_match('/^(?:file|link|portal):([^#]+)/', $spec, $m)
+                ) {
                     continue;
                 }
 
@@ -41,6 +46,6 @@ final class YarnLocalSources
             }
         }
 
-        return array_map('strval', array_keys($missing));
+        return array_map(strval(...), array_keys($missing));
     }
 }

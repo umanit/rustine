@@ -12,15 +12,15 @@ use Rustine\Trivy\Severity;
 final readonly class SyncSettings
 {
     /**
-     * @param list<string> $labels              always set, never translated: filters and boards depend on them. They also
-     *                                          scope the count of open merge requests
-     * @param string       $severityLabelFormat label of the highest severity; `{severity}` is replaced by the lowercase
-     *                                          severity (`critical`, `high`, …)
-     * @param list<string> $assignees           usernames, applied when a merge request is created
-     * @param list<string> $reviewers           usernames, applied when a merge request is created
+     * @param list<string> $labels               always set, never translated: filters and boards depend on them. They
+     *                                           also scope the count of open merge requests
+     * @param string       $severityLabelFormat  label of the highest severity; `{severity}` is replaced by the
+     *                                           lowercase severity (`critical`, `high`, …)
+     * @param list<string> $assignees            usernames, applied when a merge request is created
+     * @param list<string> $reviewers            usernames, applied when a merge request is created
      * @param int|null     $maxOpenMergeRequests only prevents opening new merge requests; null = no limit
-     * @param int          $closedGraceDays      a merge request closed by hand this recently, for the very same fixes, is not
-     *                                           opened again; 0 = always open a new one
+     * @param int          $closedGraceDays      a merge request closed by hand this recently, for the very same fixes,
+     *                                           is not opened again; 0 = always open a new one
      */
     public function __construct(
         public string $defaultBranch,
@@ -39,11 +39,13 @@ final readonly class SyncSettings
     }
 
     /**
-     * @return list<string> labels of every other severity: they are removed when the severity of a merge request changes
+     * @return list<string> labels of every other severity: they are removed when the severity of a merge request
+     *                      changes
      */
     public function otherSeverityLabels(Severity $severity): array
     {
         $labels = [];
+
         foreach (Severity::cases() as $case) {
             if ($case !== $severity) {
                 $labels[] = $this->severityLabel($case);

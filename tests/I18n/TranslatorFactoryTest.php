@@ -17,13 +17,16 @@ final class TranslatorFactoryTest extends TestCase
     {
         $this->dir = sys_get_temp_dir() . '/rustine-i18n-' . bin2hex(random_bytes(4));
         mkdir($this->dir);
-        $this->catalog('en', "greeting: \"Hello {name}\"\nonly_en: \"Only in English\"\nnested:\n  key: \"Nested {a} {b}\"\n");
+        $this->catalog(
+            'en',
+            "greeting: \"Hello {name}\"\nonly_en: \"Only in English\"\nnested:\n  key: \"Nested {a} {b}\"\n",
+        );
         $this->catalog('fr', "greeting: \"Bonjour {name}\"\n");
     }
 
     protected function tearDown(): void
     {
-        array_map('unlink', glob($this->dir . '/*') ?: []);
+        array_map(unlink(...), glob($this->dir . '/*') ?: []);
         rmdir($this->dir);
     }
 
@@ -32,8 +35,8 @@ final class TranslatorFactoryTest extends TestCase
     {
         $translator = $this->factory()->create('en');
 
-        self::assertSame('Hello Ada', $translator->trans('greeting', ['name' => 'Ada'], 'rustine'));
-        self::assertSame('Nested 1 x', $translator->trans('nested.key', ['a' => 1, 'b' => 'x'], 'rustine'));
+        $this->assertSame('Hello Ada', $translator->trans('greeting', ['name' => 'Ada'], 'rustine'));
+        $this->assertSame('Nested 1 x', $translator->trans('nested.key', ['a' => 1, 'b' => 'x'], 'rustine'));
     }
 
     #[Test]
@@ -41,15 +44,26 @@ final class TranslatorFactoryTest extends TestCase
     {
         $translator = $this->factory()->create('fr');
 
-        self::assertSame('Bonjour Ada', $translator->trans('greeting', ['name' => 'Ada'], 'rustine'));
-        self::assertSame('Only in English', $translator->trans('only_en', [], 'rustine'), 'A missing key falls back to English.');
-        self::assertSame('Hello Ada', $translator->trans('greeting', ['name' => 'Ada'], 'rustine', 'en'), 'The locale argument wins.');
+        $this->assertSame('Bonjour Ada', $translator->trans('greeting', ['name' => 'Ada'], 'rustine'));
+        $this->assertSame(
+            'Only in English',
+            $translator->trans('only_en', [], 'rustine'),
+            'A missing key falls back to English.',
+        );
+        $this->assertSame(
+            'Hello Ada',
+            $translator->trans('greeting', ['name' => 'Ada'], 'rustine', 'en'),
+            'The locale argument wins.',
+        );
     }
 
     #[Test]
     public function aRegionalLocaleFallsBackToItsLanguage(): void
     {
-        self::assertSame('Bonjour Ada', $this->factory()->create('fr_CA')->trans('greeting', ['name' => 'Ada'], 'rustine'));
+        $this->assertSame(
+            'Bonjour Ada',
+            $this->factory()->create('fr_CA')->trans('greeting', ['name' => 'Ada'], 'rustine'),
+        );
     }
 
     #[Test]
@@ -57,8 +71,8 @@ final class TranslatorFactoryTest extends TestCase
     {
         $translator = $this->factory()->create('de');
 
-        self::assertSame('Hello Ada', $translator->trans('greeting', ['name' => 'Ada'], 'rustine'));
-        self::assertSame('no.such.key', $translator->trans('no.such.key', [], 'rustine'));
+        $this->assertSame('Hello Ada', $translator->trans('greeting', ['name' => 'Ada'], 'rustine'));
+        $this->assertSame('no.such.key', $translator->trans('no.such.key', [], 'rustine'));
     }
 
     #[Test]
@@ -72,7 +86,7 @@ final class TranslatorFactoryTest extends TestCase
     #[Test]
     public function itListsTheAvailableLocales(): void
     {
-        self::assertSame(['en', 'fr'], $this->factory()->availableLocales());
+        $this->assertSame(['en', 'fr'], $this->factory()->availableLocales());
     }
 
     private function factory(): TranslatorFactory

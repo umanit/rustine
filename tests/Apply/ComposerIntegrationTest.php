@@ -6,12 +6,14 @@ namespace Rustine\Tests\Apply;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Rustine\Apply\ApplyResult;
 use Rustine\Apply\AttemptKind;
 use Rustine\Apply\CommandResult;
 use Rustine\Apply\CommandRunner;
 use Rustine\Apply\ComposerStrategy;
 use Rustine\Apply\FixApplier;
 use Rustine\Apply\FixOutcomeStatus;
+use Rustine\Apply\LockfileVersions;
 use Rustine\Apply\PackageJsonEditor;
 use Rustine\Apply\ProcessCommandRunner;
 use Rustine\Apply\VerifyMode;
@@ -28,11 +30,12 @@ use Rustine\Trivy\Ecosystem;
 final class ComposerIntegrationTest extends TestCase
 {
     private string $dir;
+
     private string $home;
 
     protected function setUp(): void
     {
-        $probe = (new ProcessCommandRunner(30.0))->run(['composer', '--version'], sys_get_temp_dir());
+        $probe = new ProcessCommandRunner(30.0)->run(['composer', '--version'], sys_get_temp_dir());
         if (!$probe->isSuccessful()) {
             self::markTestSkipped('Composer is not available.');
         }
@@ -46,7 +49,7 @@ final class ComposerIntegrationTest extends TestCase
     protected function tearDown(): void
     {
         if (isset($this->dir)) {
-            (new ProcessCommandRunner())->run(['rm', '-rf', '--', $this->dir, $this->home], sys_get_temp_dir());
+            new ProcessCommandRunner()->run(['rm', '-rf', '--', $this->dir, $this->home], sys_get_temp_dir());
         }
     }
 
@@ -57,12 +60,12 @@ final class ComposerIntegrationTest extends TestCase
 
         $result = $this->apply(target: '1.0.5');
 
-        self::assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
-        self::assertSame(AttemptKind::LockfileRefresh, $result->outcomes[0]->strategy);
+        $this->assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
+        $this->assertSame(AttemptKind::LockfileRefresh, $result->outcomes[0]->strategy);
         // The refresh takes the highest version the constraint allows, never a new major.
-        self::assertSame('1.1.0', $this->lockedVersion());
-        self::assertStringContainsString('"^1.0"', (string) file_get_contents($this->dir . '/composer.json'));
-        self::assertSame([' M composer.lock'], $this->changes(), 'only the lockfile changed');
+        $this->assertSame('1.1.0', $this->lockedVersion());
+        $this->assertStringContainsString('"^1.0"', (string) file_get_contents($this->dir . '/composer.json'));
+        $this->assertSame([' M composer.lock'], $this->changes(), 'only the lockfile changed');
     }
 
     #[Test]
@@ -72,10 +75,13 @@ final class ComposerIntegrationTest extends TestCase
 
         $result = $this->apply(target: '1.1.0');
 
-        self::assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
-        self::assertSame(AttemptKind::DirectBump, $result->outcomes[0]->strategy);
-        self::assertSame('1.1.0', $this->lockedVersion());
-        self::assertStringContainsString('"vendor/lib": "1.1.*"', (string) file_get_contents($this->dir . '/composer.json'));
+        $this->assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
+        $this->assertSame(AttemptKind::DirectBump, $result->outcomes[0]->strategy);
+        $this->assertSame('1.1.0', $this->lockedVersion());
+        $this->assertStringContainsString(
+            '"vendor/lib": "1.1.*"',
+            (string) file_get_contents($this->dir . '/composer.json'),
+        );
     }
 
     #[Test]
@@ -89,8 +95,8 @@ final class ComposerIntegrationTest extends TestCase
             file_put_contents($this->dir . '/.cache/more', 'new');
         });
 
-        self::assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
-        self::assertSame('1.1.0', $this->lockedVersion());
+        $this->assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
+        $this->assertSame('1.1.0', $this->lockedVersion());
     }
 
     #[Test]
@@ -103,30 +109,38 @@ final class ComposerIntegrationTest extends TestCase
             file_put_contents($this->dir . '/stray.txt', 'x');
         });
 
-        self::assertSame(FixOutcomeStatus::Failed, $result->outcomes[0]->status);
-        self::assertStringContainsString('unexpected files changed: stray.txt', $result->outcomes[0]->log[0]);
-        self::assertSame($lockBefore, file_get_contents($this->dir . '/composer.lock'), 'the lockfile is back as it was');
+        $this->assertSame(FixOutcomeStatus::Failed, $result->outcomes[0]->status);
+        $this->assertStringContainsString('unexpected files changed: stray.txt', $result->outcomes[0]->log[0]);
+        $this->assertSame(
+            $lockBefore,
+            file_get_contents($this->dir . '/composer.lock'),
+            'the lockfile is back as it was',
+        );
     }
 
     /**
      * @param (\Closure(): void)|null $afterCommand run after every Composer command that changes the project
      */
-    private function apply(string $target, ?\Closure $afterCommand = null): \Rustine\Apply\ApplyResult
+    private function apply(string $target, ?\Closure $afterCommand = null): ApplyResult
     {
-        $runner = new class($this->home, $afterCommand) implements CommandRunner {
-            public function __construct(private readonly string $home, private readonly ?\Closure $after)
+        $runner = new readonly class ($this->home, $afterCommand) implements CommandRunner {
+            public function __construct(private string $home, private ?\Closure $after)
             {
             }
 
             public function run(array $command, string $cwd, array $env = []): CommandResult
             {
-                $result = (new ProcessCommandRunner(120.0))->run($command, $cwd, [
+                $result = new ProcessCommandRunner(120.0)->run($command, $cwd, [
                     ...$env,
-                    'COMPOSER_HOME' => $this->home,
-                    'COMPOSER_CACHE_DIR' => $this->home . '/cache',
+                    'COMPOSER_HOME'           => $this->home,
+                    'COMPOSER_CACHE_DIR'      => $this->home . '/cache',
                     'COMPOSER_NO_INTERACTION' => '1',
                 ]);
-                if (null !== $this->after && 'composer' === $command[0] && \in_array($command[1] ?? '', ['update', 'require'], true)) {
+                if (
+                    $this->after instanceof \Closure
+                    && 'composer' === $command[0]
+                    && \in_array($command[1] ?? '', ['update', 'require'], true)
+                ) {
                     ($this->after)();
                 }
 
@@ -137,7 +151,7 @@ final class ComposerIntegrationTest extends TestCase
         $fix = Fixtures::fix('vendor/lib', '1.0.0', $target, DependencyKind::Direct, ecosystem: Ecosystem::Composer);
         $initial = Fixtures::report([Fixtures::vulnerability('vendor/lib', '1.0.0', Ecosystem::Composer)]);
 
-        return (new FixApplier(
+        return new FixApplier(
             $runner,
             new WorkingTree($runner, $this->dir),
             new QueueRescanner(),
@@ -145,12 +159,15 @@ final class ComposerIntegrationTest extends TestCase
             new PackageJsonEditor(),
             $this->dir,
             VerifyMode::None,
-        ))->apply(Fixtures::plan($fix), $initial);
+        )->apply(Fixtures::plan($fix), $initial);
     }
 
     private function lockedVersion(): string
     {
-        $lock = (new \Rustine\Apply\LockfileVersions())->parse(Ecosystem::Composer, (string) file_get_contents($this->dir . '/composer.lock'));
+        $lock = new LockfileVersions()->parse(
+            Ecosystem::Composer,
+            (string) file_get_contents($this->dir . '/composer.lock'),
+        );
 
         return $lock['vendor/lib'][0] ?? self::fail('vendor/lib is not locked.');
     }
@@ -172,21 +189,30 @@ final class ComposerIntegrationTest extends TestCase
     private function project(string $constraint, string $locked): void
     {
         $versions = array_map(
-            static fn (string $v): array => ['name' => 'vendor/lib', 'version' => $v, 'dist' => ['type' => 'zip', 'url' => 'https://example.invalid/lib-' . $v . '.zip']],
+            static fn(string $v): array => [
+                'name'    => 'vendor/lib',
+                'version' => $v,
+                'dist'    => [
+                    'type' => 'zip',
+                    'url'  => 'https://example.invalid/lib-' . $v . '.zip',
+                ],
+            ],
             ['1.0.0', '1.0.5', '1.1.0', '2.0.0'],
         );
-        $manifest = static fn (string $require): string => json_encode([
-            'name' => 'acme/app',
-            'repositories' => [['type' => 'package', 'package' => $versions], ['packagist.org' => false]],
-            'require' => ['vendor/lib' => $require],
-        ], \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_THROW_ON_ERROR) . "\n";
+        $manifest = static fn(string $require): string => json_encode([
+                'name'         => 'acme/app',
+                'repositories' => [['type' => 'package', 'package' => $versions], ['packagist.org' => false]],
+                'require'      => ['vendor/lib' => $require],
+            ], \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_THROW_ON_ERROR) . "\n";
 
         // Lock the old version first, then give the manifest its real constraint and refresh the hash only.
         file_put_contents($this->dir . '/composer.json', $manifest($locked));
         $this->exec(['composer', 'update', '--no-install', '--no-scripts', '--no-plugins', '--no-interaction']);
         file_put_contents($this->dir . '/composer.json', $manifest($constraint));
-        $this->exec(['composer', 'update', '--lock', '--no-install', '--no-scripts', '--no-plugins', '--no-interaction']);
-        self::assertSame($locked, $this->lockedVersion());
+        $this->exec(
+            ['composer', 'update', '--lock', '--no-install', '--no-scripts', '--no-plugins', '--no-interaction'],
+        );
+        $this->assertSame($locked, $this->lockedVersion());
 
         $this->exec(['git', 'init', '--quiet']);
         $this->exec(['git', 'add', '.']);
@@ -198,11 +224,11 @@ final class ComposerIntegrationTest extends TestCase
      */
     private function exec(array $command): string
     {
-        $result = (new ProcessCommandRunner(120.0))->run($command, $this->dir, [
-            'COMPOSER_HOME' => $this->home,
+        $result = new ProcessCommandRunner(120.0)->run($command, $this->dir, [
+            'COMPOSER_HOME'      => $this->home,
             'COMPOSER_CACHE_DIR' => $this->home . '/cache',
         ]);
-        self::assertTrue($result->isSuccessful(), implode(' ', $command) . ': ' . $result->output);
+        $this->assertTrue($result->isSuccessful(), implode(' ', $command) . ': ' . $result->output);
 
         return $result->output;
     }

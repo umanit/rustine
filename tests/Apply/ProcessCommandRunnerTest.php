@@ -10,7 +10,11 @@ use Rustine\Apply\ProcessCommandRunner;
 
 final class ProcessCommandRunnerTest extends TestCase
 {
-    private const VARIABLES = ['RUSTINE_GITLAB_TOKEN' => 'secret-1', 'GITLAB_TOKEN' => 'secret-2', 'RUSTINE_TEST_INHERITED' => 'kept'];
+    private const array VARIABLES = [
+        'RUSTINE_GITLAB_TOKEN'   => 'secret-1',
+        'GITLAB_TOKEN'           => 'secret-2',
+        'RUSTINE_TEST_INHERITED' => 'kept',
+    ];
 
     protected function setUp(): void
     {
@@ -32,13 +36,18 @@ final class ProcessCommandRunnerTest extends TestCase
     #[Test]
     public function childProcessesDoNotInheritTheGitLabToken(): void
     {
-        $result = (new ProcessCommandRunner())->run(
-            ['sh', '-c', 'echo "${RUSTINE_GITLAB_TOKEN:-unset} ${GITLAB_TOKEN:-unset} ${RUSTINE_TEST_INHERITED:-unset} ${EXTRA:-unset}"'],
+        $result = new ProcessCommandRunner()->run(
+            [
+                'sh',
+                '-c',
+                'echo "${RUSTINE_GITLAB_TOKEN:-unset} ${GITLAB_TOKEN:-unset} ${RUSTINE_TEST_INHERITED:-unset}'
+                . ' ${EXTRA:-unset}"',
+            ],
             sys_get_temp_dir(),
             ['EXTRA' => 'given'],
         );
 
-        self::assertSame(0, $result->exitCode);
-        self::assertSame("unset unset kept given\n", $result->output);
+        $this->assertSame(0, $result->exitCode);
+        $this->assertSame("unset unset kept given\n", $result->output);
     }
 }

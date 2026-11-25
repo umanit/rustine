@@ -24,6 +24,7 @@ final class YarnClassicLockfile
         }
 
         $kept = [];
+
         foreach (explode("\n\n", $content) as $block) {
             if (!$this->isBlockOf($block, $package)) {
                 $kept[] = $block;

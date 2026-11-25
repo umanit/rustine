@@ -11,11 +11,13 @@ use Symfony\Component\Process\Process;
 /**
  * A bare "remote" and a clone of it, in a temporary directory: no network involved.
  */
-final class GitSandbox
+final readonly class GitSandbox
 {
-    public readonly string $root;
-    public readonly string $remote;
-    public readonly string $project;
+    public string $root;
+
+    public string $remote;
+
+    public string $project;
 
     public function __construct()
     {
@@ -80,7 +82,7 @@ final class GitSandbox
 
     public function remove(): void
     {
-        (new Process(['rm', '-rf', $this->root]))->mustRun();
+        new Process(['rm', '-rf', $this->root])->mustRun();
     }
 
     private function configure(string $dir): void

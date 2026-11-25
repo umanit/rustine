@@ -13,4 +13,4 @@ foreach ([__DIR__ . '/../vendor/autoload.php', __DIR__ . '/../../../autoload.php
     }
 }
 
-exit((new Application())->run());
+exit(new Application()->run());
