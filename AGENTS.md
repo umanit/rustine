@@ -79,6 +79,9 @@ fixtures (Trivy reports, the `fake-trivy` binary) live in `tests/fixtures/`.
 - `failOnWarning` and `failOnRisky` are enabled: a risky test or a warning fails the suite.
 - No network calls and no real Trivy in tests: use `tests/fixtures/bin/fake-trivy` and the
   reports in `tests/fixtures/trivy/`.
+- Integration tests (`tests/Apply/ComposerIntegrationTest.php`, `YarnBerryIntegrationTest.php`) run the real Composer /
+  Yarn Berry 4+ and git, still without network: an inline `package` repository for Composer, a registry served by
+  PHP's built-in server for Yarn. They are skipped when the tool is missing. Only Trivy stays faked.
 
 ## Git
 
