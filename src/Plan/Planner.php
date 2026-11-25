@@ -21,12 +21,14 @@ final readonly class Planner
     }
 
     /**
-     * Builds one plan per (ecosystem × severity group).
+     * Builds one plan per (ecosystem × severity group), or one plan per ecosystem holding every group when `$groups`
+     * is null.
      *
      * A package's group depends on the highest severity across all its instances: a package thus only appears
      * in a single MR, whichever groups the run processes.
      *
-     * @param list<SeverityGroup>|null $groups groups to keep (null = all)
+     * @param list<SeverityGroup>|null $groups groups to keep, each one in its own plan (null = every group, in a
+     *                                         single plan per ecosystem)
      * @param Ecosystem|null $ecosystem ecosystem to keep (null = all)
      *
      * @return list<GroupPlan> sorted by ecosystem then group, without empty plans
@@ -64,7 +66,7 @@ final readonly class Planner
                 continue;
             }
 
-            $planned[$first->ecosystem->value . "\0" . $group->value][] = $this->planInstance(
+            $planned[$first->ecosystem->value . "\0" . (null === $groups ? '' : $group->value)][] = $this->planInstance(
                 $report,
                 $vulnerabilities,
                 $group,
@@ -84,7 +86,7 @@ final readonly class Planner
                         $a->installedVersion,
                     ] <=> [$b->packageName, $b->installedVersion],
             );
-            $plans[] = new GroupPlan(Ecosystem::from($ecosystem), SeverityGroup::from($group), $fixes);
+            $plans[] = new GroupPlan(Ecosystem::from($ecosystem), SeverityGroup::tryFrom($group), $fixes);
         }
 
         return $plans;

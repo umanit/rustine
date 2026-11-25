@@ -69,7 +69,8 @@ final class CommandsTest extends TestCase
         $tester->execute(['--report' => self::REPORT, '--format' => 'json']);
 
         $this->assertJson($tester->getDisplay());
-        $this->assertStringContainsString('"branch": "security/rustine-yarn-critical-high"', $tester->getDisplay());
+        $this->assertStringContainsString('"branch": "security/rustine-yarn"', $tester->getDisplay());
+        $this->assertStringContainsString('"group": null', $tester->getDisplay());
     }
 
     #[Test]
@@ -342,6 +343,40 @@ final class CommandsTest extends TestCase
         );
         $this->assertStringContainsString('build(deps): fix vulnerable Yarn dependencies', $tester->getDisplay());
         $this->assertStringContainsString('rustine:v1 fingerprint=', $tester->getDisplay());
+    }
+
+    #[Test]
+    public function runWithoutGroupPutsEveryGroupInASingleMergeRequest(): void
+    {
+        $tester = $this->tester('run');
+        $tester->execute(['--report' => self::REPORT, '--dry-run' => true, '--project' => sys_get_temp_dir()]);
+
+        $this->assertSame(Command::SUCCESS, $tester->getStatusCode());
+        $this->assertStringContainsString('security/rustine-yarn', $tester->getDisplay());
+        $this->assertStringNotContainsString('rustine-yarn-', $tester->getDisplay());
+        $this->assertStringContainsString('Security: fix Yarn dependencies', $tester->getDisplay());
+        $this->assertStringNotContainsString('critical and high severity', $tester->getDisplay());
+        $this->assertStringContainsString('build(deps): fix vulnerable Yarn dependencies', $tester->getDisplay());
+        $this->assertStringContainsString('braces', $tester->getDisplay());
+        $this->assertStringContainsString('ckeditor4', $tester->getDisplay());
+    }
+
+    #[Test]
+    public function runAcceptsSeveralGroups(): void
+    {
+        $tester = $this->tester('run');
+        $tester->execute(
+            [
+                '--report' => self::REPORT,
+                '--group' => ['others', 'critical-high'],
+                '--dry-run' => true,
+                '--project' => sys_get_temp_dir(),
+            ],
+        );
+
+        $this->assertSame(Command::SUCCESS, $tester->getStatusCode());
+        $this->assertStringContainsString('security/rustine-yarn-critical-high', $tester->getDisplay());
+        $this->assertStringContainsString('security/rustine-yarn-others', $tester->getDisplay());
     }
 
     #[Test]

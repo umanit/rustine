@@ -1,4 +1,5 @@
 title: "Sécurité : corriger les dépendances {ecosystem} ({group})"
+title_all: "Sécurité : corriger les dépendances {ecosystem}"
 
 group:
   critical-high: "sévérité critique et haute"
@@ -73,9 +74,10 @@ footer: "Généré par Rustine {version}. Ne modifiez pas la branche à la main 
 
 commit:
   subject: "corriger les dépendances {ecosystem} vulnérables ({group})"
+  subject_all: "corriger les dépendances {ecosystem} vulnérables"
   intro: "Montée vers la plus petite version qui corrige les CVE signalées :"
 
 note:
   updated: "La branche a été reconstruite par une nouvelle exécution de Rustine (paquets corrigés : {packages}). La description a été mise à jour."
-  closed: "Plus aucun paquet de ce groupe n’est corrigeable automatiquement (déjà corrigé, ou action manuelle requise) : fermeture de cette merge request. Rustine en ouvrira une nouvelle si une correction redevient possible."
+  closed: "Plus aucun paquet n’est corrigeable automatiquement (déjà corrigé, ou action manuelle requise) : fermeture de cette merge request. Rustine en ouvrira une nouvelle si une correction redevient possible."
   foreign: "La branche {branch} contient des commits que Rustine n’a pas créés : elle a été laissée telle quelle. Déplacez vos commits ailleurs ou supprimez la branche pour que Rustine puisse la mettre à jour de nouveau."

@@ -327,7 +327,7 @@ final class MergeRequestRendererTest extends TestCase
     {
         $report = new TrivyReportParser()->parseFile(__DIR__ . '/../fixtures/trivy/yarn-report.json');
 
-        foreach (new Planner()->plan($report) as $plan) {
+        foreach (new Planner()->plan($report, [SeverityGroup::CriticalHigh, SeverityGroup::Others]) as $plan) {
             if (Ecosystem::Yarn === $plan->ecosystem && $group === $plan->group) {
                 return $plan;
             }

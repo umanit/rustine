@@ -11,14 +11,14 @@ final class PlanFormatter
     /**
      * @param list<GroupPlan> $plans
      *
-     * @return list<array{branch: string, ecosystem: string, group: string, fixes: list<array<string, mixed>>}>
+     * @return list<array{branch: string, ecosystem: string, group: string|null, fixes: list<array<string, mixed>>}>
      */
     public function toArray(array $plans): array
     {
         return array_map(static fn(GroupPlan $plan): array => [
             'branch'    => $plan->branchName(),
             'ecosystem' => $plan->ecosystem->value,
-            'group'     => $plan->group->value,
+            'group'     => $plan->group?->value,
             'fixes'     => array_map(static fn(PackageFix $fix): array => [
                 'package'         => $fix->packageName,
                 'installed'       => $fix->installedVersion,

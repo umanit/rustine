@@ -56,7 +56,10 @@ final readonly class RunCommand
         string $project = '.',
         #[Option(description: 'Trivy JSON report: read by --dry-run, written by the scan of a real run')]
         string $report = 'trivy-report.json',
-        #[Option(description: 'Severity group to process: critical-high or others (exactly one)')]
+        #[Option(
+            description: 'Severity group to process: critical-high or others (repeatable, default: both,'
+            . ' one merge request each)',
+        )]
         array $group = [],
         #[Option(description: 'Ecosystem to process: yarn or composer (default: both)')]
         ?string $ecosystem = null,
@@ -147,7 +150,7 @@ final readonly class RunCommand
         $translator = $factory->create($locale);
 
         try {
-            $groups = Options::exactlyOneGroup($group);
+            $groups = Options::groups($group);
             $verifyMode = Options::verifyMode($verify);
             $wanted = Options::ecosystem($ecosystem);
         } catch (InvalidOptionException $invalidOptionException) {
@@ -228,9 +231,9 @@ final readonly class RunCommand
             );
         }
 
-        $plans = new Planner()->plan($parsedReport, $groups, $wanted);
+        $plans = new Planner()->plan($parsedReport, [] === $groups ? null : $groups, $wanted);
         if ([] === $plans) {
-            $io->success('Nothing to fix in this group: no merge request to open.');
+            $io->success('Nothing to fix: no merge request to open.');
 
             return Command::SUCCESS;
         }
@@ -306,7 +309,7 @@ final readonly class RunCommand
     }
 
     /**
-     * @param list<SeverityGroup> $groups
+     * @param list<SeverityGroup> $groups every group when empty
      */
     private function preview(
         SymfonyStyle $io,
@@ -324,9 +327,9 @@ final readonly class RunCommand
             return Command::FAILURE;
         }
 
-        $plans = new Planner()->plan($parsedReport, $groups, $wanted);
+        $plans = new Planner()->plan($parsedReport, [] === $groups ? null : $groups, $wanted);
         if ([] === $plans) {
-            $io->success('Nothing to fix in this group: no merge request would be opened.');
+            $io->success('Nothing to fix: no merge request would be opened.');
 
             return Command::SUCCESS;
         }

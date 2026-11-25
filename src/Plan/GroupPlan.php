@@ -7,7 +7,8 @@ namespace Rustine\Plan;
 use Rustine\Trivy\Ecosystem;
 
 /**
- * Content of one MR: one ecosystem × one severity group.
+ * Content of one MR: one ecosystem × one severity group, or one ecosystem with every group when no group was asked
+ * for (`$group` is null).
  */
 final readonly class GroupPlan
 {
@@ -16,7 +17,7 @@ final readonly class GroupPlan
      */
     public function __construct(
         public Ecosystem $ecosystem,
-        public SeverityGroup $group,
+        public ?SeverityGroup $group,
         public array $fixes,
     ) {
     }
@@ -24,7 +25,9 @@ final readonly class GroupPlan
     /** Stable branch name, the basis of MR idempotency. */
     public function branchName(): string
     {
-        return sprintf('security/rustine-%s-%s', $this->ecosystem->value, $this->group->value);
+        return null === $this->group
+            ? sprintf('security/rustine-%s', $this->ecosystem->value)
+            : sprintf('security/rustine-%s-%s', $this->ecosystem->value, $this->group->value);
     }
 
     /**

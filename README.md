@@ -38,18 +38,24 @@ A merge request exists **if and only if at least one fix was applied**. Everythi
 silently dropped — in the "needs manual attention" section of the merge request, in the job log, in the report file
 and through the exit code.
 
-### One merge request per ecosystem × severity group
+### One merge request per ecosystem, optionally split by severity group
 
-| Branch                                    | Content                        |
-|-------------------------------------------|--------------------------------|
-| `security/rustine-composer-critical-high` | Composer, CRITICAL and HIGH    |
-| `security/rustine-composer-others`        | Composer, MEDIUM, LOW, UNKNOWN |
-| `security/rustine-yarn-critical-high`     | Yarn, CRITICAL and HIGH        |
-| `security/rustine-yarn-others`            | Yarn, MEDIUM, LOW, UNKNOWN     |
+| Run                          | Branch                                    | Content                        |
+|------------------------------|-------------------------------------------|--------------------------------|
+| without `--group`            | `security/rustine-composer`               | Composer, every severity       |
+|                              | `security/rustine-yarn`                   | Yarn, every severity           |
+| `--group=critical-high`      | `security/rustine-composer-critical-high` | Composer, CRITICAL and HIGH    |
+|                              | `security/rustine-yarn-critical-high`     | Yarn, CRITICAL and HIGH        |
+| `--group=others`             | `security/rustine-composer-others`        | Composer, MEDIUM, LOW, UNKNOWN |
+|                              | `security/rustine-yarn-others`            | Yarn, MEDIUM, LOW, UNKNOWN     |
 
-A package belongs to the group of the highest severity among *all* its vulnerable instances. Trivy always runs with
-every severity; you choose the group at run time (`--group`, exactly one). A typical setup runs `critical-high` every
-day and `others` once a week, as two schedules.
+Without `--group`, everything goes in **one** merge request per ecosystem. With `--group` (repeatable), each group is
+its own merge request. A package belongs to the group of the highest severity among *all* its vulnerable instances.
+Trivy always runs with every severity. A typical split runs `critical-high` every day and `others` once a week, as two
+schedules; a single run without `--group` is simpler when one merge request is enough.
+
+The branches do not mix: switching from one way to the other opens new merge requests, and the ones of the old branches
+stay open until someone closes them.
 
 ### Idempotency
 
@@ -200,7 +206,7 @@ Options take precedence over the variables GitLab CI provides.
 
 | Option                       | Variable                                 | Default / meaning                                                                                                                                                                                      |
 |------------------------------|------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `--group`                    |                                          | **Required**: `critical-high` or `others` (exactly one)                                                                                                                                                |
+| `--group`                    |                                          | `critical-high` or `others` (repeatable; `run`: default every group in one merge request per ecosystem; `apply`: exactly one) |
 | `--ecosystem`                |                                          | `yarn` or `composer` (default: both)                                                                                                                                                                   |
 | `--project`                  |                                          | Project directory (default `.`)                                                                                                                                                                        |
 | `--gitlab-url`               | `CI_API_V4_URL`                          | GitLab API root, or the address of the instance (`/api/v4` is added when missing)                                                                                                                                                                                        |

@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 use Rustine\Plan\GroupPlan;
 use Rustine\Plan\PlanFormatter;
 use Rustine\Plan\Planner;
+use Rustine\Plan\SeverityGroup;
 use Rustine\Trivy\TrivyReportParser;
 
 final class PlanFormatterTest extends TestCase
@@ -45,6 +46,9 @@ final class PlanFormatterTest extends TestCase
      */
     private function plans(): array
     {
-        return new Planner()->plan(new TrivyReportParser()->parseFile(__DIR__ . '/../fixtures/trivy/yarn-report.json'));
+        return new Planner()->plan(
+            new TrivyReportParser()->parseFile(__DIR__ . '/../fixtures/trivy/yarn-report.json'),
+            [SeverityGroup::CriticalHigh, SeverityGroup::Others],
+        );
     }
 }

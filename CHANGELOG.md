@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `run` no longer requires `--group`: without it, every severity group goes in a single merge request per ecosystem, on
+  the branch `security/rustine-<ecosystem>` (no group suffix; title and commit without the group). `--group` can be
+  given several times, each group then being its own merge request. `plan` follows the same rule. `apply` still takes
+  exactly one group, as it works on the working tree.
+
 ### Fixed
 
 - `--gitlab-url` accepts the address of the instance alone (`https://gitlab.example.com`, with or without a trailing

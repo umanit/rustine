@@ -67,10 +67,10 @@ final readonly class MergeRequestRenderer
             $severity = null === $severity ? $row['fix']->severity : Severity::max($severity, $row['fix']->severity);
         }
 
-        $params = [
-            'ecosystem' => ucfirst($plan->ecosystem->value),
-            'group'     => $this->t('group.' . $plan->group->value),
-        ];
+        $params = ['ecosystem' => ucfirst($plan->ecosystem->value)];
+        if (null !== $plan->group) {
+            $params['group'] = $this->t('group.' . $plan->group->value);
+        }
 
         $sections = [];
         if (!$result instanceof ApplyResult) {
@@ -109,9 +109,14 @@ final readonly class MergeRequestRenderer
         );
 
         return new MergeRequestContent(
-            $this->t('title', $params),
+            $this->t(null === $plan->group ? 'title_all' : 'title', $params),
             implode("\n\n", $sections) . "\n",
-            $this->commitMessage($rows, ['ecosystem' => $params['ecosystem'], 'group' => $plan->group->value]),
+            $this->commitMessage(
+                $rows,
+                null === $plan->group
+                    ? ['ecosystem' => $params['ecosystem']]
+                    : ['ecosystem' => $params['ecosystem'], 'group' => $plan->group->value],
+            ),
             $fingerprint,
             $severity,
             \count($rows),
@@ -438,7 +443,8 @@ final readonly class MergeRequestRenderer
     {
         // The type and scope are the Conventional Commits contract: only the sentence is localized. The group is
         // given as its short identifier to keep the subject short.
-        $message = 'build(deps): ' . $this->t('commit.subject', $params);
+        $subject = isset($params['group']) ? 'commit.subject' : 'commit.subject_all';
+        $message = 'build(deps): ' . $this->t($subject, $params);
 
         if ([] !== $rows) {
             $message .= "\n\n" . $this->t('commit.intro');

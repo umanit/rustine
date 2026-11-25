@@ -243,11 +243,38 @@ final class PlannerTest extends TestCase
             ],
         ], \JSON_THROW_ON_ERROR);
 
-        $plans = new Planner()->plan(new TrivyReportParser()->parse($json));
+        $plans = new Planner()->plan(
+            new TrivyReportParser()->parse($json),
+            [SeverityGroup::CriticalHigh, SeverityGroup::Others],
+        );
 
         $this->assertCount(1, $plans);
         $this->assertSame(SeverityGroup::CriticalHigh, $plans[0]->group);
         $this->assertCount(2, $plans[0]->fixes);
+    }
+
+    #[Test]
+    public function withoutGroupsEveryGroupIsInASinglePlanPerEcosystem(): void
+    {
+        $plans = new Planner()->plan($this->report('yarn-report.json'));
+
+        $this->assertCount(1, $plans);
+        $this->assertNull($plans[0]->group);
+        $this->assertSame('security/rustine-yarn', $plans[0]->branchName());
+        $this->assertContains('braces', $this->names($plans[0]));
+        $this->assertContains('ckeditor4', $this->names($plans[0]));
+
+        // The packages keep their own group.
+        $this->assertSame(SeverityGroup::Others, $this->fix($plans[0], 'ckeditor4', '4.22.1')->group);
+        $this->assertSame(SeverityGroup::CriticalHigh, $this->fix($plans[0], 'braces', '3.0.3')->group);
+    }
+
+    #[Test]
+    public function theEcosystemFilterStillAppliesWithoutGroups(): void
+    {
+        $plans = new Planner()->plan($this->report('composer-report.json'), null, Ecosystem::Yarn);
+
+        $this->assertSame([], $plans);
     }
 
     #[Test]
@@ -261,7 +288,7 @@ final class PlannerTest extends TestCase
      */
     private function plan(string $fixture): array
     {
-        return new Planner()->plan($this->report($fixture));
+        return new Planner()->plan($this->report($fixture), [SeverityGroup::CriticalHigh, SeverityGroup::Others]);
     }
 
     private function report(string $fixture): TrivyReport
