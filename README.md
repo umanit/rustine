@@ -112,7 +112,10 @@ environment, so only do it for a project whose plugins you trust as much as its 
 - Only branches named `security/rustine-*` are ever written; the default branch is never pushed.
 - Pushes use `--force-with-lease` on the commit seen at the beginning of the run.
 - The token is never put in a URL, a command line or a log: it travels in an environment variable read by git
-  (`http.extraHeader`), and is masked in every error message.
+  (`http.extraHeader`), and is masked in every error message. It is also removed from the environment of Yarn,
+  Composer and Trivy. That prevents accidental leaks, **not** a malicious program: a process running as the same
+  user can read the environment of its parent (`/proc/<pid>/environ`). Isolation comes from what is allowed to run:
+  see *What runs during a fix* below.
 - Dependencies declared with a git/URL/alias/local source (or a `dev-*` branch for Composer) are never replaced by a
   version from the registry: they are reported for a manual fix.
 - Yarn scripts are disabled during the fixes.
@@ -245,13 +248,32 @@ In GitLab CI, `allow_failure: { exit_codes: [2] }` turns code `2` into an orange
 
 Rustine needs a token because `CI_JOB_TOKEN` cannot push branches nor open merge requests.
 
-1. Create a **group access token** (or a bot user's token) with the **Developer** role and the scopes `api` and
-   `write_repository`.
-2. Store it in a **masked and protected** CI/CD variable named `RUSTINE_GITLAB_TOKEN`, at group level.
+1. Create an **access token** with the **Developer** role and the scopes `api` and `write_repository`: either one
+   **project access token** per project, or one **group access token** for all of them (a bot user's token works too).
+2. Store it in a **masked and protected** CI/CD variable named `RUSTINE_GITLAB_TOKEN`, at the level of the token.
 3. Merge requests and notes are attributed to the token owner. Commits need an identity too: it is read from the token
    owner (`GET /user`), or set with `--git-author-name` / `--git-author-email`.
 
 Protected variables are only exposed to protected refs: run the schedule on the default branch.
+
+**Group or project token?** A group token is convenient (one variable, one expiry date), but it has the `api` scope on
+**every** project of the group, and anyone who can change the `.gitlab-ci.yml` of a protected branch of *any* of those
+projects can have a job print it. A project token limits the damage of a leak to one project, at the price of one token
+to create and renew per project. Prefer project tokens for the sensitive projects, and give every token an expiry date.
+
+### What runs during a fix
+
+Rustine runs the tools of the project, and so the code they load. Know what that is before giving it a token:
+
+| Tool | Code of the project that runs |
+|------|-------------------------------|
+| Yarn | Lifecycle scripts are disabled, but the plugins listed in `.yarnrc.yml` are loaded (they are committed in `.yarn/plugins/`) |
+| Composer | Scripts and plugins are disabled. For a project that sets `extra.symfony.require`, plugins are enabled to let Symfony Flex work: a Flex installed globally is the only plugin loaded, a `vendor/` also loads the plugins of the project |
+| Trivy | None: it only reads the lockfiles |
+
+The code comes from the default branch (the job runs there), so it is code that has already been merged, and the
+plugins it can load are the ones the project already trusts in its own CI. The difference with the other jobs
+is the token: keep the schedule on the default branch, and a protected variable.
 
 ### Example job
 

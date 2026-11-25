@@ -42,11 +42,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- The commits are authored with the private commit email GitLab generates for the token owner
-  (`<id>-<username>@users.noreply.<host>`) when it exposes no commit email, instead of a made-up address that the
 - Files that appear inside a directory that was already untracked before a fix (a cache that Trivy or Yarn fills) no longer
   abandon it as unexpected changes: `git status` reports an untracked directory as one entry. A new untracked file or
   directory still does.
+- The commits are authored with the private commit email GitLab generates for the token owner
+  (`<id>-<username>@users.noreply.<host>`) when it exposes no commit email, instead of a made-up address that the
   "commit author must be a GitLab user" push rule refuses.
 - The consistency check of Composer (`composer validate`) is also run before the fixes, and only findings that it did not
   report then fail the final check: an unrelated finding that was already there no longer turns a whole group into a
@@ -70,6 +70,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- The token: removing it from the environment of the child processes prevents leaks, not a malicious program (a process
+  can read the environment of its parent). The README lists what code runs during a fix, and compares a project token with
+  a group token.
 - The example job hides the caches kept in the project directory from git, so that a fix does not take their new files
   for unexpected changes.
 
