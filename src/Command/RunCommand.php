@@ -259,7 +259,7 @@ final readonly class RunCommand
                 static fn(string $buffer) => $io->getErrorStyle()->write($buffer),
             );
             $parsedReport = new TrivyReportParser()->parseFile($report);
-        } catch (InvalidTrivyReportException|\RuntimeException $e) {
+        } catch (InvalidTrivyReportException | \RuntimeException $e) {
             $io->error($e->getMessage());
 
             return Command::FAILURE;
