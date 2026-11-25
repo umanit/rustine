@@ -87,4 +87,20 @@ final class OptionsTest extends TestCase
 
         Options::ecosystem('pip');
     }
+
+    #[Test]
+    public function itNormalizesTheMentions(): void
+    {
+        $this->assertSame(['alice', 'team/sec'], Options::mentions(['@alice', ' alice ', 'team/sec']));
+        $this->assertSame([], Options::mentions([]));
+    }
+
+    #[Test]
+    public function itRejectsAnInvalidMention(): void
+    {
+        $this->expectException(InvalidOptionException::class);
+        $this->expectExceptionMessage('Invalid username "bob smith" for --notify.');
+
+        Options::mentions(['bob smith']);
+    }
 }

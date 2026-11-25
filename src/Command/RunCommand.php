@@ -50,6 +50,7 @@ final readonly class RunCommand
      * @param list<string> $trivyArg
      * @param list<string> $label
      * @param list<string> $assignee
+     * @param list<string> $notify
      * @param list<string> $reviewer
      */
     public function __invoke(
@@ -125,6 +126,11 @@ final readonly class RunCommand
         array $assignee = [],
         #[Option(description: 'Username asked to review the merge requests Rustine opens (repeatable)')]
         array $reviewer = [],
+        #[Option(
+            description: 'Username (or group) mentioned in the description of the merge requests, to notify them'
+            . ' without assigning (repeatable)',
+        )]
+        array $notify = [],
         #[Option(description: 'Do not open new merge requests while this many Rustine merge requests are open')]
         ?int $maxOpenMergeRequests = null,
         #[Option(
@@ -155,6 +161,7 @@ final readonly class RunCommand
             $groups = Options::groups($group);
             $verifyMode = Options::verifyMode($verify);
             $wanted = Options::ecosystem($ecosystem);
+            $mentions = Options::mentions($notify);
         } catch (InvalidOptionException $invalidOptionException) {
             $io->error($invalidOptionException->getMessage());
 
@@ -164,7 +171,7 @@ final readonly class RunCommand
         $trivyArg = TrivyScanner::withDevDependencies($trivyArg, Environment::flag($includeDev, 'RUSTINE_INCLUDE_DEV'));
 
         if ($dryRun) {
-            return $this->preview($io, $translator, $report, $groups, $wanted, $reportFile);
+            return $this->preview($io, $translator, $mentions, $report, $groups, $wanted, $reportFile);
         }
 
         $projectDir = realpath($project);
@@ -261,7 +268,7 @@ final readonly class RunCommand
                 $verifyMode,
                 $progress,
             ),
-            new MergeRequestRenderer($translator, Application::VERSION),
+            new MergeRequestRenderer($translator, Application::VERSION, $mentions),
             new NoteRenderer($translator),
             new SyncSettings(
                 $config->defaultBranch,
@@ -314,11 +321,13 @@ final readonly class RunCommand
     }
 
     /**
-     * @param list<SeverityGroup> $groups every group when empty
+     * @param list<string>        $mentions usernames mentioned in the descriptions
+     * @param list<SeverityGroup> $groups   every group when empty
      */
     private function preview(
         SymfonyStyle $io,
         TranslatorInterface $translator,
+        array $mentions,
         string $report,
         array $groups,
         ?Ecosystem $wanted,
@@ -339,7 +348,7 @@ final readonly class RunCommand
             return Command::SUCCESS;
         }
 
-        $renderer = new MergeRequestRenderer($translator, Application::VERSION);
+        $renderer = new MergeRequestRenderer($translator, Application::VERSION, $mentions);
         $files = [];
 
         foreach ($plans as $plan) {

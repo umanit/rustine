@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `run -v` prints one line per step with the seconds elapsed since the start (fetching, starting from the default
   branch, each package and attempt, the Trivy check, the consistency check, the push and the merge request), instead of
   staying silent while Composer, Yarn, git and Trivy work.
+- `--notify=<user or group>` on `run` (repeatable, with or without the leading `@`) mentions people in the description of
+  the merge requests (`cc @alice @team/sec`, `Pour information : @alice` in French), so that GitLab notifies them without
+  assigning the merge request to them.
 
 ### Changed
 

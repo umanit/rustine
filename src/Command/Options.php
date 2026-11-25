@@ -74,4 +74,26 @@ final class Options
             sprintf('Unknown ecosystem "%s" (expected: yarn, composer).', $option),
         );
     }
+
+    /**
+     * @param list<string> $names usernames or group paths, with or without the leading `@`
+     *
+     * @return list<string> without the `@`, without duplicates
+     */
+    public static function mentions(array $names): array
+    {
+        $mentions = [];
+
+        foreach ($names as $name) {
+            $mention = ltrim(trim($name), '@');
+
+            if (1 !== preg_match('/^[A-Za-z0-9_][A-Za-z0-9_.\-\/]*$/', $mention)) {
+                throw new InvalidOptionException(sprintf('Invalid username "%s" for --notify.', $name));
+            }
+
+            $mentions[$mention] = $mention;
+        }
+
+        return array_values($mentions);
+    }
 }

@@ -318,6 +318,23 @@ final class MergeRequestRendererTest extends TestCase
         $this->assertSame(Severity::Critical, $mixed->severity);
     }
 
+    #[Test]
+    public function theNotifiedUsersAreMentionedBeforeTheFooterInTheLocaleOfTheTexts(): void
+    {
+        $plan = $this->yarnPlan(SeverityGroup::CriticalHigh);
+
+        $en = new MergeRequestRenderer(new TranslatorFactory()->create('en'), '1.2.3', ['alice', 'team/sec'])
+            ->render($plan);
+        $this->assertStringContainsString("cc @alice @team/sec\n\n---\n", $en->description);
+
+        $fr = new MergeRequestRenderer(new TranslatorFactory()->create('fr'), '1.2.3', ['alice'])->render($plan);
+        $this->assertStringContainsString('Pour information : @alice', $fr->description);
+
+        $none = $this->renderer('en')->render($plan);
+        $this->assertStringNotContainsString('cc @', $none->description);
+        $this->assertSame($none->fingerprint, $en->fingerprint);
+    }
+
     private function renderer(string $locale): MergeRequestRenderer
     {
         return new MergeRequestRenderer(new TranslatorFactory()->create($locale), '1.2.3');

@@ -32,9 +32,14 @@ final readonly class MergeRequestRenderer
     /** Rows of the lockfile table: a refresh may move hundreds of packages, GitLab limits a description to 1 MB. */
     private const int MAX_LOCK_ROWS = 200;
 
+    /**
+     * @param list<string> $notify usernames (or groups) mentioned in the description, so that GitLab notifies them
+     *                             without assigning the merge request to them
+     */
     public function __construct(
         private TranslatorInterface $translator,
         private string $version,
+        private array $notify = [],
     ) {
     }
 
@@ -101,6 +106,12 @@ final readonly class MergeRequestRenderer
         $sections[] = '## ' . $this->t('section.tooling') . "\n\n" . ($tools instanceof ToolVersions
                 ? $this->t('tooling.used', ['tools' => '`' . $tools->describe() . '`'])
                 : $this->t('tooling.none'));
+        if ([] !== $this->notify) {
+            $sections[] = $this->t(
+                'notify',
+                ['users' => implode(' ', array_map(static fn(string $user): string => '@' . $user, $this->notify))],
+            );
+        }
         $sections[] = sprintf(
             "---\n%s\n<!-- %s fingerprint=%s -->",
             $this->t('footer', ['version' => $this->version]),

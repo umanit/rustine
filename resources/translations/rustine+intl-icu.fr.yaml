@@ -70,6 +70,8 @@ tooling:
   used: "Outils de l’environnement CI : {tools}."
   none: "Les outils de l’environnement CI sont utilisés, Rustine n’en installe aucun."
 
+notify: "Pour information : {users}"
+
 footer: "Généré par Rustine {version}. Ne modifiez pas la branche à la main : elle est reconstruite à chaque exécution."
 
 commit:
