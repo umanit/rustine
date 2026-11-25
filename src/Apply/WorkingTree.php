@@ -21,12 +21,16 @@ final readonly class WorkingTree
     /**
      * Paths (relative to the project) that differ from HEAD or are untracked and not ignored.
      *
+     * An untracked directory counts as one path (`--untracked-files=normal`): what appears inside a directory that was
+     * already untracked before the fix (a cache that Trivy or Yarn fills, for instance) is not a change, while a new
+     * untracked file or directory is.
+     *
      * @return list<string>
      */
     public function dirtyPaths(): array
     {
         $prefix = trim($this->git(['rev-parse', '--show-prefix']));
-        $status = $this->git(['status', '--porcelain', '-z', '--untracked-files=all', '--', '.']);
+        $status = $this->git(['status', '--porcelain', '-z', '--untracked-files=normal', '--', '.']);
 
         $paths = [];
         $entries = explode("\0", $status);

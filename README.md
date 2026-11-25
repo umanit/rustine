@@ -106,8 +106,9 @@ environment, so only do it for a project whose plugins you trust as much as its 
 ### Safety guarantees
 
 - Only `composer.json`, `composer.lock`, `package.json` and `yarn.lock` can change. Any other change abandons the fix,
-  untracked files included: anything a fix may create in the project directory (caches, reports) must be ignored by
-  git (`.gitignore` or `.git/info/exclude`).
+  new untracked files and directories included: what a fix may create in the project directory (caches, reports) must be
+  ignored by git (`.gitignore` or `.git/info/exclude`). Git reports an untracked directory as one entry, so files that
+  appear inside a directory that already existed before the fix (a cache that Trivy or Yarn fills) are not a change.
 - Only branches named `security/rustine-*` are ever written; the default branch is never pushed.
 - Pushes use `--force-with-lease` on the commit seen at the beginning of the run.
 - The token is never put in a URL, a command line or a log: it travels in an environment variable read by git
