@@ -420,6 +420,25 @@ final class FixApplier
     {
         $lines = array_values(array_filter(array_map('trim', explode("\n", $output)), static fn (string $l): bool => '' !== $l));
 
-        return implode(' | ', \array_slice($lines, -$count));
+        return self::maskSecrets(implode(' | ', \array_slice($lines, -$count)));
+    }
+
+    /**
+     * What tools print ends up in the merge request: credentials of a registry URL (`https://user:pass@host`), of an
+     * `Authorization` header or of an npm `_authToken` must not.
+     */
+    public static function maskSecrets(string $text): string
+    {
+        $masked = preg_replace(
+            [
+                '#\b([a-z][a-z0-9+.-]*://)[^/\s@]+@#i',
+                '#\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+#',
+                '#(_auth(?:Token)?|_password)\s*=\s*\S+#i',
+            ],
+            ['$1***@', '$1 ***', '$1=***'],
+            $text,
+        );
+
+        return $masked ?? $text;
     }
 }
