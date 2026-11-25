@@ -60,8 +60,8 @@ final readonly class RunCommand
         #[Option(description: 'Trivy JSON report: read by --dry-run, written by the scan of a real run')]
         string $report = 'trivy-report.json',
         #[Option(
-            description: 'Severity group to process: critical-high or others (repeatable, default: both,'
-            . ' one merge request each)',
+            description: 'Severity group to process: critical-high or others (repeatable, default: every group in'
+            . ' one merge request per ecosystem)',
         )]
         array $group = [],
         #[Option(description: 'Ecosystem to process: yarn or composer (default: both)')]
