@@ -338,17 +338,19 @@ final class CommandsTest extends TestCase
     {
         $trivy = $this->fakeTrivy(__DIR__ . '/../fixtures/trivy/yarn-nofix-report.json');
         $reportFile = sys_get_temp_dir() . '/rustine-run-' . bin2hex(random_bytes(4)) . '.md';
+        $trivyReport = sys_get_temp_dir() . '/rustine-run-trivy-' . bin2hex(random_bytes(4)) . '.json';
+        $this->files = [...$this->files, $reportFile, $trivyReport];
         $http = new MockHttpClient([
             new MockResponse('{"id":7,"username":"rustine-bot","name":"Rustine Bot","commit_email":null}'),
             new MockResponse('[]'),
         ]);
 
-        $this->withEnvironment(['GITLAB_TOKEN' => 'glpat-ok'], function () use ($http, $trivy, $reportFile): void {
+        $this->withEnvironment(['GITLAB_TOKEN' => 'glpat-ok'], function () use ($http, $trivy, $reportFile, $trivyReport): void {
             $tester = $this->tester('run', $http);
             $tester->execute([
                 '--group' => ['critical-high'],
                 '--project' => sys_get_temp_dir(),
-                '--report' => sys_get_temp_dir() . '/rustine-run-trivy-' . bin2hex(random_bytes(4)) . '.json',
+                '--report' => $trivyReport,
                 '--trivy-bin' => $trivy,
                 '--report-file' => $reportFile,
                 ...self::GITLAB,
