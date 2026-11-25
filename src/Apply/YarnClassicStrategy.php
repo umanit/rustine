@@ -77,4 +77,10 @@ final readonly class YarnClassicStrategy implements FixStrategy
     {
         return $this->runtime->env();
     }
+
+    public function checkIsRelativeToBaseline(): bool
+    {
+        // A full install: too slow to run twice, and it only fails for a reason that comes from the lockfile.
+        return false;
+    }
 }

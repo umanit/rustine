@@ -162,7 +162,8 @@ final class ComposerStrategyTest extends TestCase
         $strategy = new ComposerStrategy();
 
         self::assertSame(['composer', 'why-not', 'twig/twig', '3.4.3', '--locked'], $strategy->diagnosis($this->fix(DependencyKind::Direct)));
-        self::assertSame(['composer', 'validate', '--no-check-publish', '--no-interaction'], $strategy->checkCommand());
+        self::assertSame(['composer', 'validate', '--no-check-publish', '--no-interaction', '--no-plugins'], $strategy->checkCommand());
+        self::assertTrue($strategy->checkIsRelativeToBaseline());
         self::assertSame(Ecosystem::Composer, $strategy->ecosystem());
         self::assertSame(['composer.json', 'composer.lock'], $strategy->files());
     }

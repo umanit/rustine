@@ -103,4 +103,10 @@ final readonly class YarnBerryStrategy implements FixStrategy
     {
         return [...$this->runtime->env(), 'YARN_ENABLE_SCRIPTS' => 'false'];
     }
+
+    public function checkIsRelativeToBaseline(): bool
+    {
+        // A full install: too slow to run twice, and it only fails for a reason that comes from the lockfile.
+        return false;
+    }
 }

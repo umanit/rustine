@@ -38,6 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The consistency check of Composer (`composer validate`) is also run before the fixes, and only findings that it did not
+  report then fail the final check: an unrelated finding that was already there no longer turns a whole group into a
+  failure. The merge request shows them as already existing. It runs with `--no-plugins`.
 - The commits are authored with the private commit email GitLab generates for the token owner
   (`<id>-<username>@users.noreply.<host>`) when it exposes no commit email, instead of a made-up address that the
   "commit author must be a GitLab user" push rule refuses.

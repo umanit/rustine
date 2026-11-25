@@ -572,11 +572,85 @@ final class FixApplierTest extends TestCase
 
         self::assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
         self::assertSame(
-            ['composer update twig/twig --with-all-dependencies --no-install --no-interaction --no-scripts --no-progress --no-plugins', 'composer validate --no-check-publish --no-interaction'],
+            [
+                'composer validate --no-check-publish --no-interaction --no-plugins',
+                'composer update twig/twig --with-all-dependencies --no-install --no-interaction --no-scripts --no-progress --no-plugins',
+                'composer validate --no-check-publish --no-interaction --no-plugins',
+            ],
             $this->runner->toolCommands(),
+            'The check also runs before the fixes: it is compared with the one that follows.',
         );
+        self::assertNull($result->finalCheckError);
+        self::assertNull($result->existingCheckFindings);
         @unlink($this->dir . '/composer.json');
         @unlink($this->dir . '/composer.lock');
+    }
+
+    #[Test]
+    public function findingsThatWereAlreadyThereDoNotFailTheCheck(): void
+    {
+        $result = $this->composerFixWithChecks(
+            before: new CommandResult(2, "# General errors\n- some unrelated error\n"),
+            after: new CommandResult(2, "# General errors\n  - some   unrelated error\n"),
+        );
+
+        self::assertSame(FixOutcomeStatus::Applied, $result->outcomes[0]->status);
+        self::assertNull($result->finalCheckError);
+        self::assertSame('# General errors | - some   unrelated error', $result->existingCheckFindings, 'What the final check reported.');
+        self::assertTrue($result->isHealthy());
+    }
+
+    #[Test]
+    public function aNewFindingFailsTheCheckEvenWhenOthersWereAlreadyThere(): void
+    {
+        $result = $this->composerFixWithChecks(
+            before: new CommandResult(2, "# General errors\n- some unrelated error\n"),
+            after: new CommandResult(2, "# General errors\n- some unrelated error\n# Lock file errors\n- The lock file is not up to date\n"),
+        );
+
+        self::assertStringContainsString('The lock file is not up to date', (string) $result->finalCheckError);
+        self::assertNull($result->existingCheckFindings);
+        self::assertFalse($result->isHealthy());
+    }
+
+    #[Test]
+    public function aCheckThatWasCleanAndFailsNowIsAFailure(): void
+    {
+        $result = $this->composerFixWithChecks(before: new CommandResult(0, ''), after: new CommandResult(2, "# Lock file errors\n- stale\n"));
+
+        self::assertNotNull($result->finalCheckError);
+    }
+
+    #[Test]
+    public function aYarnFixOnlyRunsTheCheckOnce(): void
+    {
+        $this->applier(new QueueRescanner(Fixtures::report()))->apply(Fixtures::plan(Fixtures::fix()), Fixtures::report([Fixtures::vulnerability()]));
+
+        self::assertCount(1, array_filter($this->runner->toolCommands(), static fn (string $c): bool => 'yarn install --immutable' === $c));
+    }
+
+    private function composerFixWithChecks(CommandResult $before, CommandResult $after): \Rustine\Apply\ApplyResult
+    {
+        file_put_contents($this->dir . '/composer.json', '{"require":{"other/pkg":"^1.0"}}');
+        file_put_contents($this->dir . '/composer.lock', self::composerLock('3.4.0'));
+        $validations = 0;
+        $this->runner->handler = function (array $command) use (&$validations, $before, $after): ?CommandResult {
+            if ('validate' === $command[1]) {
+                return 0 === $validations++ ? $before : $after;
+            }
+            file_put_contents($this->dir . '/composer.lock', self::composerLock('3.4.3'));
+
+            return null;
+        };
+        $fix = Fixtures::fix('twig/twig', '3.4.0', '3.4.3', DependencyKind::Transitive, ecosystem: Ecosystem::Composer);
+        $vulnerable = new \Rustine\Trivy\TrivyReport([Fixtures::vulnerability('twig/twig', '3.4.0', Ecosystem::Composer)], []);
+
+        try {
+            return $this->applier(new QueueRescanner(Fixtures::report()), new ComposerStrategy())->apply(Fixtures::plan($fix), $vulnerable);
+        } finally {
+            @unlink($this->dir . '/composer.json');
+            @unlink($this->dir . '/composer.lock');
+        }
     }
 
     #[Test]

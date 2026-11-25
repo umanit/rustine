@@ -113,12 +113,17 @@ final readonly class ComposerStrategy implements FixStrategy
     public function checkCommand(): array
     {
         // Also fails when `composer.lock` is out of date with `composer.json`.
-        return [...$this->composer, 'validate', '--no-check-publish', '--no-interaction'];
+        return [...$this->composer, 'validate', '--no-check-publish', '--no-interaction', '--no-plugins'];
     }
 
     public function checkEnv(): array
     {
         return [];
+    }
+
+    public function checkIsRelativeToBaseline(): bool
+    {
+        return true;
     }
 
     private function isBranchOrAliasConstraint(string $constraint): bool

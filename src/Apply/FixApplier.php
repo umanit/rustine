@@ -39,6 +39,9 @@ final class FixApplier
         $this->assertSupported($plan);
 
         $baseline = $this->tree->dirtyPaths();
+        $baselineCheck = $this->strategy->checkIsRelativeToBaseline()
+            ? $this->runner->run($this->strategy->checkCommand(), $this->projectDir, $this->strategy->checkEnv())
+            : null;
         $lockfile = $this->projectDir . '/' . $plan->ecosystem->lockFile();
         $lockBefore = @file_get_contents($lockfile);
         $locked = $this->lockedVersions($lockfile);
@@ -88,7 +91,20 @@ final class FixApplier
             ? []
             : (new LockfileVersions())->changes($plan->ecosystem, $lockBefore, $lockAfter);
 
-        return new ApplyResult($outcomes, $check->isSuccessful() ? null : $this->tail($check->output), $lockChanges, $this->verify);
+        // Findings that were already there before the fixes, and nothing new, are not the fixes' doing.
+        $existed = !$check->isSuccessful()
+            && null !== $baselineCheck
+            && !$baselineCheck->isSuccessful()
+            && $check->exitCode === $baselineCheck->exitCode
+            && $this->normalize($check->output) === $this->normalize($baselineCheck->output);
+
+        return new ApplyResult(
+            $outcomes,
+            $check->isSuccessful() || $existed ? null : $this->tail($check->output),
+            $lockChanges,
+            $this->verify,
+            $existed ? $this->tail($check->output) : null,
+        );
     }
 
     private function assertSupported(GroupPlan $plan): void
@@ -384,6 +400,11 @@ final class FixApplier
         foreach ($snapshot as $file => $content) {
             file_put_contents($this->projectDir . '/' . $file, $content);
         }
+    }
+
+    private function normalize(string $output): string
+    {
+        return trim((string) preg_replace('/\s+/', ' ', $output));
     }
 
     private function tail(string $output, int $count = 5): string

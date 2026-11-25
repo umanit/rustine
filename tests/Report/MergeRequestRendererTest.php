@@ -175,6 +175,19 @@ final class MergeRequestRendererTest extends TestCase
     }
 
     #[Test]
+    public function checkFindingsThatWereAlreadyThereAreShownAsSuch(): void
+    {
+        $fix = Fixtures::fix();
+        $result = new ApplyResult([new FixOutcome($fix, FixOutcomeStatus::Applied, AttemptKind::LockfileRefresh)], existingCheckFindings: '- some unrelated error');
+
+        $en = $this->renderer('en')->render(Fixtures::plan($fix), $result)->description;
+
+        self::assertStringContainsString('already reported findings before the fixes and reports no new one:', $en);
+        self::assertStringContainsString('- some unrelated error', $en);
+        self::assertStringNotContainsString('The lockfile is consistent with the manifest', $en);
+    }
+
+    #[Test]
     public function theLockfileTableIsCapped(): void
     {
         $fix = Fixtures::fix();

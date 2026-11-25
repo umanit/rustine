@@ -55,4 +55,11 @@ interface FixStrategy
      * @return array<string, string>
      */
     public function checkEnv(): array;
+
+    /**
+     * True when the check is cheap and also reports problems unrelated to the fixes (e.g. `composer validate` on a
+     * `composer.json` that already had findings): it is then run before the fixes too, and only what it reports
+     * afterwards that it did not before fails the final check.
+     */
+    public function checkIsRelativeToBaseline(): bool;
 }

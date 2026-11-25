@@ -367,9 +367,11 @@ final readonly class MergeRequestRenderer
     private function verification(ApplyResult $result): string
     {
         $lines = ['- ' . $this->t('verification.rescan_' . $result->verify->value)];
-        $lines[] = null === $result->finalCheckError
-            ? '- ' . $this->t('verification.check_ok')
-            : '- ' . $this->t('verification.check_failed') . "\n\n  ```text\n  " . $result->finalCheckError . "\n  ```";
+        $lines[] = match (true) {
+            null !== $result->finalCheckError => '- ' . $this->t('verification.check_failed') . "\n\n  ```text\n  " . $result->finalCheckError . "\n  ```",
+            null !== $result->existingCheckFindings => '- ' . $this->t('verification.check_existing') . "\n\n  ```text\n  " . $result->existingCheckFindings . "\n  ```",
+            default => '- ' . $this->t('verification.check_ok'),
+        };
 
         return implode("\n", $lines);
     }

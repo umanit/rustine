@@ -62,6 +62,7 @@ verification:
   rescan_final: "Trivy was run again once every change was applied: the CVEs of the packages above are no longer reported."
   rescan_none: "Trivy was not run again: the lockfile no longer installs a vulnerable version of the packages above."
   check_ok: "The lockfile is consistent with the manifest."
+  check_existing: "The consistency check already reported findings before the fixes and reports no new one:"
   check_failed: "The lockfile consistency check failed:"
 
 tooling:

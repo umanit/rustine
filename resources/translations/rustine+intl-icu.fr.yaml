@@ -62,6 +62,7 @@ verification:
   rescan_final: "Trivy a été relancé une fois toutes les modifications appliquées : les CVE des paquets ci-dessus ne sont plus signalées."
   rescan_none: "Trivy n’a pas été relancé : le lockfile n’installe plus de version vulnérable des paquets ci-dessus."
   check_ok: "Le lockfile est cohérent avec le manifeste."
+  check_existing: "Le contrôle de cohérence signalait déjà des points avant les correctifs et n’en signale aucun de nouveau :"
   check_failed: "Le contrôle de cohérence du lockfile a échoué :"
 
 tooling:
