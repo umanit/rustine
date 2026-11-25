@@ -80,7 +80,7 @@ its note. To silence a CVE for good, put it in a `.trivyignore` file and pass `-
 |--------------|--------------------------------------------------------------------------------------------------------------------------------------------|
 | Yarn Berry   | `yarn up -R <pkg>` (refresh within existing ranges) → direct range bump (`yarn up <pkg>@^x`) or `resolutions` (see below)                  |
 | Yarn Classic | prune the `<pkg>` entries of `yarn.lock` and `yarn install` → direct range bump in `package.json` or `resolutions["**/<pkg>"]`             |
-| Composer     | `composer update <pkg> -W` → `composer require <pkg>:^x -W` (`--dev` for `require-dev`); on failure `composer why-not` is added to the log |
+| Composer     | `composer update <pkg> -W` → `composer require <pkg>:<constraint> -W` (the constraint keeps the style of the existing one: `6.4.*` → `6.5.*`, `~6.3.0` → `~6.5.0`, exact stays exact, `^` stays `^`; `--dev` for `require-dev`); on failure `composer why-not` is added to the log |
 
 The description of the merge request lists what actually changed in the lockfile (versions before and after), the
 packages of the fixes in bold and the ones that moved along as is. With Yarn Berry 4 or later, every attempt runs with

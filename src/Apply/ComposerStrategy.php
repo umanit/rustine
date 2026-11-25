@@ -87,11 +87,11 @@ final readonly class ComposerStrategy implements FixStrategy
             new Attempt(AttemptKind::LockfileRefresh, [[...$this->composer, 'update', $name, '--with-all-dependencies', ...$flags]]),
         ];
 
-        // The constraint of a direct requirement may forbid the fixed version: raise it, within the same major.
+        // The constraint of a direct requirement may forbid the fixed version: raise it, in the style the project wrote it.
         $declaration = $manifest->declaration($name);
         if (null !== $declaration) {
             $attempts[] = new Attempt(AttemptKind::DirectBump, [[
-                ...$this->composer, 'require', $name . ':^' . ltrim($fix->targetVersion, 'v'),
+                ...$this->composer, 'require', $name . ':' . ComposerConstraint::raise($declaration['constraint'], $fix->targetVersion),
                 ...('require-dev' === $declaration['field'] ? ['--dev'] : []),
                 '--update-with-all-dependencies', ...$flags,
             ]]);

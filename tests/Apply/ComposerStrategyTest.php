@@ -98,7 +98,7 @@ final class ComposerStrategyTest extends TestCase
 
         self::assertSame([AttemptKind::LockfileRefresh, AttemptKind::DirectBump], array_map(static fn ($a) => $a->kind, $attempts));
         self::assertSame(
-            ['composer', 'require', 'twig/twig:^3.4.3', '--update-with-all-dependencies', '--no-install', '--no-interaction', '--no-scripts', '--no-progress', '--no-plugins'],
+            ['composer', 'require', 'twig/twig:3.4.3', '--update-with-all-dependencies', '--no-install', '--no-interaction', '--no-scripts', '--no-progress', '--no-plugins'],
             $attempts[1]->commands[0],
             'The leading v of the version is dropped from the constraint.',
         );
