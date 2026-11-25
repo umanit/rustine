@@ -21,13 +21,16 @@ final readonly class GitLabUser
 
     /**
      * Identity of the commits: explicit options win, then the commit email GitLab exposes for the user, then the
-     * user's noreply address (git needs an author even though API calls are attributed to the token owner).
+     * private commit email of the user (git needs an author even though API calls are attributed to the token owner).
+     *
+     * That address is `<id>-<username>@users.noreply.<host>`, the one GitLab itself generates and recognizes as the
+     * user's: a made-up address would be refused by the "commit author must be a GitLab user" push rule.
      */
     public function gitIdentity(string $host, ?string $name = null, ?string $email = null): GitIdentity
     {
         return new GitIdentity(
             $name ?? $this->name,
-            $email ?? $this->commitEmail ?? sprintf('%s@noreply.%s', $this->username, $host),
+            $email ?? $this->commitEmail ?? sprintf('%d-%s@users.noreply.%s', $this->id, $this->username, $host),
         );
     }
 }

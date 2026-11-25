@@ -346,7 +346,7 @@ final class CommandsTest extends TestCase
             ]);
 
             self::assertSame(2, $tester->getStatusCode());
-            self::assertStringContainsString('commits authored by Rustine Bot <rustine-bot@noreply.gitlab.example.com>', $tester->getDisplay());
+            self::assertStringContainsString('commits authored by Rustine Bot <7-rustine-bot@users.noreply.gitlab.example.com>', $tester->getDisplay());
             self::assertStringContainsString('security/rustine-yarn-critical-high: nothing fixable automatically, no merge request (manual action required)', $tester->getDisplay());
         });
 

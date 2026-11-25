@@ -103,7 +103,7 @@ final class RunCommand
         ?int $maxOpenMergeRequests = null,
         #[Option(description: 'Name of the commits author (default: name of the token owner)')]
         ?string $gitAuthorName = null,
-        #[Option(description: 'Email of the commits author (default: commit email of the token owner, then its noreply address)')]
+        #[Option(description: 'Email of the commits author (default: commit email of the token owner, then its GitLab private commit email)')]
         ?string $gitAuthorEmail = null,
     ): int {
         $factory = new TranslatorFactory();

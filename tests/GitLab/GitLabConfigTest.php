@@ -66,13 +66,13 @@ final class GitLabConfigTest extends TestCase
     }
 
     #[Test]
-    public function theCommitIdentityPrefersOptionsThenTheCommitEmailThenTheNoreplyAddress(): void
+    public function theCommitIdentityPrefersOptionsThenTheCommitEmailThenThePrivateCommitEmail(): void
     {
         $withEmail = new GitLabUser(1, 'rustine-bot', 'Rustine Bot', 'bot@example.com');
         $withoutEmail = new GitLabUser(1, 'rustine-bot', 'Rustine Bot', null);
 
         self::assertSame('bot@example.com', $withEmail->gitIdentity('gitlab.example.com')->email);
-        self::assertSame('rustine-bot@noreply.gitlab.example.com', $withoutEmail->gitIdentity('gitlab.example.com')->email);
+        self::assertSame('1-rustine-bot@users.noreply.gitlab.example.com', $withoutEmail->gitIdentity('gitlab.example.com')->email);
         $explicit = $withEmail->gitIdentity('gitlab.example.com', 'Security Bot', 'security@example.com');
         self::assertSame(['Security Bot', 'security@example.com'], [$explicit->name, $explicit->email]);
         self::assertSame('Rustine Bot', $withoutEmail->gitIdentity('gitlab.example.com')->name);
