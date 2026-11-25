@@ -366,7 +366,7 @@ final class CommandsTest extends TestCase
             'build(deps): corriger les dépendances Yarn vulnérables',
             $tester->getDisplay(),
         );
-        $this->assertStringContainsString('## Corrections', $written);
+        $this->assertStringContainsString('## 🔧 Corrections', $written);
         $this->assertStringStartsWith('<!-- security/rustine-yarn-others -->', $written);
     }
 
@@ -478,7 +478,7 @@ final class CommandsTest extends TestCase
 
         $written = (string) file_get_contents($reportFile);
         @unlink($reportFile);
-        $this->assertStringContainsString('## Needs manual attention', $written);
+        $this->assertStringContainsString('## ⚠️ Needs manual attention', $written);
         $this->assertStringContainsString('braces', $written);
     }
 

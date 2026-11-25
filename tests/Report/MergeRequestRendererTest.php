@@ -36,8 +36,8 @@ final class MergeRequestRendererTest extends TestCase
         $this->assertSame('Security: fix Yarn dependencies (critical and high severity)', $content->title);
         $this->assertStringContainsString('> Preview of the plan', $content->description);
         $this->assertStringContainsString('| `brace-expansion` | `1.1.12` → `1.1.21` |', $content->description);
-        $this->assertStringContainsString('## Fixes', $content->description);
-        $this->assertStringNotContainsString('## Verification', $content->description);
+        $this->assertStringContainsString('## 🔧 Fixes', $content->description);
+        $this->assertStringNotContainsString('## 🔍 Verification', $content->description);
         $this->assertStringContainsString('planned', $content->description);
     }
 
@@ -46,7 +46,7 @@ final class MergeRequestRendererTest extends TestCase
     {
         $content = $this->renderer('en')->render($this->yarnPlan(SeverityGroup::CriticalHigh));
 
-        $this->assertStringContainsString('## Needs manual attention', $content->description);
+        $this->assertStringContainsString('## ⚠️ Needs manual attention', $content->description);
         // `braces` has CVEs without any fixed version.
         $this->assertMatchesRegularExpression(
             '/- \*\*braces\*\* \(`3\.0\.3`\): .*no fixed version has been published/',
@@ -61,8 +61,8 @@ final class MergeRequestRendererTest extends TestCase
         $content = $this->renderer('fr')->render($this->yarnPlan(SeverityGroup::CriticalHigh));
 
         $this->assertSame('Sécurité : corriger les dépendances Yarn (sévérité critique et haute)', $content->title);
-        $this->assertStringContainsString('## Corrections', $content->description);
-        $this->assertStringContainsString('## Action manuelle requise', $content->description);
+        $this->assertStringContainsString('## 🔧 Corrections', $content->description);
+        $this->assertStringContainsString('## ⚠️ Action manuelle requise', $content->description);
         $this->assertStringContainsString('| Paquet | Version | CVE |', $content->description);
         $this->assertStringContainsString(
             '| `brace-expansion` | `1.1.12` → `1.1.21` |',
@@ -94,9 +94,9 @@ final class MergeRequestRendererTest extends TestCase
         $content = $this->renderer('en')->render(Fixtures::plan($fix), $result, $tools);
 
         $this->assertStringNotContainsString('Preview', $content->description);
-        $this->assertStringContainsString('## Technical debt', $content->description);
+        $this->assertStringContainsString('## 🧹 Technical debt', $content->description);
         $this->assertStringContainsString('`minimist` is pinned through `resolutions`', $content->description);
-        $this->assertStringContainsString('## Verification', $content->description);
+        $this->assertStringContainsString('## 🔍 Verification', $content->description);
         $this->assertStringContainsString('The lockfile is consistent with the manifest.', $content->description);
         $this->assertStringContainsString(
             'Tools of the CI environment: `node 22.11.0, yarn 4.2.2`.',
@@ -173,7 +173,7 @@ final class MergeRequestRendererTest extends TestCase
         $content = $this->renderer('en')->render(Fixtures::plan($major), $result);
 
         $this->assertSame(0, $content->fixedPackages);
-        $this->assertStringNotContainsString('## Fixes', $content->description);
+        $this->assertStringNotContainsString('## 🔧 Fixes', $content->description);
     }
 
     #[Test]
@@ -193,12 +193,12 @@ final class MergeRequestRendererTest extends TestCase
         $en = $this->renderer('en')->render(Fixtures::plan($fix), $result)->description;
         $fr = $this->renderer('fr')->render(Fixtures::plan($fix), $result)->description;
 
-        $this->assertStringContainsString('## Lockfile changes', $en);
+        $this->assertStringContainsString('## 📦 Lockfile changes', $en);
         $this->assertStringContainsString('`yarn.lock` changes for 3 packages, 1 of them fixed above', $en);
         $this->assertStringContainsString('| **`ckeditor4`** | `4.22.1` | `4.25.0` |', $en);
         $this->assertStringContainsString('| `lodash` | `4.17.20` | `4.17.21` |', $en);
         $this->assertStringContainsString('| `left-pad` | — | `1.3.0` |', $en);
-        $this->assertStringContainsString('## Changements du lockfile', $fr);
+        $this->assertStringContainsString('## 📦 Changements du lockfile', $fr);
         $this->assertStringContainsString('paquets (corrigés ci-dessus : 1)', $fr);
     }
 
