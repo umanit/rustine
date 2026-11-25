@@ -336,7 +336,13 @@ English.
   `file:vendor/symfony/ux-…/assets`: run `composer install --no-scripts` before Rustine, as it installs nothing.
 - A package declared with a git/URL/alias/local source is reported, never fixed.
 - Major version bumps are reported, never applied.
-- Closing a merge request by hand does not stop Rustine from opening it again.
+- A merge request closed by hand is only left closed for `--closed-grace-days` days (30 by default), and only while the
+  fixes are the same. To silence a CVE for good, use a `.trivyignore` file.
+- **The scan reads the checkout of the pipeline, the fixes start from the tip of the default branch** (fetched at the
+  moment each merge request is built). If the default branch moved between the two, the plan can lag behind by a
+  commit: what is already fixed is detected and reported as such, and the next run catches up. Run the job on the
+  default branch pipeline (`rules: if $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH`, or a schedule) to keep the gap to a few
+  seconds.
 
 ## Development
 
