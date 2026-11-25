@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-25
+
 ### Added
 
 - `run -v` prints one line per step with the seconds elapsed since the start (fetching, starting from the default
@@ -166,6 +168,7 @@ First release.
 - Merge request titles, descriptions, notes and commit messages in English and French (`--locale` or `RUSTINE_LOCALE`).
 - A single executable PHAR, built and published with its SHA-256 by the GitHub release workflow.
 
-[Unreleased]: https://github.com/umanit/rustine/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/umanit/rustine/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/umanit/rustine/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/umanit/rustine/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/umanit/rustine/releases/tag/v0.1.0
