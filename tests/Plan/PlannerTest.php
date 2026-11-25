@@ -38,6 +38,15 @@ final class PlannerTest extends TestCase
     }
 
     #[Test]
+    public function itKeepsOnlyTheRequestedEcosystem(): void
+    {
+        $report = $this->report('yarn-report.json');
+
+        $this->assertSame([], new Planner()->plan($report, null, Ecosystem::Composer));
+        $this->assertEquals(new Planner()->plan($report), new Planner()->plan($report, null, Ecosystem::Yarn));
+    }
+
+    #[Test]
     public function itPicksTheHighestMinimalFixCoveringAllCvesOfAnInstance(): void
     {
         $plans = $this->plan('yarn-report.json');

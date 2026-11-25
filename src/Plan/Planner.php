@@ -27,10 +27,11 @@ final readonly class Planner
      * in a single MR, whichever groups the run processes.
      *
      * @param list<SeverityGroup>|null $groups groups to keep (null = all)
+     * @param Ecosystem|null $ecosystem ecosystem to keep (null = all)
      *
      * @return list<GroupPlan> sorted by ecosystem then group, without empty plans
      */
-    public function plan(TrivyReport $report, ?array $groups = null): array
+    public function plan(TrivyReport $report, ?array $groups = null, ?Ecosystem $ecosystem = null): array
     {
         /** @var array<string, non-empty-list<Vulnerability>> $byInstance */
         $byInstance = [];
@@ -57,6 +58,9 @@ final readonly class Planner
                 $maxSeverityByPackage[$first->ecosystem->value . "\0" . $first->packageName],
             );
             if (null !== $groups && !\in_array($group, $groups, true)) {
+                continue;
+            }
+            if (null !== $ecosystem && $first->ecosystem !== $ecosystem) {
                 continue;
             }
 

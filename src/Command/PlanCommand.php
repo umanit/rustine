@@ -6,7 +6,6 @@ namespace Rustine\Command;
 
 use Rustine\Plan\PlanFormatter;
 use Rustine\Plan\Planner;
-use Rustine\Plan\SeverityGroup;
 use Rustine\Trivy\InvalidTrivyReportException;
 use Rustine\Trivy\TrivyReportParser;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -29,22 +28,12 @@ final class PlanCommand
         #[Option(description: 'Output format: text or json')]
         string $format = 'text',
     ): int {
-        $groups = [];
+        try {
+            $groups = Options::groups($group);
+        } catch (InvalidOptionException $invalidOptionException) {
+            $io->error($invalidOptionException->getMessage());
 
-        foreach ($group as $name) {
-            $parsed = SeverityGroup::tryFrom($name);
-            if (null === $parsed) {
-                $io->error(
-                    sprintf(
-                        'Unknown group "%s" (expected: %s).',
-                        $name,
-                        implode(', ', array_column(SeverityGroup::cases(), 'value')),
-                    ),
-                );
-
-                return Command::INVALID;
-            }
-            $groups[] = $parsed;
+            return Command::INVALID;
         }
 
         if (!\in_array($format, ['text', 'json'], true)) {

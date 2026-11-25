@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Rustine\Command;
 
-use Rustine\Apply\ComposerStrategy;
 use Rustine\Apply\FixOutcome;
 use Rustine\Apply\FixOutcomeStatus;
 use Rustine\Apply\FixStrategy;
@@ -12,12 +11,8 @@ use Rustine\Apply\ProcessCommandRunner;
 use Rustine\Apply\ProjectPlanApplier;
 use Rustine\Apply\ToolingException;
 use Rustine\Apply\UnsupportedProjectException;
-use Rustine\Apply\VerifyMode;
-use Rustine\Apply\YarnRuntime;
 use Rustine\Plan\GroupPlan;
 use Rustine\Plan\Planner;
-use Rustine\Plan\SeverityGroup;
-use Rustine\Trivy\Ecosystem;
 use Rustine\Trivy\InvalidTrivyReportException;
 use Rustine\Trivy\TrivyReportParser;
 use Rustine\Trivy\TrivyScanner;
@@ -79,26 +74,12 @@ final class ApplyCommand
         #[Option(description: 'Only print the commands that would run; the project is left untouched')]
         bool $dryRun = false,
     ): int {
-        $groups = [];
-
-        foreach ($group as $name) {
-            $parsed = SeverityGroup::tryFrom($name);
-            if (null === $parsed) {
-                $io->error(
-                    sprintf(
-                        'Unknown group "%s" (expected: %s).',
-                        $name,
-                        implode(', ', array_column(SeverityGroup::cases(), 'value')),
-                    ),
-                );
-
-                return Command::INVALID;
-            }
-            $groups[] = $parsed;
-        }
-
-        if (1 !== \count($groups)) {
-            $io->error('Pass exactly one --group: each severity group is a separate merge request.');
+        try {
+            $groups = Options::exactlyOneGroup($group);
+            $verifyMode = Options::verifyMode($verify);
+            $wanted = Options::ecosystem($ecosystem);
+        } catch (InvalidOptionException $invalidOptionException) {
+            $io->error($invalidOptionException->getMessage());
 
             return Command::INVALID;
         }
@@ -110,27 +91,6 @@ final class ApplyCommand
             return Command::FAILURE;
         }
 
-        $verify = Environment::string($verify, 'RUSTINE_VERIFY', VerifyMode::Final->value);
-        $verifyMode = VerifyMode::tryFrom($verify);
-        if (null === $verifyMode) {
-            $io->error(
-                sprintf(
-                    'Unknown verification "%s" (expected: %s).',
-                    $verify,
-                    implode(', ', array_column(VerifyMode::cases(), 'value')),
-                ),
-            );
-
-            return Command::INVALID;
-        }
-
-        $wanted = null === $ecosystem ? null : Ecosystem::tryFrom($ecosystem);
-        if (null !== $ecosystem && null === $wanted) {
-            $io->error(sprintf('Unknown ecosystem "%s" (expected: yarn, composer).', $ecosystem));
-
-            return Command::INVALID;
-        }
-
         try {
             $parsedReport = new TrivyReportParser()->parseFile($report);
         } catch (InvalidTrivyReportException $invalidTrivyReportException) {
@@ -139,12 +99,7 @@ final class ApplyCommand
             return Command::FAILURE;
         }
 
-        $plans = array_values(
-            array_filter(
-                new Planner()->plan($parsedReport, $groups),
-                static fn(GroupPlan $plan): bool => null === $wanted || $wanted === $plan->ecosystem,
-            ),
-        );
+        $plans = new Planner()->plan($parsedReport, $groups, $wanted);
         if ([] === $plans) {
             $io->success('Nothing to fix in this group.');
 
@@ -160,14 +115,8 @@ final class ApplyCommand
         }
         $plan = $plans[0];
 
-        $runner = new ProcessCommandRunner();
-        $composerCommand = Environment::string($composerBin, 'RUSTINE_COMPOSER_BIN', 'composer');
-        $yarnCommand = Environment::string($yarnBin, 'RUSTINE_YARN_BIN', 'yarn');
-        $nodeCommand = Environment::string($nodeBin, 'RUSTINE_NODE_BIN', 'node');
-
         try {
-            ComposerStrategy::fromCommandLine($composerCommand);
-            YarnRuntime::fromCommandLines($yarnCommand, $nodeCommand);
+            $tools = ToolCommands::resolve($composerBin, $yarnBin, $nodeBin);
         } catch (\InvalidArgumentException $invalidArgumentException) {
             $io->error($invalidArgumentException->getMessage());
 
@@ -175,13 +124,13 @@ final class ApplyCommand
         }
 
         $planApplier = new ProjectPlanApplier(
-            $runner,
+            new ProcessCommandRunner(),
             $projectDir,
             $trivyBin,
             TrivyScanner::withDevDependencies($trivyArg, Environment::flag($includeDev, 'RUSTINE_INCLUDE_DEV')),
-            $composerCommand,
-            $yarnCommand,
-            $nodeCommand,
+            $tools->composer,
+            $tools->yarn,
+            $tools->node,
             $verifyMode,
         );
 

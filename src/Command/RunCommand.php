@@ -5,11 +5,8 @@ declare(strict_types=1);
 namespace Rustine\Command;
 
 use Rustine\Application;
-use Rustine\Apply\ComposerStrategy;
 use Rustine\Apply\ProcessCommandRunner;
 use Rustine\Apply\ProjectPlanApplier;
-use Rustine\Apply\VerifyMode;
-use Rustine\Apply\YarnRuntime;
 use Rustine\Git\BranchPublisher;
 use Rustine\Git\Git;
 use Rustine\Git\GitAccess;
@@ -18,7 +15,6 @@ use Rustine\GitLab\GitLabConfigException;
 use Rustine\GitLab\GitLabException;
 use Rustine\GitLab\HttpGitLabClient;
 use Rustine\I18n\TranslatorFactory;
-use Rustine\Plan\GroupPlan;
 use Rustine\Plan\Planner;
 use Rustine\Plan\SeverityGroup;
 use Rustine\Report\MergeRequestRenderer;
@@ -28,7 +24,6 @@ use Rustine\Sync\RunSummary;
 use Rustine\Sync\SyncSettings;
 use Rustine\Trivy\Ecosystem;
 use Rustine\Trivy\InvalidTrivyReportException;
-use Rustine\Trivy\TrivyReport;
 use Rustine\Trivy\TrivyReportParser;
 use Rustine\Trivy\TrivyScanner;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -151,51 +146,17 @@ final readonly class RunCommand
         }
         $translator = $factory->create($locale);
 
-        $groups = [];
-
-        foreach ($group as $name) {
-            $parsed = SeverityGroup::tryFrom($name);
-            if (null === $parsed) {
-                $io->error(
-                    sprintf(
-                        'Unknown group "%s" (expected: %s).',
-                        $name,
-                        implode(', ', array_column(SeverityGroup::cases(), 'value')),
-                    ),
-                );
-
-                return Command::FAILURE;
-            }
-            $groups[] = $parsed;
-        }
-
-        if (1 !== \count($groups)) {
-            $io->error('Pass exactly one --group: each severity group is a separate merge request.');
+        try {
+            $groups = Options::exactlyOneGroup($group);
+            $verifyMode = Options::verifyMode($verify);
+            $wanted = Options::ecosystem($ecosystem);
+        } catch (InvalidOptionException $invalidOptionException) {
+            $io->error($invalidOptionException->getMessage());
 
             return Command::FAILURE;
         }
 
         $trivyArg = TrivyScanner::withDevDependencies($trivyArg, Environment::flag($includeDev, 'RUSTINE_INCLUDE_DEV'));
-        $verify = Environment::string($verify, 'RUSTINE_VERIFY', VerifyMode::Final->value);
-        $verifyMode = VerifyMode::tryFrom($verify);
-        if (null === $verifyMode) {
-            $io->error(
-                sprintf(
-                    'Unknown verification "%s" (expected: %s).',
-                    $verify,
-                    implode(', ', array_column(VerifyMode::cases(), 'value')),
-                ),
-            );
-
-            return Command::FAILURE;
-        }
-
-        $wanted = null === $ecosystem ? null : Ecosystem::tryFrom($ecosystem);
-        if (null !== $ecosystem && null === $wanted) {
-            $io->error(sprintf('Unknown ecosystem "%s" (expected: yarn, composer).', $ecosystem));
-
-            return Command::FAILURE;
-        }
 
         if ($dryRun) {
             return $this->preview($io, $translator, $report, $groups, $wanted, $reportFile);
@@ -216,13 +177,8 @@ final readonly class RunCommand
             return Command::FAILURE;
         }
 
-        $composerCommand = Environment::string($composerBin, 'RUSTINE_COMPOSER_BIN', 'composer');
-        $yarnCommand = Environment::string($yarnBin, 'RUSTINE_YARN_BIN', 'yarn');
-        $nodeCommand = Environment::string($nodeBin, 'RUSTINE_NODE_BIN', 'node');
-
         try {
-            ComposerStrategy::fromCommandLine($composerCommand);
-            YarnRuntime::fromCommandLines($yarnCommand, $nodeCommand);
+            $tools = ToolCommands::resolve($composerBin, $yarnBin, $nodeBin);
         } catch (\InvalidArgumentException $invalidArgumentException) {
             $io->error($invalidArgumentException->getMessage());
 
@@ -272,7 +228,7 @@ final readonly class RunCommand
             );
         }
 
-        $plans = $this->plans($parsedReport, $groups, $wanted);
+        $plans = new Planner()->plan($parsedReport, $groups, $wanted);
         if ([] === $plans) {
             $io->success('Nothing to fix in this group: no merge request to open.');
 
@@ -293,9 +249,9 @@ final readonly class RunCommand
                 $projectDir,
                 $trivyBin,
                 TrivyScanner::forRescan($trivyArg),
-                $composerCommand,
-                $yarnCommand,
-                $nodeCommand,
+                $tools->composer,
+                $tools->yarn,
+                $tools->node,
                 $verifyMode,
             ),
             new MergeRequestRenderer($translator, Application::VERSION),
@@ -368,7 +324,7 @@ final readonly class RunCommand
             return Command::FAILURE;
         }
 
-        $plans = $this->plans($parsedReport, $groups, $wanted);
+        $plans = new Planner()->plan($parsedReport, $groups, $wanted);
         if ([] === $plans) {
             $io->success('Nothing to fix in this group: no merge request would be opened.');
 
@@ -411,21 +367,5 @@ final readonly class RunCommand
         }
 
         return Command::SUCCESS;
-    }
-
-    /**
-     * @param list<SeverityGroup> $groups
-     *
-     * @return list<GroupPlan>
-     */
-    private function plans(TrivyReport $report, array $groups, ?Ecosystem $wanted): array
-    {
-        return array_values(
-            array_filter(
-                new Planner()->plan($report, $groups),
-                static fn(GroupPlan $plan,
-                ): bool => !$wanted instanceof Ecosystem || $wanted === $plan->ecosystem,
-            ),
-        );
     }
 }
