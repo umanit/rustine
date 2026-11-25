@@ -348,7 +348,7 @@ English.
 
 ```bash
 composer install
-make full_static_analyze   # PHPStan (max level) + PHPUnit; must pass after any change
+make full_static_analyze   # PHP_CodeSniffer + Rector + PHPStan (max level) + PHPUnit; must pass after any change
 ```
 
 Tests use real temporary git repositories and a local bare remote, `MockHttpClient` for GitLab and a fake Trivy: no
