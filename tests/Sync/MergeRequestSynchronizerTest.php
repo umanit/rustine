@@ -204,6 +204,56 @@ final class MergeRequestSynchronizerTest extends TestCase
     }
 
     #[Test]
+    public function aMergeRequestClosedByHandIsNotOpenedAgainForTheSameFixes(): void
+    {
+        $this->sync();
+        $this->gitlab->closeByHand(1);
+        $this->gitlab->writes = [];
+
+        $outcome = $this->sync();
+
+        self::assertSame(PlanAction::SkippedClosed, $outcome->action);
+        self::assertFalse($outcome->needsManualAction());
+        self::assertSame([], $this->gitlab->writes);
+        self::assertStringContainsString('closed less than 30 days ago', $outcome->messages[0]);
+    }
+
+    #[Test]
+    public function aMergeRequestClosedByHandIsOpenedAgainForDifferentFixes(): void
+    {
+        $this->sync();
+        $this->gitlab->closeByHand(1);
+
+        $outcome = $this->sync(plan: Fixtures::plan(Fixtures::fix(target: '4.26.0')));
+
+        self::assertSame(PlanAction::Created, $outcome->action);
+    }
+
+    #[Test]
+    public function aGraceOfZeroDaysOpensANewMergeRequestAlways(): void
+    {
+        $this->sync();
+        $this->gitlab->closeByHand(1);
+
+        $outcome = $this->sync(settings: new SyncSettings('main', closedGraceDays: 0));
+
+        self::assertSame(PlanAction::Created, $outcome->action);
+    }
+
+    #[Test]
+    public function aMergeRequestThatRustineClosedItselfDoesNotCountAsRefused(): void
+    {
+        $this->sync();
+        // Nothing fixable anymore: Rustine closes it with its own note.
+        $this->sync(plan: Fixtures::plan(Fixtures::fix(status: PackageFixStatus::NoFixAvailable)));
+        self::assertArrayHasKey(1, $this->gitlab->closed);
+
+        $outcome = $this->sync();
+
+        self::assertSame(PlanAction::Created, $outcome->action);
+    }
+
+    #[Test]
     public function theLimitOnlyPreventsNewMergeRequests(): void
     {
         $this->gitlab->addExisting('security/rustine-composer-others');

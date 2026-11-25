@@ -32,7 +32,8 @@ use Rustine\Trivy\TrivyReport;
  *  - an open merge request and the same tree, or the same fingerprint without conflicts → nothing (the texts are
  *    refreshed if they are out of date);
  *  - an open merge request and a different tree → force-push, refresh the texts, leave a note;
- *  - an open merge request and no fix anymore → close it with a note.
+ *  - an open merge request and no fix anymore → close it with a note;
+ *  - no open merge request, but one closed by hand recently for the same fingerprint → nothing (the "no thanks" holds).
  * The limit of open merge requests only prevents opening new ones.
  */
 final readonly class MergeRequestSynchronizer
@@ -97,6 +98,12 @@ final readonly class MergeRequestSynchronizer
                 ]);
             }
 
+            if (null === $existing && $applied->result->hasChanges() && $this->dismissedByHand($branch, $content)) {
+                return new PlanOutcome($branch, PlanAction::SkippedClosed, $content, null, [
+                    sprintf('A merge request for these very fixes was closed less than %d days ago: not opened again.', $this->settings->closedGraceDays),
+                ]);
+            }
+
             $push = $applied->result->hasChanges() && $this->git->commit($content->commitMessage)
                 ? ($this->canKeepBranch($existing, $remote, $content) ? PushResult::Kept : $this->git->push($branch, $remote))
                 : null;
@@ -120,6 +127,23 @@ final readonly class MergeRequestSynchronizer
             && null !== $remote->sha
             && !$existing->hasConflicts
             && $content->fingerprint === MergeRequestRenderer::fingerprintOf($existing->description);
+    }
+
+    /**
+     * "No thanks" must stick: a merge request closed by a person, for the same fixes, is not opened again each morning.
+     * The ones Rustine closed itself (nothing fixable anymore) carry its note and do not count.
+     */
+    private function dismissedByHand(string $branch, MergeRequestContent $content): bool
+    {
+        if ($this->settings->closedGraceDays <= 0) {
+            return false;
+        }
+
+        $closed = $this->gitlab->findClosedMergeRequest($branch, new \DateTimeImmutable(sprintf('-%d days', $this->settings->closedGraceDays)));
+
+        return null !== $closed
+            && $content->fingerprint === MergeRequestRenderer::fingerprintOf($closed->description)
+            && !$this->alreadyNoted($closed, NoteRenderer::CLOSED_MARKER);
     }
 
     private function syncMergeRequest(string $branch, ?MergeRequest $existing, MergeRequestContent $content, PushResult $push): PlanOutcome

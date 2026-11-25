@@ -62,13 +62,17 @@ The branch name is stable, so a run is a reconciliation of what the branch shoul
 | Open merge request, same fixes, no conflict | Nothing, even if the default branch moved on (no force-push)          |
 | Open merge request, different fixes         | Force-pushes the branch, updates the description, leaves a note       |
 | Open merge request, nothing fixable anymore | Closes it with a note                                                 |
+| Closed by hand, same fixes, recently        | Nothing: the "no thanks" holds (`--closed-grace-days`, 30 by default) |
 | Branch carries commits Rustine did not make | Leaves it untouched, posts a note **once**, asks for a manual action  |
 | Limit of open merge requests reached        | Does not open a *new* merge request (existing ones are still updated) |
 
 The branch is rebuilt from the default branch whenever it has to be pushed, so it carries exactly one Rustine commit.
 "Same fixes" means the fingerprint written in the description of the merge request (packages, versions, strategies) is
-the one of the new run; a merge request with conflicts is rebuilt anyway. A merge request that was closed by hand is
-opened again at the next run.
+the one of the new run; a merge request with conflicts is rebuilt anyway. A merge request that someone closed by hand is
+not opened again as long as the new run would propose the very same fixes (same fingerprint) and the closing is less
+than `--closed-grace-days` days old (30 by default, `0` to always open a new one). Different fixes, or a later date, open
+a new merge request. The merge requests that Rustine closes itself (nothing fixable anymore) do not count: they carry
+its note. To silence a CVE for good, put it in a `.trivyignore` file and pass `--trivy-arg=--ignorefile=.trivyignore`.
 
 ### Fix strategies
 
@@ -208,6 +212,7 @@ Options take precedence over the variables GitLab CI provides.
 | `--severity-label-format`    |                                          | Default `severity::{severity}` → `severity::high`                                                                                                                                                      |
 | `--assignee`, `--reviewer`   |                                          | Usernames, applied when a merge request is **created**                                                                                                                                                 |
 | `--max-open-merge-requests`  |                                          | Stops opening new merge requests above this number                                                                                                                                                     |
+| `--closed-grace-days`        | `30`                                     | Does not open again a merge request closed by hand for the same fixes less than this many days ago (`0` = always open)                                                                                 |
 | `--git-author-name/-email`   |                                          | Default: the token owner (commit email, else its GitLab private commit email `<id>-<user>@users.noreply.<host>`)                                                                                       |
 | `--remote`                   |                                          | Git remote (default `origin`)                                                                                                                                                                          |
 | `--report-file`              |                                          | Markdown report: status and description of each group                                                                                                                                                  |

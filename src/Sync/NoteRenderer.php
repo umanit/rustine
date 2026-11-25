@@ -14,6 +14,7 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  */
 final readonly class NoteRenderer
 {
+    public const CLOSED_MARKER = '<!-- rustine:note:closed -->';
     public const FOREIGN_MARKER = '<!-- rustine:note:foreign -->';
 
     public function __construct(private TranslatorInterface $translator)
@@ -27,7 +28,7 @@ final readonly class NoteRenderer
 
     public function closed(): string
     {
-        return $this->translator->trans('note.closed', [], TranslatorFactory::DOMAIN);
+        return $this->translator->trans('note.closed', [], TranslatorFactory::DOMAIN) . "\n\n" . self::CLOSED_MARKER;
     }
 
     public function foreign(string $branch): string

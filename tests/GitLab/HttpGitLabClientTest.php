@@ -60,6 +60,24 @@ final class HttpGitLabClientTest extends TestCase
     }
 
     #[Test]
+    public function itFindsTheMostRecentClosedMergeRequestOfABranch(): void
+    {
+        $client = $this->client([$this->json([$this->mr(20, 'security/rustine-yarn-others')])]);
+
+        $mr = $client->findClosedMergeRequest('security/rustine-yarn-others', new \DateTimeImmutable('2026-11-01T10:00:00+01:00'));
+
+        self::assertSame(20, $mr?->iid);
+        $url = urldecode($this->requests[0]['url']);
+        self::assertStringContainsString('state=closed&source_branch=security/rustine-yarn-others&updated_after=2026-11-01T09:00:00Z&order_by=updated_at&sort=desc&per_page=1', $url);
+    }
+
+    #[Test]
+    public function itReturnsNullWhenNothingWasClosedRecently(): void
+    {
+        self::assertNull($this->client([$this->json([])])->findClosedMergeRequest('security/rustine-yarn-others', new \DateTimeImmutable('-30 days')));
+    }
+
+    #[Test]
     public function itFollowsThePagesWhenListing(): void
     {
         $first = array_map(fn (int $i): array => $this->mr($i, 'b' . $i), range(1, 100));

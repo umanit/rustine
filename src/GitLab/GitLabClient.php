@@ -24,6 +24,14 @@ interface GitLabClient
     public function findOpenMergeRequest(string $sourceBranch): ?MergeRequest;
 
     /**
+     * The most recently closed (not merged) merge request whose source branch is `$sourceBranch` and that was updated
+     * since `$since`, if any.
+     *
+     * @throws GitLabException
+     */
+    public function findClosedMergeRequest(string $sourceBranch, \DateTimeImmutable $since): ?MergeRequest;
+
+    /**
      * All the open merge requests of the project carrying every label of `$labels`.
      *
      * @param list<string> $labels

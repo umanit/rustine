@@ -17,6 +17,8 @@ final class FakeGitLab implements GitLabClient
 {
     /** @var array<int, MergeRequest> */
     public array $open = [];
+    /** @var array<int, MergeRequest> */
+    public array $closed = [];
     /** @var array<int, list<string>> */
     public array $notes = [];
     /** @var list<string> */
@@ -35,6 +37,17 @@ final class FakeGitLab implements GitLabClient
     public function findOpenMergeRequest(string $sourceBranch): ?MergeRequest
     {
         foreach ($this->open as $mr) {
+            if ($mr->sourceBranch === $sourceBranch) {
+                return $mr;
+            }
+        }
+
+        return null;
+    }
+
+    public function findClosedMergeRequest(string $sourceBranch, \DateTimeImmutable $since): ?MergeRequest
+    {
+        foreach ($this->closed as $mr) {
             if ($mr->sourceBranch === $sourceBranch) {
                 return $mr;
             }
@@ -73,6 +86,7 @@ final class FakeGitLab implements GitLabClient
     public function closeMergeRequest(int $iid): void
     {
         $this->writes[] = 'close ' . $iid;
+        $this->closed[$iid] = $this->open[$iid];
         unset($this->open[$iid]);
     }
 
@@ -98,5 +112,11 @@ final class FakeGitLab implements GitLabClient
     public function addExisting(string $branch, string $title = 'old', string $description = 'old', array $labels = ['security']): MergeRequest
     {
         return $this->open[$this->nextIid] = new MergeRequest($this->nextIid++, $title, $description, 'https://gitlab.example.com/mr/' . ($this->nextIid - 1), $branch, $labels);
+    }
+
+    public function closeByHand(int $iid): void
+    {
+        $this->closed[$iid] = $this->open[$iid];
+        unset($this->open[$iid]);
     }
 }

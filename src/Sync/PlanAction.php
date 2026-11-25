@@ -20,6 +20,8 @@ enum PlanAction: string
     case NoFix = 'no-fix';
     /** A new merge request was needed but the limit of open merge requests is reached. */
     case SkippedLimit = 'skipped-limit';
+    /** The same fixes were already proposed in a merge request that someone closed: not opened again. */
+    case SkippedClosed = 'skipped-closed';
     /** The branch carries someone else's commits: it was left alone. */
     case SkippedForeign = 'skipped-foreign';
     /** The group could not be processed (git, GitLab, project or consistency error). */

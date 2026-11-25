@@ -19,6 +19,8 @@ final readonly class SyncSettings
      * @param list<string> $assignees           usernames, applied when a merge request is created
      * @param list<string> $reviewers           usernames, applied when a merge request is created
      * @param int|null     $maxOpenMergeRequests only prevents opening new merge requests; null = no limit
+     * @param int          $closedGraceDays      a merge request closed by hand this recently, for the very same fixes, is not
+     *                                           opened again; 0 = always open a new one
      */
     public function __construct(
         public string $defaultBranch,
@@ -27,6 +29,7 @@ final readonly class SyncSettings
         public array $assignees = [],
         public array $reviewers = [],
         public ?int $maxOpenMergeRequests = null,
+        public int $closedGraceDays = 30,
     ) {
     }
 

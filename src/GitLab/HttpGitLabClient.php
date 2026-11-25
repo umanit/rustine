@@ -65,6 +65,29 @@ final readonly class HttpGitLabClient implements GitLabClient
         return null;
     }
 
+    public function findClosedMergeRequest(string $sourceBranch, \DateTimeImmutable $since): ?MergeRequest
+    {
+        $items = $this->request('GET', $this->projectPath . '/merge_requests', ['query' => [
+            'state' => 'closed',
+            'source_branch' => $sourceBranch,
+            'updated_after' => $since->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z'),
+            'order_by' => 'updated_at',
+            'sort' => 'desc',
+            'per_page' => 1,
+        ]]);
+
+        foreach ($items as $item) {
+            if (\is_array($item)) {
+                $mr = $this->mergeRequest($item);
+                if ($mr->sourceBranch === $sourceBranch) {
+                    return $mr;
+                }
+            }
+        }
+
+        return null;
+    }
+
     public function listOpenMergeRequests(array $labels): array
     {
         $merged = [];

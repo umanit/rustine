@@ -49,6 +49,7 @@ final readonly class RunSummary
             PlanAction::Closed => 'nothing fixable anymore, merge request closed',
             PlanAction::NoFix => 'nothing fixable automatically, no merge request',
             PlanAction::SkippedLimit => 'skipped, too many open merge requests',
+            PlanAction::SkippedClosed => 'skipped, the same merge request was closed recently',
             PlanAction::SkippedForeign => 'skipped, the branch has commits that are not Rustine\'s',
             PlanAction::Failed => 'FAILED',
         };

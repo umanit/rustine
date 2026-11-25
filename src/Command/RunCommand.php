@@ -103,6 +103,8 @@ final class RunCommand
         array $reviewer = [],
         #[Option(description: 'Do not open new merge requests while this many Rustine merge requests are open')]
         ?int $maxOpenMergeRequests = null,
+        #[Option(description: 'Do not open again a merge request closed by hand for the same fixes less than this many days ago (0 = always open)')]
+        int $closedGraceDays = 30,
         #[Option(description: 'Name of the commits author (default: name of the token owner)')]
         ?string $gitAuthorName = null,
         #[Option(description: 'Email of the commits author (default: commit email of the token owner, then its GitLab private commit email)')]
@@ -218,7 +220,7 @@ final class RunCommand
             new ProjectPlanApplier($runner, $projectDir, $trivyBin, TrivyScanner::forRescan($trivyArg), $composerCommand, $yarnCommand, $nodeCommand, $verifyMode),
             new MergeRequestRenderer($translator, Application::VERSION),
             new NoteRenderer($translator),
-            new SyncSettings($config->defaultBranch, [] === $label ? ['security'] : $label, $severityLabelFormat, $assignee, $reviewer, $maxOpenMergeRequests),
+            new SyncSettings($config->defaultBranch, [] === $label ? ['security'] : $label, $severityLabelFormat, $assignee, $reviewer, $maxOpenMergeRequests, $closedGraceDays),
         );
 
         $outcomes = [];
