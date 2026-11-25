@@ -326,6 +326,9 @@ English.
 - A Berry `resolutions` key written with a descriptor (`pkg@npm:^1`) is not recognized as equivalent to `pkg`.
 - A `resolutions` entry is refused when the package is installed in several major versions (it would override all of
   them).
+- **A Yarn project whose `package.json` points to a local source** (`file:`, `link:`, `portal:`) that does not exist is
+  refused with an explicit error: Yarn cannot resolve it. It is typical of Symfony UX, which declares
+  `file:vendor/symfony/ux-…/assets`: run `composer install --no-scripts` before Rustine, as it installs nothing.
 - A package declared with a git/URL/alias/local source is reported, never fixed.
 - Major version bumps are reported, never applied.
 - Closing a merge request by hand does not stop Rustine from opening it again.

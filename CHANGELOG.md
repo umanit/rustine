@@ -42,6 +42,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A Yarn project whose `package.json` points to a local source that does not exist (`file:`, `link:`, `portal:`, e.g.
+  `file:vendor/symfony/ux-live-component/assets` before `composer install`) is refused up front with an explicit error.
+  Before, every package failed on a truncated Yarn error, one after the other.
 - Files that appear inside a directory that was already untracked before a fix (a cache that Trivy or Yarn fills) no longer
   abandon it as unexpected changes: `git status` reports an untracked directory as one entry. A new untracked file or
   directory still does.

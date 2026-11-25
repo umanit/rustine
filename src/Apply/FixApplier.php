@@ -120,6 +120,15 @@ final class FixApplier
                     'Committed Yarn PnP/cache files are not supported yet: ' . implode(', ', $artifacts) . '.',
                 );
             }
+
+            $missing = (new YarnLocalSources())->missing($this->projectDir);
+            if ([] !== $missing) {
+                throw new UnsupportedProjectException(sprintf(
+                    'package.json depends on local sources that do not exist (%s): Yarn cannot resolve the project without them. '
+                    . 'Rustine installs nothing: make them available first, e.g. with `composer install --no-scripts` for a path in vendor/.',
+                    implode(', ', $missing),
+                ));
+            }
         }
 
         foreach ($this->strategy->files() as $file) {

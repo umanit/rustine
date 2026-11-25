@@ -409,9 +409,21 @@ final class FixApplierTest extends TestCase
     public function itDoesNotTouchDependenciesDeclaredWithANonRegistrySource(string $spec): void
     {
         file_put_contents($this->dir . '/package.json', json_encode(['dependencies' => ['ckeditor4' => $spec]], \JSON_THROW_ON_ERROR));
+        // A local source that does not exist is refused earlier: here it is there, and simply not to be replaced.
+        $local = str_starts_with($spec, 'file:') ? $this->dir . '/' . substr($spec, 5) : null;
+        if (null !== $local) {
+            mkdir($local, 0o777, true);
+        }
         $rescanner = new QueueRescanner();
 
-        $result = $this->applier($rescanner)->apply(Fixtures::plan(Fixtures::fix()), Fixtures::report([Fixtures::vulnerability()]));
+        try {
+            $result = $this->applier($rescanner)->apply(Fixtures::plan(Fixtures::fix()), Fixtures::report([Fixtures::vulnerability()]));
+        } finally {
+            if (null !== $local) {
+                rmdir($local);
+                rmdir($this->dir . '/vendor');
+            }
+        }
 
         self::assertSame(FixOutcomeStatus::UnsupportedSource, $result->outcomes[0]->status);
         self::assertStringContainsString($spec, $result->outcomes[0]->log[0]);
@@ -430,7 +442,7 @@ final class FixApplierTest extends TestCase
         yield 'git url' => ['git+https://github.com/ckeditor/ckeditor4-releases.git#full/4.22.1'];
         yield 'https tarball' => ['https://example.com/ckeditor4.tgz'];
         yield 'npm alias' => ['npm:other-package@^1.0.0'];
-        yield 'local path' => ['file:../ckeditor4'];
+        yield 'local path' => ['file:vendor/ckeditor4'];
         yield 'workspace' => ['workspace:*'];
     }
 
@@ -651,6 +663,22 @@ final class FixApplierTest extends TestCase
             @unlink($this->dir . '/composer.json');
             @unlink($this->dir . '/composer.lock');
         }
+    }
+
+    #[Test]
+    public function aYarnProjectWithAMissingLocalSourceIsRefusedBeforeAnyCommand(): void
+    {
+        file_put_contents($this->dir . '/package.json', '{"name":"app","dependencies":{"@symfony/ux":"file:vendor/ux/assets"}}');
+
+        try {
+            $this->applier(new QueueRescanner(Fixtures::report()))->apply(Fixtures::plan(Fixtures::fix()), Fixtures::report([Fixtures::vulnerability()]));
+            self::fail('Yarn cannot resolve a project whose local source is missing.');
+        } catch (UnsupportedProjectException $e) {
+            self::assertStringContainsString('@symfony/ux (file:vendor/ux/assets)', $e->getMessage());
+            self::assertStringContainsString('composer install --no-scripts', $e->getMessage());
+        }
+
+        self::assertSame([], $this->runner->toolCommands(), 'Nothing was run.');
     }
 
     #[Test]
