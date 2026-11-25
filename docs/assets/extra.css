@@ -1,0 +1,50 @@
+/* Rustine palette: orange #E4572E, ink #1C1B1A, paper #F6F4EF (see docs/img). Shared by the English and French builds. */
+
+[data-md-color-primary="custom"] {
+  --md-primary-fg-color: #e4572e;
+  --md-primary-fg-color--light: #ee7d5b;
+  --md-primary-fg-color--dark: #c4421d;
+  --md-primary-bg-color: #fff;
+  --md-primary-bg-color--light: rgb(255 255 255 / 70%);
+}
+
+[data-md-color-accent="custom"] {
+  --md-accent-fg-color: #e4572e;
+  --md-accent-fg-color--transparent: rgb(228 87 46 / 10%);
+  --md-accent-bg-color: #fff;
+  --md-accent-bg-color--light: rgb(255 255 255 / 70%);
+}
+
+/* Links stay readable on both backgrounds. */
+[data-md-color-scheme="default"] {
+  --md-typeset-a-color: #c4421d;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-typeset-a-color: #ee7d5b;
+}
+
+/* Header logo: the icon on a light header... */
+.md-header__button.md-logo img {
+  height: 1.6rem;
+  width: auto;
+}
+
+/* ...and the same one on dark ones: the "R" brackets are ink-coloured, so swap to the dark variant. */
+[data-md-color-scheme="slate"] .md-header__button.md-logo img {
+  content: url("../img/rustine-icon-dark.svg");
+}
+
+/* Logos of the home page follow the theme (Material convention: #only-light / #only-dark). */
+[data-md-color-scheme="default"] img[src$="#only-dark"],
+[data-md-color-scheme="slate"] img[src$="#only-light"] {
+  display: none;
+}
+
+.md-typeset img[src*="rustine-logo"] {
+  max-width: 320px;
+}
+
+.md-typeset table:not([class]) {
+  font-size: 0.7rem;
+}

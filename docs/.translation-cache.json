@@ -1,0 +1,29 @@
+{
+  "development": {
+    "source_sha256": "a16b78b8ac278c46dcddffd903de7da07ffa3993c2bead191a154eec1dd626d2"
+  },
+  "how-it-works": {
+    "source_sha256": "6ae02fdd6fe83f9767131269c38fe4d93d85cd41a38f288c08f8d5b56d6639f4"
+  },
+  "index": {
+    "source_sha256": "1d6748f5e912803a8882395d48bfffcf87d61e47400e4c1b98c0c64bda527271"
+  },
+  "installation": {
+    "source_sha256": "612222680c894a0e92a622a9ed4ca832edac3ddcb79729912992afcaca594a7d"
+  },
+  "known-limitations": {
+    "source_sha256": "1f565d43cfb2ad4f6fe8feee13eacf8628273dec6c81ab386a04091afa93985c"
+  },
+  "languages": {
+    "source_sha256": "9f5bc711decfcf04e69bbbcb8055d7690535d106293acba0e26a8e6a8a2a5fa1"
+  },
+  "license": {
+    "source_sha256": "cddd9750522bda650b7d3a8acdfb27f5da18fa7a673a3357b94d958672fcd252"
+  },
+  "requirements": {
+    "source_sha256": "48e1b26dd150646774eaeb045457400f4c1fa431c7e78539d3b6ff11ce24661b"
+  },
+  "usage": {
+    "source_sha256": "a1d51837712c0c19430d9e801c69a936e93007cc4827900cf4bf092b3d8d6f64"
+  }
+}

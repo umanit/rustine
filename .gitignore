@@ -3,3 +3,5 @@ vendor/
 .direnv/
 /build/
 .phpcs-cache
+/site/
+.venv-docs/
