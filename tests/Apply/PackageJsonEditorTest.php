@@ -117,4 +117,52 @@ final class PackageJsonEditorTest extends TestCase
 
         (new PackageJsonEditor())->setResolution($this->file, 'foo', '^1.0.0');
     }
+
+    #[Test]
+    public function theRestOfTheFileIsLeftByteForByte(): void
+    {
+        $original = "{\n  \"name\": \"app\",\n  \"files\": [\"dist\", \"src\"],\n  \"browserslist\": [ \"> 1%\", \"last 2 versions\" ],\n  \"dependencies\": {\n    \"foo\" :   \"1.0.0\",\n    \"bar\": \"^2.0.0\"\n  }\n}\n";
+        file_put_contents($this->file, $original);
+
+        (new PackageJsonEditor())->setDependencyRange($this->file, 'foo', '^1.5.0');
+        (new PackageJsonEditor())->setResolution($this->file, '**/baz', '^3.0.0');
+
+        self::assertSame(
+            "{\n  \"name\": \"app\",\n  \"files\": [\"dist\", \"src\"],\n  \"browserslist\": [ \"> 1%\", \"last 2 versions\" ],\n  \"dependencies\": {\n    \"foo\" :   \"^1.5.0\",\n    \"bar\": \"^2.0.0\"\n  },\n  \"resolutions\": {\n    \"**/baz\": \"^3.0.0\"\n  }\n}\n",
+            file_get_contents($this->file),
+        );
+    }
+
+    #[Test]
+    public function aNewResolutionIsAppendedToTheExistingBlockInItsStyle(): void
+    {
+        file_put_contents($this->file, "{\r\n\t\"resolutions\": {\r\n\t\t\"a\": \"^1.0.0\"\r\n\t},\r\n\t\"files\": [\"x\"]\r\n}\r\n");
+
+        (new PackageJsonEditor())->setResolution($this->file, 'b', '^2.0.0');
+
+        self::assertSame(
+            "{\r\n\t\"resolutions\": {\r\n\t\t\"a\": \"^1.0.0\",\r\n\t\t\"b\": \"^2.0.0\"\r\n\t},\r\n\t\"files\": [\"x\"]\r\n}\r\n",
+            file_get_contents($this->file),
+        );
+    }
+
+    #[Test]
+    public function aKeyContainingBracesAndColonsDoesNotConfuseTheEdit(): void
+    {
+        file_put_contents($this->file, "{\n  \"scripts\": {\"a:b\": \"echo }\\\" {\"},\n  \"dependencies\": {\n    \"foo\": \"1.0.0\"\n  }\n}\n");
+
+        (new PackageJsonEditor())->setDependencyRange($this->file, 'foo', '^1.1.0');
+
+        self::assertSame("{\n  \"scripts\": {\"a:b\": \"echo }\\\" {\"},\n  \"dependencies\": {\n    \"foo\": \"^1.1.0\"\n  }\n}\n", file_get_contents($this->file));
+    }
+
+    #[Test]
+    public function anInlineObjectFallsBackToReEncoding(): void
+    {
+        file_put_contents($this->file, "{\"resolutions\": {\"a\": \"1.0.0\"}}\n");
+
+        (new PackageJsonEditor())->setResolution($this->file, 'b', '^2.0.0');
+
+        self::assertSame('{"resolutions":{"a":"1.0.0","b":"^2.0.0"}}', json_encode(json_decode((string) file_get_contents($this->file))));
+    }
 }
