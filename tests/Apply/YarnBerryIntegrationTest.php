@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Rustine\Tests\Apply;
 
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\SkippedWithMessageException;
 use PHPUnit\Framework\TestCase;
 use Rustine\Apply\ApplyResult;
 use Rustine\Apply\AttemptKind;
@@ -19,19 +20,19 @@ use Rustine\Apply\WorkingTree;
 use Rustine\Apply\YarnBerryStrategy;
 use Rustine\Plan\DependencyKind;
 use Rustine\Tests\Apply\Support\Fixtures;
+use Rustine\Tests\Apply\Support\LocalNpmRegistry;
 use Rustine\Tests\Apply\Support\QueueRescanner;
 use Rustine\Trivy\Ecosystem;
-use Symfony\Component\Process\Process;
 
 /**
- * Real Yarn Berry (4+) and real git, no network: the packages come from a registry served by PHP's built-in web server
- * from a temporary directory. Only Trivy is replaced. Skipped without Yarn 4+, `tar` or a free local port.
+ * Real Yarn Berry (4+) and real git, no network: the packages come from a registry served by PHP's built-in web
+ * server. Only Trivy is replaced. Skipped without Yarn 4+, `tar` or a free local port (see {@see LocalNpmRegistry}).
  */
 final class YarnBerryIntegrationTest extends TestCase
 {
     private string $root;
     private string $dir;
-    private ?Process $server = null;
+    private LocalNpmRegistry $registry;
 
     protected function setUp(): void
     {
@@ -39,20 +40,24 @@ final class YarnBerryIntegrationTest extends TestCase
         if (!$version->isSuccessful() || !YarnBerryStrategy::supportsLockfileOnly(trim($version->output))) {
             self::markTestSkipped('Yarn 4 or later is not available.');
         }
-        if (!(new ProcessCommandRunner(30.0))->run(['tar', '--version'], sys_get_temp_dir())->isSuccessful()) {
-            self::markTestSkipped('tar is not available.');
-        }
 
         $this->root = sys_get_temp_dir() . '/rustine-yarn-' . bin2hex(random_bytes(4));
         $this->dir = $this->root . '/project';
         mkdir($this->dir, 0777, true);
         mkdir($this->root . '/home');
-        $this->startRegistry();
+        $this->registry = new LocalNpmRegistry();
+        try {
+            $this->registry->start($this->root);
+        } catch (SkippedWithMessageException $e) {
+            self::markTestSkipped($e->getMessage());
+        }
     }
 
     protected function tearDown(): void
     {
-        $this->server?->stop(1);
+        if (isset($this->registry)) {
+            $this->registry->stop();
+        }
         if (isset($this->root)) {
             (new ProcessCommandRunner())->run(['rm', '-rf', '--', $this->root], sys_get_temp_dir());
         }
@@ -130,10 +135,9 @@ final class YarnBerryIntegrationTest extends TestCase
      */
     private function project(string $range, string $locked): void
     {
-        $port = $this->port();
         file_put_contents($this->dir . '/.yarnrc.yml', sprintf(
-            "nodeLinker: node-modules\nnpmRegistryServer: \"http://127.0.0.1:%d\"\nunsafeHttpWhitelist: [\"127.0.0.1\"]\nenableTelemetry: false\n",
-            $port,
+            "nodeLinker: node-modules\nnpmRegistryServer: \"%s\"\nunsafeHttpWhitelist: [\"127.0.0.1\"]\nenableTelemetry: false\n",
+            $this->registry->url(),
         ));
         file_put_contents($this->dir . '/.gitignore', "node_modules/\n.yarn/\n");
         file_put_contents($this->dir . '/yarn.lock', '');
@@ -147,6 +151,8 @@ final class YarnBerryIntegrationTest extends TestCase
             ['"lib@npm:' . $range . '":', 'lib: "npm:' . $range . '"'],
             $lock,
         ));
+
+        self::assertStringContainsString('version: ' . $locked, $this->lockBlock(), 'the project starts on the old version');
 
         $this->exec(['git', 'init', '--quiet']);
         $this->exec(['git', 'add', '.']);
@@ -166,75 +172,6 @@ final class YarnBerryIntegrationTest extends TestCase
     private function changes(): array
     {
         return array_values(array_filter(array_map('trim', explode("\n", $this->exec(['git', 'status', '--porcelain', '--untracked-files=normal'])))));
-    }
-
-    private ?int $port = null;
-
-    private function port(): int
-    {
-        return $this->port ?? self::fail('The registry is not started.');
-    }
-
-    private function startRegistry(): void
-    {
-        $socket = @stream_socket_server('tcp://127.0.0.1:0', $errno, $error);
-        if (false === $socket) {
-            self::markTestSkipped('No local port available: ' . $error);
-        }
-        $port = (int) substr((string) strrchr((string) stream_socket_get_name($socket, false), ':'), 1);
-        fclose($socket);
-
-        $registry = $this->root . '/registry';
-        mkdir($registry . '/lib/-', 0777, true);
-        $versions = [];
-        foreach (['1.0.0', '1.0.5', '1.1.0', '2.0.0'] as $version) {
-            $build = $this->root . '/build';
-            mkdir($build . '/package', 0777, true);
-            file_put_contents($build . '/package/package.json', json_encode(['name' => 'lib', 'version' => $version], \JSON_THROW_ON_ERROR));
-            $tarball = $registry . '/lib/-/lib-' . $version . '.tgz';
-            $made = (new ProcessCommandRunner(30.0))->run(['tar', '-czf', $tarball, '-C', $build, 'package'], $this->root);
-            self::assertTrue($made->isSuccessful(), $made->output);
-            (new ProcessCommandRunner(30.0))->run(['rm', '-rf', '--', $build], $this->root);
-            $versions[$version] = [
-                'name' => 'lib',
-                'version' => $version,
-                'dist' => ['tarball' => sprintf('http://127.0.0.1:%d/lib/-/lib-%s.tgz', $port, $version), 'shasum' => sha1_file($tarball)],
-            ];
-        }
-        file_put_contents($registry . '/lib.json', json_encode(['name' => 'lib', 'dist-tags' => ['latest' => '2.0.0'], 'versions' => $versions], \JSON_THROW_ON_ERROR));
-        file_put_contents($this->root . '/router.php', <<<'PHP'
-            <?php
-            $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-            $root = __DIR__ . '/registry';
-            if ('/lib' === $path) {
-                header('Content-Type: application/json');
-                readfile($root . '/lib.json');
-
-                return;
-            }
-            if (is_file($root . $path)) {
-                header('Content-Type: application/octet-stream');
-                readfile($root . $path);
-
-                return;
-            }
-            http_response_code(404);
-            PHP);
-
-        $this->server = new Process([\PHP_BINARY, '-S', '127.0.0.1:' . $port, $this->root . '/router.php'], $this->root);
-        $this->server->start();
-        for ($i = 0; $i < 50; ++$i) {
-            $connection = @fsockopen('127.0.0.1', $port, $errno, $error, 0.2);
-            if (false !== $connection) {
-                fclose($connection);
-                $this->port = $port;
-
-                return;
-            }
-            usleep(100_000);
-        }
-
-        self::markTestSkipped('The test registry did not start.');
     }
 
     /**

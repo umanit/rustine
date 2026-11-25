@@ -22,7 +22,7 @@ jobs:
           tools: composer:v2
           coverage: none
 
-      # The integration tests use a real Yarn Berry (against a local registry); they are skipped without it.
+      # The integration tests use a real Yarn (against a local registry); they are skipped without it.
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
@@ -38,6 +38,13 @@ jobs:
 
       - name: Static analysis and tests
         run: make full_static_analyze
+
+      # Only one Yarn is active at a time: the Yarn Classic integration tests get their own pass.
+      - name: Yarn Classic integration tests
+        run: |
+          corepack prepare yarn@1.22.22 --activate
+          yarn --version
+          vendor/bin/phpunit tests/Apply/YarnClassicIntegrationTest.php --fail-on-skipped
 
   phar:
     name: Build the PHAR
