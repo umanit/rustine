@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--notify=<user or group>` on `run` (repeatable, with or without the leading `@`) mentions people in the description of
   the merge requests (`cc @alice @team/sec`, `Pour information : @alice` in French), so that GitLab notifies them without
   assigning the merge request to them.
+- More options of `run` can be set by environment variable (the option still wins, then the variable, then the
+  default): `RUSTINE_GROUP`, `RUSTINE_ECOSYSTEM`, `RUSTINE_REMOTE`, `RUSTINE_LABEL`, `RUSTINE_SEVERITY_LABEL_FORMAT`,
+  `RUSTINE_ASSIGNEE`, `RUSTINE_REVIEWER`, `RUSTINE_NOTIFY`, `RUSTINE_MAX_OPEN_MERGE_REQUESTS`,
+  `RUSTINE_CLOSED_GRACE_DAYS`, `RUSTINE_GIT_AUTHOR_NAME` and `RUSTINE_GIT_AUTHOR_EMAIL`. Lists are separated by commas;
+  the two numbers must be non-negative integers. `RUSTINE_TRIVY_BIN` and `RUSTINE_TRIVY_ARG` (separated by spaces, as
+  Trivy arguments contain commas) are also read by `scan` and `apply`.
 
 ### Changed
 

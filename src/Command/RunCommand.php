@@ -60,11 +60,11 @@ final readonly class RunCommand
         #[Option(description: 'Trivy JSON report: read by --dry-run, written by the scan of a real run')]
         string $report = 'trivy-report.json',
         #[Option(
-            description: 'Severity group to process: critical-high or others (repeatable, default: every group in'
-            . ' one merge request per ecosystem)',
+            description: 'Severity group to process: critical-high or others (repeatable, default: $RUSTINE_GROUP'
+            . ' separated by commas, then every group in one merge request per ecosystem)',
         )]
         array $group = [],
-        #[Option(description: 'Ecosystem to process: yarn or composer (default: both)')]
+        #[Option(description: 'Ecosystem to process: yarn or composer (default: $RUSTINE_ECOSYSTEM, then both)')]
         ?string $ecosystem = null,
         #[Option(description: 'Language of the merge request and commit texts (default: $RUSTINE_LOCALE, then en)')]
         ?string $locale = null,
@@ -74,9 +74,12 @@ final readonly class RunCommand
         ?string $reportFile = null,
         #[Option(description: 'Preview the merge requests from an existing report, without touching git or GitLab')]
         bool $dryRun = false,
-        #[Option(description: 'Trivy binary')]
-        string $trivyBin = 'trivy',
-        #[Option(description: 'Extra Trivy argument for the scan and the re-scans (repeatable)')]
+        #[Option(description: 'Trivy binary (default: $RUSTINE_TRIVY_BIN, then trivy)')]
+        ?string $trivyBin = null,
+        #[Option(
+            description: 'Extra Trivy argument for the scan and the re-scans (repeatable, default: $RUSTINE_TRIVY_ARG'
+            . ' separated by spaces)',
+        )]
         array $trivyArg = [],
         #[Option(
             description: 'Also scan the development dependencies (require-dev, devDependencies); default:'
@@ -114,35 +117,50 @@ final readonly class RunCommand
             . ' $CI_DEFAULT_BRANCH)',
         )]
         ?string $defaultBranch = null,
-        #[Option(description: 'Git remote to fetch from and push to')]
-        string $remote = 'origin',
-        #[Option(description: 'Label set on every merge request, never translated (repeatable, default: security)')]
+        #[Option(description: 'Git remote to fetch from and push to (default: $RUSTINE_REMOTE, then origin)')]
+        ?string $remote = null,
+        #[Option(
+            description: 'Label set on every merge request, never translated (repeatable, default: $RUSTINE_LABEL'
+            . ' separated by commas, then security)',
+        )]
         array $label = [],
         #[Option(
-            description: 'Label of the highest severity of a merge request; {severity} is replaced by critical, high…',
+            description: 'Label of the highest severity of a merge request; {severity} is replaced by critical, high…'
+            . ' (default: $RUSTINE_SEVERITY_LABEL_FORMAT, then severity::{severity})',
         )]
-        string $severityLabelFormat = 'severity::{severity}',
-        #[Option(description: 'Username assigned to the merge requests Rustine opens (repeatable)')]
+        ?string $severityLabelFormat = null,
+        #[Option(
+            description: 'Username assigned to the merge requests Rustine opens (repeatable, default:'
+            . ' $RUSTINE_ASSIGNEE separated by commas)',
+        )]
         array $assignee = [],
-        #[Option(description: 'Username asked to review the merge requests Rustine opens (repeatable)')]
+        #[Option(
+            description: 'Username asked to review the merge requests Rustine opens (repeatable, default:'
+            . ' $RUSTINE_REVIEWER separated by commas)',
+        )]
         array $reviewer = [],
         #[Option(
             description: 'Username (or group) mentioned in the description of the merge requests, to notify them'
-            . ' without assigning (repeatable)',
+            . ' without assigning (repeatable, default: $RUSTINE_NOTIFY separated by commas)',
         )]
         array $notify = [],
-        #[Option(description: 'Do not open new merge requests while this many Rustine merge requests are open')]
+        #[Option(
+            description: 'Do not open new merge requests while this many Rustine merge requests are open (default:'
+            . ' $RUSTINE_MAX_OPEN_MERGE_REQUESTS, then no limit)',
+        )]
         ?int $maxOpenMergeRequests = null,
         #[Option(
             description: 'Do not open again a merge request closed by hand for the same fixes less than this many days'
-            . ' ago (0 = always open)',
+            . ' ago, 0 = always open (default: $RUSTINE_CLOSED_GRACE_DAYS, then 30)',
         )]
-        int $closedGraceDays = 30,
-        #[Option(description: 'Name of the commits author (default: name of the token owner)')]
+        ?int $closedGraceDays = null,
+        #[Option(
+            description: 'Name of the commits author (default: $RUSTINE_GIT_AUTHOR_NAME, then name of the token owner)',
+        )]
         ?string $gitAuthorName = null,
         #[Option(
-            description: 'Email of the commits author (default: commit email of the token owner, then its GitLab'
-            . ' private commit email)',
+            description: 'Email of the commits author (default: $RUSTINE_GIT_AUTHOR_EMAIL, then commit email of the'
+            . ' token owner, then its GitLab private commit email)',
         )]
         ?string $gitAuthorEmail = null,
     ): int {
@@ -157,11 +175,27 @@ final readonly class RunCommand
         }
         $translator = $factory->create($locale);
 
+        $trivyBin = Environment::string($trivyBin, 'RUSTINE_TRIVY_BIN', 'trivy');
+        $trivyArg = Environment::list($trivyArg, 'RUSTINE_TRIVY_ARG', '\s+');
+        $remote = Environment::string($remote, 'RUSTINE_REMOTE', 'origin');
+        $label = Environment::list($label, 'RUSTINE_LABEL');
+        $severityLabelFormat = Environment::string(
+            $severityLabelFormat,
+            'RUSTINE_SEVERITY_LABEL_FORMAT',
+            'severity::{severity}',
+        );
+        $assignee = Environment::list($assignee, 'RUSTINE_ASSIGNEE');
+        $reviewer = Environment::list($reviewer, 'RUSTINE_REVIEWER');
+        $gitAuthorName = Environment::optionalString($gitAuthorName, 'RUSTINE_GIT_AUTHOR_NAME');
+        $gitAuthorEmail = Environment::optionalString($gitAuthorEmail, 'RUSTINE_GIT_AUTHOR_EMAIL');
+
         try {
-            $groups = Options::groups($group);
+            $groups = Options::groups(Environment::list($group, 'RUSTINE_GROUP'));
             $verifyMode = Options::verifyMode($verify);
-            $wanted = Options::ecosystem($ecosystem);
-            $mentions = Options::mentions($notify);
+            $wanted = Options::ecosystem(Environment::optionalString($ecosystem, 'RUSTINE_ECOSYSTEM'));
+            $mentions = Options::mentions(Environment::list($notify, 'RUSTINE_NOTIFY'));
+            $maxOpenMergeRequests = Environment::int($maxOpenMergeRequests, 'RUSTINE_MAX_OPEN_MERGE_REQUESTS', null);
+            $closedGraceDays = Environment::int($closedGraceDays, 'RUSTINE_CLOSED_GRACE_DAYS', 30) ?? 30;
         } catch (InvalidOptionException $invalidOptionException) {
             $io->error($invalidOptionException->getMessage());
 
@@ -225,7 +259,7 @@ final readonly class RunCommand
                 static fn(string $buffer) => $io->getErrorStyle()->write($buffer),
             );
             $parsedReport = new TrivyReportParser()->parseFile($report);
-        } catch (InvalidTrivyReportException | \RuntimeException $e) {
+        } catch (InvalidTrivyReportException|\RuntimeException $e) {
             $io->error($e->getMessage());
 
             return Command::FAILURE;

@@ -43,9 +43,12 @@ final class ApplyCommand
         array $group = [],
         #[Option(description: 'Ecosystem to process: yarn or composer (required when the group has both)')]
         ?string $ecosystem = null,
-        #[Option(description: 'Trivy binary')]
-        string $trivyBin = 'trivy',
-        #[Option(description: 'Extra Trivy argument for the re-scans (repeatable)')]
+        #[Option(description: 'Trivy binary (default: $RUSTINE_TRIVY_BIN, then trivy)')]
+        ?string $trivyBin = null,
+        #[Option(
+            description: 'Extra Trivy argument for the re-scans (repeatable, default: $RUSTINE_TRIVY_ARG separated by'
+            . ' spaces)',
+        )]
         array $trivyArg = [],
         #[Option(
             description: 'Also check the development dependencies in the re-scans: pass it when the report was made'
@@ -126,8 +129,11 @@ final class ApplyCommand
         $planApplier = new ProjectPlanApplier(
             new ProcessCommandRunner(),
             $projectDir,
-            $trivyBin,
-            TrivyScanner::withDevDependencies($trivyArg, Environment::flag($includeDev, 'RUSTINE_INCLUDE_DEV')),
+            Environment::string($trivyBin, 'RUSTINE_TRIVY_BIN', 'trivy'),
+            TrivyScanner::withDevDependencies(
+                Environment::list($trivyArg, 'RUSTINE_TRIVY_ARG', '\\s+'),
+                Environment::flag($includeDev, 'RUSTINE_INCLUDE_DEV'),
+            ),
             $tools->composer,
             $tools->yarn,
             $tools->node,

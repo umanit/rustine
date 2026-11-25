@@ -22,9 +22,10 @@ final class ScanCommand
         string $project = '.',
         #[Option(description: 'Path of the JSON report to write')]
         string $output = 'trivy-report.json',
-        #[Option(description: 'Trivy binary')]
-        string $trivyBin = 'trivy',
-        #[Option(description: 'Extra Trivy argument (repeatable), e.g. --trivy-arg=--skip-db-update')]
+        #[Option(description: 'Trivy binary (default: $RUSTINE_TRIVY_BIN, then trivy)')]
+        ?string $trivyBin = null,
+        #[Option(description: 'Extra Trivy argument (repeatable, default: $RUSTINE_TRIVY_ARG separated by spaces), e.g.'
+            . ' --trivy-arg=--skip-db-update')]
         array $trivyArg = [],
         #[Option(
             description: 'Also scan the development dependencies (require-dev, devDependencies); default:'
@@ -33,10 +34,13 @@ final class ScanCommand
         bool $includeDev = false,
     ): int {
         try {
-            new TrivyScanner($trivyBin)->scan(
+            new TrivyScanner(Environment::string($trivyBin, 'RUSTINE_TRIVY_BIN', 'trivy'))->scan(
                 $project,
                 $output,
-                TrivyScanner::withDevDependencies($trivyArg, Environment::flag($includeDev, 'RUSTINE_INCLUDE_DEV')),
+                TrivyScanner::withDevDependencies(
+                    Environment::list($trivyArg, 'RUSTINE_TRIVY_ARG', '\\s+'),
+                    Environment::flag($includeDev, 'RUSTINE_INCLUDE_DEV'),
+                ),
                 static fn(string $buffer) => $io->getErrorStyle()->write($buffer),
             );
         } catch (\Throwable $throwable) {

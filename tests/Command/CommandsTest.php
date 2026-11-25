@@ -422,6 +422,71 @@ final class CommandsTest extends TestCase
     }
 
     #[Test]
+    public function scanReadsTheTrivyArgumentsFromTheEnvironment(): void
+    {
+        $arguments = $this->scanArguments([], ['RUSTINE_TRIVY_ARG' => '--severity=HIGH,CRITICAL  --skip-db-update']);
+
+        $this->assertContains('--severity=HIGH,CRITICAL', $arguments);
+        $this->assertContains('--skip-db-update', $arguments);
+    }
+
+    #[Test]
+    public function runReadsTheGroupsFromTheEnvironment(): void
+    {
+        $this->withEnvironment(['RUSTINE_GROUP' => 'others, critical-high'], function (): void {
+            $tester = $this->tester('run');
+            $tester->execute(['--report' => self::REPORT, '--dry-run' => true, '--project' => sys_get_temp_dir()]);
+
+            $this->assertSame(Command::SUCCESS, $tester->getStatusCode());
+            $this->assertStringContainsString('security/rustine-yarn-critical-high', $tester->getDisplay());
+            $this->assertStringContainsString('security/rustine-yarn-others', $tester->getDisplay());
+        });
+    }
+
+    #[Test]
+    public function runOptionsWinOverTheEnvironment(): void
+    {
+        $this->withEnvironment(['RUSTINE_GROUP' => 'others'], function (): void {
+            $tester = $this->tester('run');
+            $tester->execute(
+                [
+                    '--report'  => self::REPORT,
+                    '--group'   => ['critical-high'],
+                    '--dry-run' => true,
+                    '--project' => sys_get_temp_dir(),
+                ],
+            );
+
+            $this->assertStringContainsString('security/rustine-yarn-critical-high', $tester->getDisplay());
+            $this->assertStringNotContainsString('rustine-yarn-others', $tester->getDisplay());
+        });
+    }
+
+    #[Test]
+    public function runRejectsAnInvalidIntegerVariable(): void
+    {
+        $this->withEnvironment(['RUSTINE_CLOSED_GRACE_DAYS' => 'soon'], function (): void {
+            $tester = $this->tester('run');
+            $tester->execute(['--report' => self::REPORT, '--dry-run' => true, '--project' => sys_get_temp_dir()]);
+
+            $this->assertSame(Command::FAILURE, $tester->getStatusCode());
+            $this->assertStringContainsString('RUSTINE_CLOSED_GRACE_DAYS', $tester->getDisplay());
+        });
+    }
+
+    #[Test]
+    public function runRejectsAnUnknownEcosystemFromTheEnvironment(): void
+    {
+        $this->withEnvironment(['RUSTINE_ECOSYSTEM' => 'pip'], function (): void {
+            $tester = $this->tester('run');
+            $tester->execute(['--report' => self::REPORT, '--dry-run' => true, '--project' => sys_get_temp_dir()]);
+
+            $this->assertSame(Command::FAILURE, $tester->getStatusCode());
+            $this->assertStringContainsString('Unknown ecosystem "pip"', $tester->getDisplay());
+        });
+    }
+
+    #[Test]
     public function runRejectsAnUnknownLocale(): void
     {
         // Exit code 2 means "manual action required" for `run`: a usage error must be a plain failure (1).
