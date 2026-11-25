@@ -69,8 +69,9 @@ final readonly class ProjectPlanApplier implements PlanApplier
         $probe = new ToolProbe($this->runner, $this->projectDir);
 
         if (Ecosystem::Composer === $ecosystem) {
-            $versions = $probe->composer(ComposerStrategy::fromCommandLine($this->composerCommand)->command());
-            $this->assertFlexIsLoadedWhenRequired();
+            $composer = ComposerStrategy::fromCommandLine($this->composerCommand)->command();
+            $versions = $probe->composer($composer);
+            $this->assertFlexIsLoadedWhenRequired($composer);
 
             return $versions;
         }
@@ -97,12 +98,15 @@ final readonly class ProjectPlanApplier implements PlanApplier
     }
 
     /**
-     * `extra.symfony.require` is only enforced by Symfony Flex, which Composer loads from `vendor/`: without it, an update
-     * silently moves the `symfony/*` components of the project to another minor.
+     * `extra.symfony.require` is only enforced by Symfony Flex: without it, an update silently moves the `symfony/*`
+     * components of the project to another minor. Flex is loaded from the `vendor/` of the project, or from the global
+     * Composer home, which is preferable as the plugins of the project are then not loaded.
+     *
+     * @param non-empty-list<string> $composer
      *
      * @throws ToolingException
      */
-    private function assertFlexIsLoadedWhenRequired(): void
+    private function assertFlexIsLoadedWhenRequired(array $composer): void
     {
         $manifest = ComposerManifest::read($this->projectDir . '/composer.json');
         $require = $manifest->symfonyRequire();
@@ -111,16 +115,24 @@ final readonly class ProjectPlanApplier implements PlanApplier
         }
 
         $vendor = $manifest->vendorDir();
-        $flex = (str_starts_with($vendor, '/') ? $vendor : $this->projectDir . '/' . $vendor) . '/symfony/flex';
-        if (!is_dir($flex)) {
-            throw new ToolingException(sprintf(
-                'composer.json sets extra.symfony.require to "%s", which only Symfony Flex enforces, and Flex is not installed '
-                . '(no %s/symfony/flex): the update would move Symfony components to another minor version. Rustine installs no '
-                . 'tool: run `composer install --no-scripts` before it.',
-                $require,
-                $vendor,
-            ));
+        if (is_dir((str_starts_with($vendor, '/') ? $vendor : $this->projectDir . '/' . $vendor) . '/symfony/flex')) {
+            return;
         }
+
+        // Exits with 0 only when Flex is installed in the global Composer home.
+        if ($this->runner->run([...$composer, 'global', 'show', 'symfony/flex', '--no-ansi'], $this->projectDir, ['COMPOSER_NO_INTERACTION' => '1'])->isSuccessful()) {
+            return;
+        }
+
+        throw new ToolingException(sprintf(
+            'composer.json sets extra.symfony.require to "%s", which only Symfony Flex enforces, and Flex is installed neither '
+            . 'in %s/ nor globally: the update would move Symfony components to another minor version. Rustine installs no tool: '
+            . 'have the environment provide it, preferably globally so that the plugins of the project are not loaded '
+            . '(`composer global config allow-plugins.symfony/flex true && composer global require symfony/flex --no-scripts`), '
+            . 'or run `composer install --no-scripts` first.',
+            $require,
+            $vendor,
+        ));
     }
 
     /**

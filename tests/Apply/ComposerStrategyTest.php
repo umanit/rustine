@@ -70,9 +70,23 @@ final class ComposerStrategyTest extends TestCase
         self::assertCount(1, $attempts);
         self::assertSame(AttemptKind::LockfileRefresh, $attempts[0]->kind);
         self::assertSame(
-            [['composer', 'update', 'twig/twig', '--with-all-dependencies', '--no-install', '--no-interaction', '--no-scripts', '--no-progress']],
+            [['composer', 'update', 'twig/twig', '--with-all-dependencies', '--no-install', '--no-interaction', '--no-scripts', '--no-progress', '--no-plugins']],
             $attempts[0]->commands,
         );
+    }
+
+    #[Test]
+    public function pluginsAreOnlyEnabledForAProjectThatNeedsFlex(): void
+    {
+        $this->manifest('{"require":{"twig/twig":"3.4.0"},"extra":{"symfony":{"require":"6.4.*"}}}');
+
+        $attempts = (new ComposerStrategy())->attempts($this->fix(DependencyKind::Direct, 'v3.4.3'), $this->dir);
+
+        foreach ($attempts as $attempt) {
+            self::assertNotContains('--no-plugins', $attempt->commands[0]);
+            self::assertContains('--no-scripts', $attempt->commands[0], 'Scripts stay disabled.');
+            self::assertContains('--no-install', $attempt->commands[0]);
+        }
     }
 
     #[Test]
@@ -84,7 +98,7 @@ final class ComposerStrategyTest extends TestCase
 
         self::assertSame([AttemptKind::LockfileRefresh, AttemptKind::DirectBump], array_map(static fn ($a) => $a->kind, $attempts));
         self::assertSame(
-            ['composer', 'require', 'twig/twig:^3.4.3', '--update-with-all-dependencies', '--no-install', '--no-interaction', '--no-scripts', '--no-progress'],
+            ['composer', 'require', 'twig/twig:^3.4.3', '--update-with-all-dependencies', '--no-install', '--no-interaction', '--no-scripts', '--no-progress', '--no-plugins'],
             $attempts[1]->commands[0],
             'The leading v of the version is dropped from the constraint.',
         );

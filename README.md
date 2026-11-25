@@ -26,10 +26,10 @@ On every scheduled run, for the ecosystem(s) and severity group you ask for:
 2. **Plan** — vulnerable packages are grouped per ecosystem and severity group; for each one Rustine picks the smallest
    fixed version, in the same major version when possible (the same minor version for `0.x`, where a new minor is a
    breaking change).
-3. **Apply** — package by package, strategies are tried in order. After each attempt the lockfile is read back: the change
-   is kept only if the package is no longer locked at a vulnerable version, otherwise the files are restored and the
-   next strategy is tried. A package that cannot be fixed never blocks the others. Trivy runs once, when every package
-   has been handled, to confirm the result: a fix whose CVEs it still reports is flagged for a manual check.
+3. **Apply** — package by package, strategies are tried in order. After each attempt the lockfile is read back: the
+   change is kept only if the package is no longer locked at a vulnerable version, otherwise the files are restored and
+   the next strategy is tried. A package that cannot be fixed never blocks the others. Trivy runs once, when every
+   package has been handled, to confirm the result: a fix whose CVEs it still reports is flagged for a manual check.
 4. **Publish** — a stable branch is force-pushed and a merge request is opened or updated; its description lists the
    CVEs, the dependency chain, the strategy used and the verification.
 
@@ -66,9 +66,9 @@ The branch name is stable, so a run is a reconciliation of what the branch shoul
 | Limit of open merge requests reached        | Does not open a *new* merge request (existing ones are still updated) |
 
 The branch is rebuilt from the default branch whenever it has to be pushed, so it carries exactly one Rustine commit.
-"Same fixes" means the fingerprint written in the description of the merge request (packages, versions, strategies) is the
-one of the new run; a merge request with conflicts is rebuilt anyway. A merge request that
-was closed by hand is opened again at the next run.
+"Same fixes" means the fingerprint written in the description of the merge request (packages, versions, strategies) is
+the one of the new run; a merge request with conflicts is rebuilt anyway. A merge request that was closed by hand is
+opened again at the next run.
 
 ### Fix strategies
 
@@ -79,7 +79,8 @@ was closed by hand is opened again at the next run.
 | Composer     | `composer update <pkg> -W` → `composer require <pkg>:^x -W` (`--dev` for `require-dev`); on failure `composer why-not` is added to the log |
 
 The description of the merge request lists what actually changed in the lockfile (versions before and after), the
-packages of the fixes in bold and the ones that moved along as is. With Yarn Berry 4 or later, every attempt runs with `--mode=update-lockfile`: Yarn resolves and fetches what the lockfile
+packages of the fixes in bold and the ones that moved along as is. With Yarn Berry 4 or later, every attempt runs with
+`--mode=update-lockfile`: Yarn resolves and fetches what the lockfile
 lacks but skips the link step, so `node_modules` is not rebuilt after each attempt of each package (Trivy only reads
 `yarn.lock`). The final `yarn install --immutable` is a full install and brings `node_modules` in line with the result.
 Older Berry versions run the plain commands.
@@ -87,12 +88,20 @@ Older Berry versions run the plain commands.
 `resolutions` are technical debt, and are flagged as such in the description. A final `yarn install --immutable` /
 `--frozen-lockfile` / `composer validate` must pass before anything is pushed.
 
-Composer runs with `--no-install --no-scripts`: nothing is installed and no script runs, but the plugins of the project
-do (only the ones its `allow-plugins` allows). Symfony Flex needs it: it is what enforces `extra.symfony.require` while
-Composer resolves, and without it an update moves the `symfony/*` components that the project does not require itself
-to another minor (`symfony/string` 6.4 → 7.4 in a 6.4 project). Flex is loaded from `vendor/`, so when
-`extra.symfony.require` is set and `vendor/symfony/flex` is missing, Rustine stops with an explicit error instead of
-producing that merge request: run `composer install --no-scripts` before it.
+Composer runs with `--no-install --no-scripts --no-plugins`: nothing is installed, and no script or plugin of the
+project runs (a plugin is arbitrary code, and Rustine holds a powerful token). The one exception is a project that sets
+`extra.symfony.require`, which only Symfony Flex enforces while Composer resolves: without Flex, an update moves the
+`symfony/*` components that the project does not require itself to another minor (`symfony/string` 6.4 → 7.4 in a 6.4
+project). Plugins are then enabled and Rustine checks that Flex is installed, otherwise it stops with an explicit error
+instead of producing that merge request. Install Flex **globally** in the environment of the job:
+
+```bash
+composer global config allow-plugins.symfony/flex true && composer global require symfony/flex --no-scripts
+```
+
+Only Flex is then loaded, and no plugin of the project. A `vendor/symfony/flex` (`composer install --no-scripts`) works
+too, but loads every plugin of the project: they run with the same privileges as Rustine, which can read its
+environment, so only do it for a project whose plugins you trust as much as its CI.
 
 ### Safety guarantees
 
@@ -109,13 +118,13 @@ producing that merge request: run `composer install --no-scripts` before it.
 
 ## Requirements
 
-| Needed                         | Notes                                                                           |
-|--------------------------------|---------------------------------------------------------------------------------|
-| PHP ≥ 8.4 with `ext-intl`      | To run Rustine itself                                                           |
-| `git`                          | The project must be a git repository with a configured remote                   |
-| `trivy`                        | Version compatible with `--list-all-pkgs` (developed with 0.72)                 |
-| `node`, `yarn`                 | Yarn projects: on the `PATH`, or given by `--node-bin` / `--yarn-bin`           |
-| `composer`, PHP                | Composer projects: on the `PATH`, or the command given by `--composer-bin`      |
+| Needed                    | Notes                                                                      |
+|---------------------------|----------------------------------------------------------------------------|
+| PHP ≥ 8.4 with `ext-intl` | To run Rustine itself                                                      |
+| `git`                     | The project must be a git repository with a configured remote              |
+| `trivy`                   | Version compatible with `--list-all-pkgs` (developed with 0.72)            |
+| `node`, `yarn`            | Yarn projects: on the `PATH`, or given by `--node-bin` / `--yarn-bin`      |
+| `composer`, PHP           | Composer projects: on the `PATH`, or the command given by `--composer-bin` |
 
 Rustine runs **inside the project's own CI job**, so that `composer update` and `yarn install` use the same PHP, Node
 and Yarn versions as the project.
@@ -181,29 +190,29 @@ verified*. Add `--report-file=preview.md` to keep the output.
 
 Options take precedence over the variables GitLab CI provides.
 
-| Option                       | Variable                                 | Default / meaning                                                                                                                                               |
-|------------------------------|------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `--group`                    |                                          | **Required**: `critical-high` or `others` (exactly one)                                                                                                         |
-| `--ecosystem`                |                                          | `yarn` or `composer` (default: both)                                                                                                                            |
-| `--project`                  |                                          | Project directory (default `.`)                                                                                                                                 |
-| `--gitlab-url`               | `CI_API_V4_URL`                          | GitLab API root                                                                                                                                                 |
-| `--project-id`               | `CI_PROJECT_ID`                          | Project id or path                                                                                                                                              |
-| `--default-branch`           | `CI_DEFAULT_BRANCH`                      | Branch the fixes start from and the merge requests target                                                                                                       |
-| *(no option, on purpose)*    | `RUSTINE_GITLAB_TOKEN` or `GITLAB_TOKEN` | Access token                                                                                                                                                    |
-| `--locale`                   | `RUSTINE_LOCALE`                         | Language of the texts written in the project (default `en`)                                                                                                     |
-| `--label`                    |                                          | Label of every merge request (repeatable, default `security`)                                                                                                   |
-| `--severity-label-format`    |                                          | Default `severity::{severity}` → `severity::high`                                                                                                               |
-| `--assignee`, `--reviewer`   |                                          | Usernames, applied when a merge request is **created**                                                                                                          |
-| `--max-open-merge-requests`  |                                          | Stops opening new merge requests above this number                                                                                                              |
-| `--git-author-name/-email`   |                                          | Default: the token owner (commit email, else its noreply address)                                                                                               |
-| `--remote`                   |                                          | Git remote (default `origin`)                                                                                                                                   |
-| `--report-file`              |                                          | Markdown report: status and description of each group                                                                                                           |
-| `--report`                   |                                          | Trivy report: written by a real run, read by `--dry-run`                                                                                                        |
-| `--composer-bin`             | `RUSTINE_COMPOSER_BIN`                   | Command that runs Composer (default `composer`), e.g. `/usr/bin/php8.1 /usr/local/bin/composer2` to pick the PHP version; words separated by spaces, no quoting |
-| `--yarn-bin`                 | `RUSTINE_YARN_BIN`                       | Command that runs Yarn (default `yarn`), e.g. `/opt/yarn/bin/yarn`; words separated by spaces, no quoting                                                       |
-| `--node-bin`                 | `RUSTINE_NODE_BIN`                       | Command that runs Node (default `node`); given by path, its directory goes first on the `PATH` of Yarn                                                          |
+| Option                       | Variable                                 | Default / meaning                                                                                                                                                                                      |
+|------------------------------|------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `--group`                    |                                          | **Required**: `critical-high` or `others` (exactly one)                                                                                                                                                |
+| `--ecosystem`                |                                          | `yarn` or `composer` (default: both)                                                                                                                                                                   |
+| `--project`                  |                                          | Project directory (default `.`)                                                                                                                                                                        |
+| `--gitlab-url`               | `CI_API_V4_URL`                          | GitLab API root                                                                                                                                                                                        |
+| `--project-id`               | `CI_PROJECT_ID`                          | Project id or path                                                                                                                                                                                     |
+| `--default-branch`           | `CI_DEFAULT_BRANCH`                      | Branch the fixes start from and the merge requests target                                                                                                                                              |
+| *(no option, on purpose)*    | `RUSTINE_GITLAB_TOKEN` or `GITLAB_TOKEN` | Access token                                                                                                                                                                                           |
+| `--locale`                   | `RUSTINE_LOCALE`                         | Language of the texts written in the project (default `en`)                                                                                                                                            |
+| `--label`                    |                                          | Label of every merge request (repeatable, default `security`)                                                                                                                                          |
+| `--severity-label-format`    |                                          | Default `severity::{severity}` → `severity::high`                                                                                                                                                      |
+| `--assignee`, `--reviewer`   |                                          | Usernames, applied when a merge request is **created**                                                                                                                                                 |
+| `--max-open-merge-requests`  |                                          | Stops opening new merge requests above this number                                                                                                                                                     |
+| `--git-author-name/-email`   |                                          | Default: the token owner (commit email, else its noreply address)                                                                                                                                      |
+| `--remote`                   |                                          | Git remote (default `origin`)                                                                                                                                                                          |
+| `--report-file`              |                                          | Markdown report: status and description of each group                                                                                                                                                  |
+| `--report`                   |                                          | Trivy report: written by a real run, read by `--dry-run`                                                                                                                                               |
+| `--composer-bin`             | `RUSTINE_COMPOSER_BIN`                   | Command that runs Composer (default `composer`), e.g. `/usr/bin/php8.1 /usr/local/bin/composer2` to pick the PHP version; words separated by spaces, no quoting                                        |
+| `--yarn-bin`                 | `RUSTINE_YARN_BIN`                       | Command that runs Yarn (default `yarn`), e.g. `/opt/yarn/bin/yarn`; words separated by spaces, no quoting                                                                                              |
+| `--node-bin`                 | `RUSTINE_NODE_BIN`                       | Command that runs Node (default `node`); given by path, its directory goes first on the `PATH` of Yarn                                                                                                 |
 | `--verify`                   | `RUSTINE_VERIFY`                         | When Trivy confirms the fixes: `final` (default, once when every package is handled), `each` (after every attempt the lockfile accepts: slow, the most certain) or `none` (the lockfile alone decides) |
-| `--trivy-bin`, `--trivy-arg` |                                          | Trivy binary and extra arguments (repeatable), e.g. `--trivy-arg=--ignorefile=.trivyignore`                                                                     |
+| `--trivy-bin`, `--trivy-arg` |                                          | Trivy binary and extra arguments (repeatable), e.g. `--trivy-arg=--ignorefile=.trivyignore`                                                                                                            |
 
 Labels are never translated (filters, boards and the open-merge-request limit depend on their names), nor are branch
 names, CVE identifiers, versions or commands.

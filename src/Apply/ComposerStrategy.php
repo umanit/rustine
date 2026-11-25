@@ -10,11 +10,14 @@ use Rustine\Trivy\Ecosystem;
 /**
  * Fix ladder for Composer, cheapest and cleanest first.
  *
- * Only `composer.lock` and `composer.json` are touched: nothing is installed (`--no-install`) and no script runs. The
- * plugins of the project do run: Symfony Flex enforces `extra.symfony.require` while Composer resolves, and without it
- * an update moves the `symfony/*` components that the project does not require itself to another minor (checked:
- * `symfony/string` 6.4 → 7.4 in a 6.4 project). With `--no-install` no recipe is applied, and the scripts that would
- * run them are disabled.
+ * Only `composer.lock` and `composer.json` are touched: nothing is installed (`--no-install`) and no script runs.
+ *
+ * Plugins are disabled (`--no-plugins`): they are arbitrary code, and Rustine holds a powerful token. The exception is a
+ * project that sets `extra.symfony.require`, which only Symfony Flex enforces while Composer resolves: without it an
+ * update moves the `symfony/*` components that the project does not require itself to another minor (checked:
+ * `symfony/string` 6.4 → 7.4 in a 6.4 project). Then plugins are enabled, and {@see ProjectPlanApplier} makes sure that
+ * Flex is installed, ideally globally so that no plugin of the project is loaded. With `--no-install` no recipe is
+ * applied, and the scripts that would run them are disabled.
  */
 final readonly class ComposerStrategy implements FixStrategy
 {
@@ -78,17 +81,19 @@ final readonly class ComposerStrategy implements FixStrategy
         }
 
         $name = $fix->packageName;
+        $manifest = ComposerManifest::read($projectDir . '/composer.json');
+        $flags = null === $manifest->symfonyRequire() ? [...self::FLAGS, '--no-plugins'] : self::FLAGS;
         $attempts = [
-            new Attempt(AttemptKind::LockfileRefresh, [[...$this->composer, 'update', $name, '--with-all-dependencies', ...self::FLAGS]]),
+            new Attempt(AttemptKind::LockfileRefresh, [[...$this->composer, 'update', $name, '--with-all-dependencies', ...$flags]]),
         ];
 
         // The constraint of a direct requirement may forbid the fixed version: raise it, within the same major.
-        $declaration = ComposerManifest::read($projectDir . '/composer.json')->declaration($name);
+        $declaration = $manifest->declaration($name);
         if (null !== $declaration) {
             $attempts[] = new Attempt(AttemptKind::DirectBump, [[
                 ...$this->composer, 'require', $name . ':^' . ltrim($fix->targetVersion, 'v'),
                 ...('require-dev' === $declaration['field'] ? ['--dev'] : []),
-                '--update-with-all-dependencies', ...self::FLAGS,
+                '--update-with-all-dependencies', ...$flags,
             ]]);
         }
 
