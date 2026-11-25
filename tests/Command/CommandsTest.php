@@ -367,8 +367,8 @@ final class CommandsTest extends TestCase
         $tester = $this->tester('run');
         $tester->execute(
             [
-                '--report' => self::REPORT,
-                '--group' => ['others', 'critical-high'],
+                '--report'  => self::REPORT,
+                '--group'   => ['others', 'critical-high'],
                 '--dry-run' => true,
                 '--project' => sys_get_temp_dir(),
             ],

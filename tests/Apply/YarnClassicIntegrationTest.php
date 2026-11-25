@@ -130,7 +130,7 @@ final class YarnClassicIntegrationTest extends TestCase
             {
                 return new ProcessCommandRunner(120.0)->run($command, $cwd, [
                     ...$env,
-                    'HOME' => $this->home,
+                    'HOME'              => $this->home,
                     'YARN_CACHE_FOLDER' => $this->home . '/yarn-cache',
                 ]);
             }

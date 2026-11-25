@@ -27,9 +27,9 @@ final readonly class Planner
      * A package's group depends on the highest severity across all its instances: a package thus only appears
      * in a single MR, whichever groups the run processes.
      *
-     * @param list<SeverityGroup>|null $groups groups to keep, each one in its own plan (null = every group, in a
-     *                                         single plan per ecosystem)
-     * @param Ecosystem|null $ecosystem ecosystem to keep (null = all)
+     * @param list<SeverityGroup>|null $groups    groups to keep, each one in its own plan (null = every group, in a
+     *                                            single plan per ecosystem)
+     * @param Ecosystem|null           $ecosystem ecosystem to keep (null = all)
      *
      * @return list<GroupPlan> sorted by ecosystem then group, without empty plans
      */

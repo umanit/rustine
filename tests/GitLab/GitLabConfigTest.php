@@ -14,11 +14,11 @@ use Rustine\GitLab\GitLabUser;
 final class GitLabConfigTest extends TestCase
 {
     private const array ENV = [
-        'CI_API_V4_URL' => 'https://gitlab.example.com/api/v4/',
-        'CI_PROJECT_ID' => '42',
+        'CI_API_V4_URL'     => 'https://gitlab.example.com/api/v4/',
+        'CI_PROJECT_ID'     => '42',
         'CI_DEFAULT_BRANCH' => 'main',
-        'GITLAB_TOKEN' => 'glpat-x',
-        'PATH' => '/usr/bin',
+        'GITLAB_TOKEN'      => 'glpat-x',
+        'PATH'              => '/usr/bin',
     ];
 
     /**

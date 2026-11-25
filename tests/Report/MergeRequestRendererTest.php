@@ -324,7 +324,8 @@ final class MergeRequestRendererTest extends TestCase
         $plan = $this->yarnPlan(SeverityGroup::CriticalHigh);
 
         $en = new MergeRequestRenderer(new TranslatorFactory()->create('en'), '1.2.3', ['alice', 'team/sec'])
-            ->render($plan);
+            ->render($plan)
+        ;
         $this->assertStringContainsString("cc @alice @team/sec\n\n---\n", $en->description);
 
         $fr = new MergeRequestRenderer(new TranslatorFactory()->create('fr'), '1.2.3', ['alice'])->render($plan);
