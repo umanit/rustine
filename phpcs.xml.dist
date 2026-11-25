@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<ruleset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/squizlabs/php_codesniffer/phpcs.xsd">
+
+    <arg name="basepath" value="." />
+    <arg name="cache" value=".phpcs-cache" />
+    <arg name="colors" />
+    <arg name="extensions" value="php" />
+
+    <rule ref="UmanITCodingStandard" />
+
+    <!-- The CLI scripts mix declarations and logic by nature. -->
+    <rule ref="PSR1.Files.SideEffects">
+        <exclude-pattern>bin/*</exclude-pattern>
+        <exclude-pattern>tools/*</exclude-pattern>
+    </rule>
+
+    <!-- Environment variables inherited by child processes are set through $_SERVER on purpose. -->
+    <rule ref="SlevomatCodingStandard.Variables.DisallowSuperGlobalVariable">
+        <exclude-pattern>tests/Apply/ProcessCommandRunnerTest.php</exclude-pattern>
+    </rule>
+
+    <file>bin/</file>
+    <file>src/</file>
+    <file>tests/</file>
+    <file>tools/</file>
+</ruleset>

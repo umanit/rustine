@@ -2,3 +2,4 @@ vendor/
 .phpunit.cache/
 .direnv/
 /build/
+.phpcs-cache
