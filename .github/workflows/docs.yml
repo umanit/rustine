@@ -1,16 +1,11 @@
 name: Documentation
 
 # Builds the English and French documentation (Zensical) and publishes it on GitHub Pages.
-# Settings → Pages → Source must be set to "GitHub Actions".
+# Only a version tag (vX.Y.Z) publishes: the site always documents the latest release, not the moving main branch.
+# Settings → Pages → Source must be set to "GitHub Actions", and the github-pages environment must accept `v*` tags.
 on:
   push:
-    branches: [main]
-    paths:
-      - README.md
-      - docs/**
-      - zensical*.toml
-      - .github/workflows/docs.yml
-  workflow_dispatch:
+    tags: ['v*']
 
 permissions:
   contents: read
