@@ -46,12 +46,46 @@ comme *prévues, non vérifiées*. Ajouter `--report-file=preview.md` pour conse
 
 ## Configuration de `run`
 
-Les options priment sur les variables, et les variables sur les valeurs par défaut. Les options répétables (`--group`,
+Les options priment sur le fichier de configuration (voir plus bas), le fichier sur les variables, et les variables sur
+les valeurs par défaut. Les options répétables (`--group`,
 `--label`, `--assignee`, `--reviewer`, `--notify`) lisent leur variable comme des valeurs séparées par des virgules
 (`RUSTINE_ASSIGNEE=alice,bob`), sauf `RUSTINE_TRIVY_ARG`, séparée par des espaces car les arguments de Trivy contiennent
 des virgules (`--severity=HIGH,CRITICAL`). `RUSTINE_MAX_OPEN_MERGE_REQUESTS` et `RUSTINE_CLOSED_GRACE_DAYS` doivent être
 des entiers positifs ou nuls. `RUSTINE_GROUP` et `RUSTINE_ECOSYSTEM` ne s’appliquent qu’à `run` ; `RUSTINE_TRIVY_BIN` et
 `RUSTINE_TRIVY_ARG` valent aussi pour `scan` et `apply`.
+
+### Fichier de configuration
+
+Les réglages non sensibles d’un projet peuvent vivre dans un fichier YAML versionné avec lui, pratique quand la pipeline
+qui exécute Rustine n’appartient pas au projet (elle ne peut pas connaître ses relecteurs). Rustine lit `.rustine.yaml`
+à la racine de `--project` quand il existe ; `--config=<chemin>` ou `RUSTINE_CONFIG=<chemin>` désignent un autre fichier
+(il doit alors exister). `run`, `scan` et `apply` l’acceptent ; `scan` et `apply` n’utilisent que `include_dev`,
+`trivy_args` et (`apply`) `verify`.
+
+```yaml
+# .rustine.yaml
+assignee: [alice]
+reviewer: [bob, carol]
+notify: [my-group/security]
+labels: [security, deps]
+severity_label_format: 'severity::{severity}'
+locale: fr
+ecosystem: composer          # yarn or composer
+group: [others]              # critical-high or others
+max_open_merge_requests: 3
+closed_grace_days: 30
+include_dev: false
+verify: final                # each, final or none
+trivy_args: ['--ignorefile=.trivyignore']
+git_author_name: Rustine
+git_author_email: rustine@example.com
+```
+
+Chaque clé correspond à l’option du même nom (`labels` est `--label`, `trivy_args` est `--trivy-arg`) ; les listes sont de
+vraies listes YAML, et une liste vide l’emporte sur la variable. Une clé inconnue ou une valeur du mauvais type arrête la
+commande : une faute de frappe ne passe jamais inaperçue. Rien de sensible ni de lié à la machine n’est lu dans le
+fichier : le token, l’adresse et le projet GitLab, les binaires (`--*-bin`) et le remote restent dans les options et
+l’environnement du job.
 
 | Option                       | Variable                                 | Défaut / signification                                                                                                                                                                                         |
 |------------------------------|------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
