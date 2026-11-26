@@ -106,6 +106,35 @@ final class MergeRequestRendererTest extends TestCase
     }
 
     #[Test]
+    public function aComposerPackageThatYarnPointsIntoAsksForAYarnInstall(): void
+    {
+        $fix = Fixtures::fix('symfony/ux-live-component', '2.35.0', '2.36.3');
+        $result = new ApplyResult(
+            [new FixOutcome($fix, FixOutcomeStatus::Applied, AttemptKind::LockfileRefresh)],
+            yarnLinks: [
+                'symfony/ux-live-component' => [
+                    '@symfony/ux-live-component (file:vendor/symfony/ux-live-component/assets)',
+                ],
+            ],
+        );
+
+        $content = $this->renderer('en')->render(Fixtures::plan($fix), $result);
+
+        $this->assertStringContainsString('also a Yarn dependency', $content->description);
+        $this->assertStringContainsString('run `yarn install` and commit `yarn.lock`', $content->description);
+        $this->assertSame(1, $content->attentionItems);
+    }
+
+    #[Test]
+    public function aFixThatYarnDoesNotPointIntoNeedsNoYarnInstall(): void
+    {
+        $fix = Fixtures::fix('symfony/ux-live-component', '2.35.0', '2.36.3');
+        $result = new ApplyResult([new FixOutcome($fix, FixOutcomeStatus::Applied, AttemptKind::LockfileRefresh)]);
+
+        $this->assertSame(0, $this->renderer('en')->render(Fixtures::plan($fix), $result)->attentionItems);
+    }
+
+    #[Test]
     public function failuresAndUnsupportedSourcesKeepTheirTechnicalLogInACollapsedBlock(): void
     {
         $failed = Fixtures::fix('aaa', '1.0.0', '1.0.1');

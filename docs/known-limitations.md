@@ -12,6 +12,11 @@
   package alone, at its locked version and without its dependencies (Composer with plugins and scripts disabled, in a
   throwaway project), only for the Yarn pass, then removes it. No `composer install` is needed before Rustine for
   that. Composer must then be on the `PATH`, and patches applied by a plugin (`cweagans/composer-patches`) are not.
+- **A Composer package that `package.json` points into is not refreshed in `yarn.lock`.** When a fix moves such a
+  package (`symfony/ux-live-component` for `file:vendor/symfony/ux-live-component/assets`), Yarn records a new version
+  and hash for it, so the lockfile goes stale and a frozen install (`yarn install --immutable`) fails in CI. Rustine
+  only fixes the vulnerable packages: it flags it in the "needs manual attention" section (exit code `2`), and the
+  merge request needs a `yarn install` and a commit of `yarn.lock` before it is merged.
 - A package declared with a git/URL/alias/local source is reported, never fixed.
 - Major version bumps are reported, never applied.
 - A merge request closed by hand is only left closed for `--closed-grace-days` days (30 by default), and only while the

@@ -46,6 +46,7 @@ attention:
   unsupported_source: "déclaré avec une source que Rustine ne modifie pas : à mettre à jour à la main vers une version qui corrige {cves}."
   failed: "aucune correction automatique n’a fonctionné pour {cves}."
   still_reported: "Trivy signale encore {cves} après la correction : vérifiez le résultat à la main."
+  yarn_lockfile: "également une dépendance Yarn ({sources}) : ses fichiers ont changé, lancez `yarn install` et commitez `yarn.lock`, sinon l’installation Yarn avec lockfile figé échoue."
   technical_details: "Détails techniques"
 
 lock:

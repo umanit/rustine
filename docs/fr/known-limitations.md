@@ -14,6 +14,12 @@
   dans un projet jetable), uniquement pour la passe Yarn, puis le supprime. Pas besoin de `composer install` avant
   Rustine pour ça. Composer doit alors être dans le `PATH`, et les patchs appliqués par un plugin
   (`cweagans/composer-patches`) ne le sont pas.
+- **Un paquet Composer vers lequel pointe `package.json` n’est pas rafraîchi dans `yarn.lock`.** Quand une correction
+  déplace un tel paquet (`symfony/ux-live-component` pour `file:vendor/symfony/ux-live-component/assets`), Yarn enregistre
+  une nouvelle version et un nouveau hash, le lockfile devient périmé et une installation figée
+  (`yarn install --immutable`) échoue en CI. Rustine ne corrige que les paquets vulnérables : il le signale dans la
+  section « Action manuelle requise » (code de sortie `2`), et la merge request demande un `yarn install` et un commit
+  de `yarn.lock` avant d’être fusionnée.
 - Un paquet déclaré avec une source git/URL/alias/locale est signalé, jamais corrigé.
 - Les montées de version majeure sont signalées, jamais appliquées.
 - Une merge request fermée à la main n’est laissée fermée que pendant `--closed-grace-days` jours (30 par défaut), et

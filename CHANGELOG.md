@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A merge request that moves a Composer package which `package.json` points into (`file:vendor/symfony/ux-…/assets`)
+  now says in its "needs manual attention" section that `yarn.lock` is stale and that `yarn install` must be run and
+  committed, instead of leaving a failing frozen Yarn install in CI without explanation. The exit code is `2`.
+
 ## [0.4.0] - 2026-11-26
 
 ### Changed

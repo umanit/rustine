@@ -46,6 +46,7 @@ attention:
   unsupported_source: "declared with a source that Rustine does not change: update it by hand to a version that fixes {cves}."
   failed: "no automatic fix worked for {cves}."
   still_reported: "Trivy still reports {cves} after the fix: check the result by hand."
+  yarn_lockfile: "also a Yarn dependency ({sources}): its files changed, so run `yarn install` and commit `yarn.lock`, otherwise a frozen Yarn install fails."
   technical_details: "Technical details"
 
 lock:

@@ -63,7 +63,7 @@ final readonly class MergeRequestRenderer
     ): MergeRequestContent {
         $outcomes = $this->outcomesByFix($plan, $result);
         $rows = $this->rows($plan, $result, $outcomes);
-        $attention = $this->attention($plan, $outcomes);
+        $attention = $this->attention($plan, $outcomes, $result);
         $fingerprint = $this->fingerprint($rows);
 
         $severity = null;
@@ -301,7 +301,7 @@ final readonly class MergeRequestRenderer
      *
      * @return list<string>
      */
-    private function attention(GroupPlan $plan, array $outcomes): array
+    private function attention(GroupPlan $plan, array $outcomes, ?ApplyResult $result): array
     {
         $items = [];
 
@@ -327,6 +327,15 @@ final readonly class MergeRequestRenderer
             }
             if (true === $outcome?->stillReported) {
                 $messages[] = $this->t('attention.still_reported', ['cves' => $this->cves($fix, $fix->fixedIds)]);
+            }
+            if ($outcome instanceof FixOutcome && $result instanceof ApplyResult) {
+                $stale = $result->staleYarnSources($outcome);
+                if ([] !== $stale) {
+                    $messages[] = $this->t(
+                        'attention.yarn_lockfile',
+                        ['sources' => '`' . implode('`, `', $stale) . '`'],
+                    );
+                }
             }
             if (FixOutcomeStatus::Failed === $outcome?->status) {
                 $messages[] = $this->t('attention.failed', ['cves' => $this->cves($fix, $fix->fixedIds)])

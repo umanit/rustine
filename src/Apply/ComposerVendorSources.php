@@ -59,6 +59,29 @@ final readonly class ComposerVendorSources
     }
 
     /**
+     * Composer packages that `package.json` points into, with what points at them.
+     *
+     * Yarn records a version and a hash of such a package in `yarn.lock`: when Composer moves the package, the
+     * lockfile goes stale, and a frozen install fails until `yarn install` refreshes it.
+     *
+     * @return array<string, list<string>> `name (spec)` entries by lowercase Composer package name
+     */
+    public function linked(): array
+    {
+        $vendor = $this->vendorDir();
+        $linked = [];
+
+        foreach (new YarnLocalSources()->all($this->projectDir) as $source => $path) {
+            $name = $this->packageOf($path, $vendor);
+            if (null !== $name) {
+                $linked[$name][] = $source;
+            }
+        }
+
+        return $linked;
+    }
+
+    /**
      * Fetches the {@see needed()} packages into the vendor directory of the project.
      *
      * @return list<string> the directories created, to give to {@see remove()}; empty when nothing was needed

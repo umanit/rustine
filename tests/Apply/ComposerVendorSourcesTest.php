@@ -57,6 +57,30 @@ final class ComposerVendorSourcesTest extends TestCase
     }
 
     #[Test]
+    public function linkedPackagesAreFoundWhetherOrNotTheyAreInVendor(): void
+    {
+        mkdir($this->dir . '/vendor/symfony/ux-turbo/assets', recursive: true);
+        $this->packageJson([
+            '@symfony/ux-turbo' => 'file:vendor/symfony/ux-turbo/assets',
+            'again'             => 'portal:./vendor/symfony/ux-turbo/assets',
+            'other'             => 'file:vendor/symfony/stimulus-bundle/assets',
+            'outside'           => 'link:../tool',
+            'lodash'            => '^4.17.0',
+        ]);
+
+        $this->assertSame(
+            [
+                'symfony/ux-turbo'        => [
+                    '@symfony/ux-turbo (file:vendor/symfony/ux-turbo/assets)',
+                    'again (portal:./vendor/symfony/ux-turbo/assets)',
+                ],
+                'symfony/stimulus-bundle' => ['other (file:vendor/symfony/stimulus-bundle/assets)'],
+            ],
+            new ComposerVendorSources(new FakeRunner(), $this->dir)->linked(),
+        );
+    }
+
+    #[Test]
     public function aPackageAlreadyInVendorOrAnotherVendorDirectoryIsTakenIntoAccount(): void
     {
         file_put_contents($this->dir . '/composer.json', '{"config":{"vendor-dir":"libs/php"}}');

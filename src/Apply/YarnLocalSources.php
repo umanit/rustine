@@ -35,9 +35,19 @@ final class YarnLocalSources
     }
 
     /**
+     * Targets of every local source, whether they exist or not, made absolute.
+     *
      * @return array<string, string> absolute target by `name (spec)`
      */
-    private function scan(string $projectDir): array
+    public function all(string $projectDir): array
+    {
+        return $this->scan($projectDir, false);
+    }
+
+    /**
+     * @return array<string, string> absolute target by `name (spec)`
+     */
+    private function scan(string $projectDir, bool $onlyMissing = true): array
     {
         $content = @file_get_contents($projectDir . '/package.json');
         $data = false === $content ? null : json_decode($content, true);
@@ -58,7 +68,7 @@ final class YarnLocalSources
                 }
 
                 $path = str_starts_with($m[1], '/') ? $m[1] : $projectDir . '/' . $m[1];
-                if (!file_exists($path)) {
+                if (!$onlyMissing || !file_exists($path)) {
                     $missing[$name . ' (' . $spec . ')'] ??= $path;
                 }
             }

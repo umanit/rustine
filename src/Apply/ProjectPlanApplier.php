@@ -127,7 +127,14 @@ final readonly class ProjectPlanApplier implements PlanApplier
                 $created = $sources->provide();
             }
 
-            return new AppliedPlan($applier->apply($plan, $report), $tools);
+            $result = $applier->apply($plan, $report);
+
+            return new AppliedPlan(
+                Ecosystem::Composer === $plan->ecosystem && is_file($this->projectDir . '/yarn.lock')
+                    ? $result->withYarnLinks($sources->linked())
+                    : $result,
+                $tools,
+            );
         } finally {
             $sources->remove($created);
         }
