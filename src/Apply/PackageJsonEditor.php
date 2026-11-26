@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Rustine\Apply;
 
+use Symfony\Component\Filesystem\Filesystem;
+
 /**
  * Minimal edits of `package.json`: the text around the edited value is left byte for byte as it was (inline arrays,
  * spacing, key order, final newline). A shape the text edit does not handle falls back to re-encoding the JSON, which
  * keeps the indentation, the final newline and the key order only.
  */
-final class PackageJsonEditor
+final readonly class PackageJsonEditor
 {
     private const array DEPENDENCY_FIELDS = [
         'dependencies',
@@ -17,6 +19,11 @@ final class PackageJsonEditor
         'optionalDependencies',
         'peerDependencies',
     ];
+
+    public function __construct(
+        private Filesystem $filesystem = new Filesystem(),
+    ) {
+    }
 
     /**
      * Adds or updates a `resolutions` entry. An existing entry for the same package is updated, never duplicated:
@@ -133,7 +140,7 @@ final class PackageJsonEditor
 
         $edited = $textEdit($content, clone $data);
         if (null !== $edited && JsonSpans::parse($edited) instanceof JsonObject) {
-            file_put_contents($path, $edited);
+            $this->filesystem->dumpFile($path, $edited);
 
             return;
         }
@@ -154,7 +161,7 @@ final class PackageJsonEditor
             );
         }
 
-        file_put_contents($path, $json . (str_ends_with($content, "\n") ? "\n" : ''));
+        $this->filesystem->dumpFile($path, $json . (str_ends_with($content, "\n") ? "\n" : ''));
     }
 
     /**

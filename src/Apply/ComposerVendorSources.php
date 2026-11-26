@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Rustine\Apply;
 
+use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
+use Symfony\Component\Filesystem\Filesystem;
+
 /**
  * Fetches, from `composer.lock`, only the Composer packages that `package.json` points into, so that Yarn can resolve
  * a `file:vendor/symfony/ux-turbo/assets` without a whole `composer install`.
@@ -29,62 +32,8 @@ final readonly class ComposerVendorSources
         private CommandRunner $runner,
         private string $projectDir,
         private string $composerCommand = 'composer',
+        private Filesystem $filesystem = new Filesystem(),
     ) {
-    }
-
-    private static function copy(string $source, string $target): void
-    {
-        if (!is_dir($target) && !@mkdir($target, 0o777, true) && !is_dir($target)) {
-            throw new ToolingException(sprintf('Cannot create "%s".', $target));
-        }
-
-        $items = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($source, \FilesystemIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::SELF_FIRST,
-        );
-
-        foreach ($items as $item) {
-            \assert($item instanceof \SplFileInfo);
-            $path = $target . '/' . substr($item->getPathname(), \strlen($source) + 1);
-
-            $ok = match (true) {
-                $item->isLink() => @symlink((string) readlink($item->getPathname()), $path),
-                $item->isDir() => is_dir($path) || @mkdir($path, 0o777, true),
-                default => @copy($item->getPathname(), $path),
-            };
-            if (!$ok) {
-                throw new ToolingException(sprintf('Cannot copy "%s" to "%s".', $item->getPathname(), $path));
-            }
-        }
-    }
-
-    private static function delete(string $path): void
-    {
-        if (is_link($path) || is_file($path)) {
-            @unlink($path);
-
-            return;
-        }
-
-        if (!is_dir($path)) {
-            return;
-        }
-
-        $items = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::CHILD_FIRST,
-        );
-
-        foreach ($items as $item) {
-            \assert($item instanceof \SplFileInfo);
-            if ($item->isDir() && !$item->isLink()) {
-                @rmdir($item->getPathname());
-            } else {
-                @unlink($item->getPathname());
-            }
-        }
-
-        @rmdir($path);
     }
 
     /**
@@ -128,8 +77,15 @@ final readonly class ComposerVendorSources
         new ToolProbe($this->runner, $this->projectDir)->composer($composer);
 
         $tmp = sys_get_temp_dir() . '/rustine-vendor-' . bin2hex(random_bytes(6));
-        if (!mkdir($tmp, 0o700)) {
-            throw new ToolingException(sprintf('Cannot create the temporary directory "%s".', $tmp));
+
+        try {
+            $this->filesystem->mkdir($tmp, 0o700);
+        } catch (IOExceptionInterface $ioException) {
+            throw new ToolingException(
+                sprintf('Cannot create the temporary directory "%s".', $tmp),
+                0,
+                $ioException,
+            );
         }
 
         try {
@@ -167,7 +123,7 @@ final readonly class ComposerVendorSources
 
             return $this->copyInto($tmp . '/vendor', $names);
         } finally {
-            self::delete($tmp);
+            $this->filesystem->remove($tmp);
         }
     }
 
@@ -178,9 +134,7 @@ final readonly class ComposerVendorSources
      */
     public function remove(array $created): void
     {
-        foreach (array_reverse($created) as $path) {
-            self::delete($path);
-        }
+        $this->filesystem->remove(array_reverse($created));
     }
 
     /**
@@ -237,7 +191,7 @@ final readonly class ComposerVendorSources
 
         // Credentials of the project for private dists (the global ones and COMPOSER_AUTH apply anyway).
         if (is_file($this->projectDir . '/auth.json')) {
-            copy($this->projectDir . '/auth.json', $tmp . '/auth.json');
+            $this->filesystem->copy($this->projectDir . '/auth.json', $tmp . '/auth.json');
         }
     }
 
@@ -276,12 +230,16 @@ final readonly class ComposerVendorSources
             }
 
             try {
-                self::copy($source, $target);
-            } catch (ToolingException $toolingException) {
+                $this->filesystem->mirror($source, $target);
+            } catch (IOExceptionInterface $ioException) {
                 // The caller never receives $created: leave nothing half-copied behind.
                 $this->remove($created);
 
-                throw $toolingException;
+                throw new ToolingException(
+                    sprintf('Cannot copy "%s" to "%s": %s', $source, $target, $ioException->getMessage()),
+                    0,
+                    $ioException,
+                );
             }
         }
 
@@ -354,8 +312,11 @@ final readonly class ComposerVendorSources
     private function writeJson(string $path, array $data): void
     {
         $json = json_encode($data, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_THROW_ON_ERROR);
-        if (false === file_put_contents($path, $json . "\n")) {
-            throw new ToolingException(sprintf('Cannot write "%s".', $path));
+
+        try {
+            $this->filesystem->dumpFile($path, $json . "\n");
+        } catch (IOExceptionInterface $ioException) {
+            throw new ToolingException(sprintf('Cannot write "%s".', $path), 0, $ioException);
         }
     }
 

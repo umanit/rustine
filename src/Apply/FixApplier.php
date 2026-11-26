@@ -11,6 +11,7 @@ use Rustine\Progress\Progress;
 use Rustine\Trivy\Ecosystem;
 use Rustine\Trivy\TrivyReport;
 use Rustine\Version\Version;
+use Symfony\Component\Filesystem\Filesystem;
 
 /**
  * Applies the fixes of one plan, with the strategy of its ecosystem (Yarn Berry/Classic, Composer), package by package.
@@ -31,6 +32,7 @@ final readonly class FixApplier
         private string $projectDir,
         private VerifyMode $verify = VerifyMode::Final,
         private Progress $progress = new NullProgress(),
+        private Filesystem $filesystem = new Filesystem(),
     ) {
     }
 
@@ -298,7 +300,7 @@ final readonly class FixApplier
     {
         if (null !== $attempt->pruneLockfile) {
             $lockfile = $this->projectDir . '/yarn.lock';
-            file_put_contents(
+            $this->filesystem->dumpFile(
                 $lockfile,
                 new YarnClassicLockfile()->withoutPackage(
                     (string) file_get_contents($lockfile),
@@ -512,7 +514,7 @@ final readonly class FixApplier
     private function restore(array $snapshot): void
     {
         foreach ($snapshot as $file => $content) {
-            file_put_contents($this->projectDir . '/' . $file, $content);
+            $this->filesystem->dumpFile($this->projectDir . '/' . $file, $content);
         }
     }
 
