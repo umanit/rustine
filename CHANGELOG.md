@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A JSON Schema of `.rustine.yaml` (`schema/rustine.schema.json`) gives editors completion, key descriptions and
+  validation: add
+  `# yaml-language-server: $schema=https://raw.githubusercontent.com/umanit/rustine/v0.6.0/schema/rustine.schema.json`
+  as the first line of the file. A test keeps it in line with the keys and choices the command accepts.
+
 ## [0.5.0] - 2026-11-26
 
 ### Added
@@ -49,9 +56,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `run -v` prints one line per step with the seconds elapsed since the start (fetching, starting from the default
   branch, each package and attempt, the Trivy check, the consistency check, the push and the merge request), instead of
   staying silent while Composer, Yarn, git and Trivy work.
-- `--notify=<user or group>` on `run` (repeatable, with or without the leading `@`) mentions people in the description of
-  the merge requests (`cc @alice @team/sec`, `Pour information : @alice` in French), so that GitLab notifies them without
-  assigning the merge request to them.
+- `--notify=<user or group>` on `run` (repeatable, with or without the leading `@`) mentions people in the description
+  of the merge requests (`cc @alice @team/sec`, `Pour information : @alice` in French), so that GitLab notifies them
+  without assigning the merge request to them.
 - More options of `run` can be set by environment variable (the option still wins, then the variable, then the
   default): `RUSTINE_GROUP`, `RUSTINE_ECOSYSTEM`, `RUSTINE_REMOTE`, `RUSTINE_LABEL`, `RUSTINE_SEVERITY_LABEL_FORMAT`,
   `RUSTINE_ASSIGNEE`, `RUSTINE_REVIEWER`, `RUSTINE_NOTIFY`, `RUSTINE_MAX_OPEN_MERGE_REQUESTS`,
@@ -69,8 +76,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `--gitlab-url` accepts the address of the instance alone (`https://gitlab.example.com`, with or without a trailing
-  slash): `/api/v4` is added when it is missing. Before, the request went to a web page and failed with "Response body is
-  empty".
+  slash): `/api/v4` is added when it is missing. Before, the request went to a web page and failed with "Response body
+  is empty".
 
 ## [0.2.0] - 2026-11-25
 
@@ -82,8 +89,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Different fixes open a new merge request. The run reports it as skipped, without a manual action.
 - `--verify` (`RUSTINE_VERIFY`): when Trivy re-checks the fixes. `final` (default) runs it once, after every package has
   been handled; `each` runs it after each fix; `none` relies on the lockfile only.
-- `--include-dev` (or `RUSTINE_INCLUDE_DEV=1`) on `scan`, `run` and `apply` also scans the development dependencies, which
-  stay out by default. The same flag is given to the scan and to the re-scans.
+- `--include-dev` (or `RUSTINE_INCLUDE_DEV=1`) on `scan`, `run` and `apply` also scans the development dependencies,
+  which stay out by default. The same flag is given to the scan and to the re-scans.
 - The merge request description lists the packages whose version changed in the lockfile, before and after, with the
   packages of the fixes in bold: a refresh also moves the dependencies that are not vulnerable, within their ranges.
   A branch kept because the fixes did not change keeps its description, so that it keeps describing the branch.
@@ -96,8 +103,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`--verify=final`), instead of a full scan after each attempt of each package. A fix whose CVEs Trivy still reports is
   flagged for a manual check.
 - `composer require` raises a constraint in the style the project wrote it instead of replacing it with a caret:
-  `6.4.*` becomes `6.5.*`, `~6.3.0` becomes `~6.5.0`, an exact version stays exact, `^` stays `^`. A constraint it cannot
-  read (`||`, ranges) still becomes `^x.y.z`.
+  `6.4.*` becomes `6.5.*`, `~6.3.0` becomes `~6.5.0`, an exact version stays exact, `^` stays `^`. A constraint it
+  cannot read (`||`, ranges) still becomes `^x.y.z`.
 - `package.json` is edited in place: the rest of the file (inline arrays such as `files` or `browserslist`, spacing, key
   order, line endings) stays byte for byte as it was, so the diff only shows the changed range or `resolutions` entry.
   A layout it does not handle (an object on a single line) falls back to re-encoding the JSON.
@@ -131,19 +138,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   values, npm `_authToken` lines) are masked in the end of tool output that is quoted in a merge request.
 - A Yarn Classic `yarn.lock` with CRLF line endings is edited correctly (it was split on LF blank lines, so no entry was
   ever pruned) and keeps its line endings.
-- The git authentication header is added after the `GIT_CONFIG_*` pairs that the runner may already set (proxy, CA bundle,
-  `safe.directory`…) instead of overwriting them with `GIT_CONFIG_COUNT=1`.
+- The git authentication header is added after the `GIT_CONFIG_*` pairs that the runner may already set (proxy, CA
+  bundle, `safe.directory`…) instead of overwriting them with `GIT_CONFIG_COUNT=1`.
 - A Yarn project whose `package.json` points to a local source that does not exist (`file:`, `link:`, `portal:`, e.g.
   `file:vendor/symfony/ux-live-component/assets` before `composer install`) is refused up front with an explicit error.
   Before, every package failed on a truncated Yarn error, one after the other.
-- Files that appear inside a directory that was already untracked before a fix (a cache that Trivy or Yarn fills) no longer
-  abandon it as unexpected changes: `git status` reports an untracked directory as one entry. A new untracked file or
-  directory still does.
+- Files that appear inside a directory that was already untracked before a fix (a cache that Trivy or Yarn fills) no
+  longer abandon it as unexpected changes: `git status` reports an untracked directory as one entry. A new untracked
+  file or directory still does.
 - The commits are authored with the private commit email GitLab generates for the token owner
   (`<id>-<username>@users.noreply.<host>`) when it exposes no commit email, instead of a made-up address that the
   "commit author must be a GitLab user" push rule refuses.
-- The consistency check of Composer (`composer validate`) is also run before the fixes, and only findings that it did not
-  report then fail the final check: an unrelated finding that was already there no longer turns a whole group into a
+- The consistency check of Composer (`composer validate`) is also run before the fixes, and only findings that it did
+  not report then fail the final check: an unrelated finding that was already there no longer turns a whole group into a
   failure. The merge request shows them as already existing. It runs with `--no-plugins`.
 - A project that sets `extra.symfony.require` no longer gets its `symfony/*` components moved to another minor by a
   Composer refresh (`symfony/string` 6.4 → 7.4 in a 6.4 project): only Symfony Flex enforces that setting, and it was
@@ -173,8 +180,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A merge request closed by hand, the gap between the scanned checkout and the tip of the default branch, and the
   `.trivyignore` file to silence a CVE for good are described in the README.
 - The token: removing it from the environment of the child processes prevents leaks, not a malicious program (a process
-  can read the environment of its parent). The README lists what code runs during a fix, and compares a project token with
-  a group token.
+  can read the environment of its parent). The README lists what code runs during a fix, and compares a project token
+  with a group token.
 - The example job hides the caches kept in the project directory from git, so that a fix does not take their new files
   for unexpected changes.
 
@@ -190,11 +197,11 @@ First release.
   `others`) and picks the smallest fixed version, in the same major version when possible.
 - `apply`: fixes the packages one by one in the working tree (no commit, no push) and re-scans with Trivy to check that
   the CVEs are gone.
-  - Yarn Berry (`yarn up -R`, then a direct range or a `resolutions` entry) and Yarn Classic (lockfile pruning, then a
-    direct range or a `resolutions` entry).
-  - Composer (`composer update`, then `composer require`; `composer why-not` output when blocked).
-  - Guard-rails: only `composer.json`/`composer.lock` and `package.json`/`yarn.lock` may change; git, URL and alias
-    sources and major-version bumps are reported for manual action, never applied.
+    - Yarn Berry (`yarn up -R`, then a direct range or a `resolutions` entry) and Yarn Classic (lockfile pruning, then a
+      direct range or a `resolutions` entry).
+    - Composer (`composer update`, then `composer require`; `composer why-not` output when blocked).
+    - Guard-rails: only `composer.json`/`composer.lock` and `package.json`/`yarn.lock` may change; git, URL and alias
+      sources and major-version bumps are reported for manual action, never applied.
 - `run`: the CI entry point. Scans, plans, applies, commits, pushes and opens, updates or closes one GitLab merge
   request per ecosystem and severity group, on a stable `security/rustine-*` branch. Exit code 2 means a manual action
   is needed; `--report-file` writes a Markdown report; `--dry-run` previews the texts from a Trivy report.

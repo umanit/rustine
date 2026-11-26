@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/umanit/rustine/main/schema/rustine.schema.json",
+  "title": "Rustine configuration",
+  "description": "Non-sensitive settings of a project, read by Rustine from .rustine.yaml. Precedence: option, then this file, then environment variable, then default.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "assignee": {
+      "description": "Usernames assigned to a merge request when it is created (--assignee).",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "reviewer": {
+      "description": "Usernames set as reviewers of a merge request when it is created (--reviewer).",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "notify": {
+      "description": "Usernames or groups mentioned (@name) in the description of a merge request, without assigning it (--notify).",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "labels": {
+      "description": "Labels of every merge request (--label). Default: security.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "severity_label_format": {
+      "description": "Format of the severity label (--severity-label-format). Default: severity::{severity}.",
+      "type": "string",
+      "examples": [
+        "severity::{severity}"
+      ]
+    },
+    "locale": {
+      "description": "Language of the texts written in the project: merge requests and commits (--locale). Default: en.",
+      "type": "string",
+      "examples": [
+        "en",
+        "fr"
+      ]
+    },
+    "ecosystem": {
+      "description": "Ecosystem to process (--ecosystem). Default: both.",
+      "type": "string",
+      "enum": [
+        "yarn",
+        "composer"
+      ]
+    },
+    "group": {
+      "description": "Severity groups to process (--group). Default: every group in one merge request per ecosystem.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "critical-high",
+          "others"
+        ]
+      }
+    },
+    "max_open_merge_requests": {
+      "description": "Stops opening new merge requests above this number (--max-open-merge-requests).",
+      "type": "integer",
+      "minimum": 0
+    },
+    "closed_grace_days": {
+      "description": "Does not open again a merge request closed by hand for the same fixes less than this many days ago (--closed-grace-days). Default: 30, 0 = always open.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "include_dev": {
+      "description": "Also scan the development dependencies: require-dev, devDependencies (--include-dev). Default: false.",
+      "type": "boolean"
+    },
+    "verify": {
+      "description": "When Trivy confirms the fixes (--verify): final (default, once when every package is handled), each (after every attempt the lockfile accepts) or none (the lockfile alone decides).",
+      "type": "string",
+      "enum": [
+        "each",
+        "final",
+        "none"
+      ]
+    },
+    "trivy_args": {
+      "description": "Extra Trivy arguments (--trivy-arg), e.g. --ignorefile=.trivyignore.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "git_author_name": {
+      "description": "Author name of the commits (--git-author-name). Default: the token owner.",
+      "type": "string"
+    },
+    "git_author_email": {
+      "description": "Author email of the commits (--git-author-email). Default: the token owner.",
+      "type": "string"
+    }
+  }
+}

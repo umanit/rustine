@@ -62,7 +62,17 @@ qui exécute Rustine n’appartient pas au projet (elle ne peut pas connaître s
 (il doit alors exister). `run`, `scan` et `apply` l’acceptent ; `scan` et `apply` n’utilisent que `include_dev`,
 `trivy_args` et (`apply`) `verify`.
 
+
+Un [JSON Schema](https://raw.githubusercontent.com/umanit/rustine/v0.6.0/schema/rustine.schema.json) décrit le fichier : avec la modeline ci-dessous (première ligne du fichier), les éditeurs qui
+s’appuient sur `yaml-language-server` (VS Code avec l’extension YAML de Red Hat, Neovim, Helix, PhpStorm…) proposent
+l’autocomplétion, affichent la description de chaque clé et signalent les clés inconnues ou les mauvais types pendant la
+saisie.
+
+L’URL est figée sur un tag de release, donc le schéma correspond toujours à la version que vous exécutez (disponible
+à partir de `v0.6.0`) : changez le tag quand vous mettez Rustine à jour.
+
 ```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/umanit/rustine/v0.6.0/schema/rustine.schema.json
 # .rustine.yaml
 assignee: [alice]
 reviewer: [bob, carol]

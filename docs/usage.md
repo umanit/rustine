@@ -60,7 +60,16 @@ runs Rustine does not belong to the project (it cannot know its reviewers). Rust
 `--project` when it exists; `--config=<path>` or `RUSTINE_CONFIG=<path>` designate another file (then it must exist).
 `run`, `scan` and `apply` accept it; `scan` and `apply` only use `include_dev`, `trivy_args` and (`apply`) `verify`.
 
+
+A [JSON Schema](https://raw.githubusercontent.com/umanit/rustine/v0.6.0/schema/rustine.schema.json) describes the file: with the modeline below (first line of the file), editors that rely on
+`yaml-language-server` (VS Code with the Red Hat YAML extension, Neovim, Helix, PhpStorm…) offer completion, show the
+description of each key and flag unknown keys or wrong types as you type.
+
+The URL is pinned to a release tag, so the schema always matches the version you run (available from `v0.6.0`):
+change the tag when you upgrade Rustine.
+
 ```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/umanit/rustine/v0.6.0/schema/rustine.schema.json
 # .rustine.yaml
 assignee: [alice]
 reviewer: [bob, carol]
