@@ -48,7 +48,7 @@ The branch name is stable, so a run is a reconciliation of what the branch shoul
 | Open merge request, identical result        | Nothing (the texts and labels are refreshed if they are out of date)  |
 | Open merge request, same fixes, no conflict | Nothing, even if the default branch moved on (no force-push)          |
 | Open merge request, different fixes         | Force-pushes the branch, updates the description, leaves a note       |
-| Open merge request, nothing fixable anymore | Closes it with a note                                                 |
+| Open merge request, nothing fixable anymore | Closes it with a note, also when the scan finds nothing at all        |
 | Closed by hand, same fixes, recently        | Nothing: the "no thanks" holds (`--closed-grace-days`, 30 by default) |
 | Branch carries commits Rustine did not make | Leaves it untouched, posts a note **once**, asks for a manual action  |
 | Limit of open merge requests reached        | Does not open a *new* merge request (existing ones are still updated) |

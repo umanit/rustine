@@ -50,7 +50,7 @@ Le nom de la branche est stable : une exécution est donc une réconciliation de
 | Merge request ouverte, résultat identique              | Rien (les textes et labels sont rafraîchis s’ils sont périmés)                       |
 | Merge request ouverte, mêmes corrections, sans conflit | Rien, même si la branche par défaut a avancé (pas de force-push)                     |
 | Merge request ouverte, corrections différentes         | Pousse la branche en force, met à jour la description, laisse une note               |
-| Merge request ouverte, plus rien à corriger            | La ferme avec une note                                                               |
+| Merge request ouverte, plus rien à corriger            | La ferme avec une note, y compris quand le scan ne trouve rien du tout               |
 | Fermée à la main, mêmes corrections, récemment         | Rien : le « non merci » est respecté (`--closed-grace-days`, 30 par défaut)          |
 | La branche porte des commits que Rustine n’a pas faits | La laisse intacte, poste une note **une seule fois**, demande une action manuelle    |
 | Limite de merge requests ouvertes atteinte             | N’ouvre pas de *nouvelle* merge request (les existantes sont quand même mises à jour) |
