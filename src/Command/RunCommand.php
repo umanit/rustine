@@ -23,6 +23,8 @@ use Rustine\Progress\NullProgress;
 use Rustine\Report\MergeRequestRenderer;
 use Rustine\Sync\MergeRequestSynchronizer;
 use Rustine\Sync\NoteRenderer;
+use Rustine\Sync\PlanAction;
+use Rustine\Sync\PlanOutcome;
 use Rustine\Sync\RunSummary;
 use Rustine\Sync\SyncSettings;
 use Rustine\Trivy\Ecosystem;
@@ -322,12 +324,12 @@ final readonly class RunCommand
             );
         }
 
-        $plans = new Planner()->plan($parsedReport, [] === $groups ? null : $groups, $wanted);
-        if ([] === $plans) {
-            $io->success('Nothing to fix: no merge request to open.');
-
-            return Command::SUCCESS;
-        }
+        $planner = new Planner();
+        $plans = $planner->withEmptyPlans(
+            $planner->plan($parsedReport, [] === $groups ? null : $groups, $wanted),
+            [] === $groups ? null : $groups,
+            $wanted,
+        );
 
         $projectDefault = getenv('CI_DEFAULT_BRANCH');
         if (\is_string($projectDefault) && '' !== $projectDefault && $projectDefault !== $config->defaultBranch) {
@@ -401,7 +403,11 @@ final readonly class RunCommand
         match ($exitCode) {
             RunSummary::EXIT_FAILURE => $io->error('At least one group failed.'),
             RunSummary::EXIT_MANUAL_ACTION => $io->warning('Some packages need a manual action: see the report.'),
-            default => $io->success('Done.'),
+            default => $io->success(
+                array_all($outcomes, static fn(PlanOutcome $o): bool => PlanAction::Clear === $o->action)
+                    ? 'Nothing to fix: no merge request to open.'
+                    : 'Done.',
+            ),
         };
 
         return $exitCode;

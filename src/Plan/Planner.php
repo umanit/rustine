@@ -92,6 +92,42 @@ final readonly class Planner
         return $plans;
     }
 
+    /**
+     * Adds an empty plan for every (ecosystem × group) a run processes that has none, in the order of {@see plan()}.
+     * An empty plan carries no fix: it only lets the run find the merge request of a group whose last vulnerabilities
+     * are gone, and close it. Without it a project whose scan comes back clean would keep its stale merge requests.
+     *
+     * @param list<GroupPlan>          $plans
+     * @param list<SeverityGroup>|null $groups    as given to {@see plan()}
+     * @param Ecosystem|null           $ecosystem as given to {@see plan()}
+     *
+     * @return list<GroupPlan>
+     */
+    public function withEmptyPlans(array $plans, ?array $groups = null, ?Ecosystem $ecosystem = null): array
+    {
+        $completed = $plans;
+
+        foreach (null === $ecosystem ? Ecosystem::cases() : [$ecosystem] as $candidate) {
+            foreach ($groups ?? [null] as $group) {
+                $present = array_any(
+                    $plans,
+                    static fn(GroupPlan $plan): bool => $plan->ecosystem === $candidate && $plan->group === $group,
+                );
+                if (!$present) {
+                    $completed[] = new GroupPlan($candidate, $group, []);
+                }
+            }
+        }
+
+        usort(
+            $completed,
+            static fn(GroupPlan $a, GroupPlan $b): int => [$a->ecosystem->value, $a->group->value ?? '']
+                <=> [$b->ecosystem->value, $b->group->value ?? ''],
+        );
+
+        return $completed;
+    }
+
     private function instanceKey(Vulnerability $v): string
     {
         return $v->ecosystem->value . "\0" . $v->packageName . "\0" . $v->installedVersion;

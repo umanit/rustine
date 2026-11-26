@@ -641,6 +641,7 @@ final class CommandsTest extends TestCase
         $http = new MockHttpClient([
             new MockResponse('{"id":7,"username":"rustine-bot","name":"Rustine Bot","commit_email":null}'),
             new MockResponse('[]'),
+            new MockResponse('[]'),
         ]);
 
         $this->withEnvironment(
@@ -679,6 +680,7 @@ final class CommandsTest extends TestCase
             $http = new MockHttpClient([
                 new MockResponse('{"id":7,"username":"rustine-bot","name":"Rustine Bot","commit_email":null}'),
                 new MockResponse('[]'),
+                new MockResponse('[]'),
             ]);
 
             $this->withEnvironment(
@@ -702,6 +704,55 @@ final class CommandsTest extends TestCase
                 },
             );
         }
+    }
+
+    #[Test]
+    public function runClosesTheOpenMergeRequestsWhenTheScanComesBackClean(): void
+    {
+        $project = sys_get_temp_dir() . '/rustine-clean-' . bin2hex(random_bytes(4));
+        mkdir($project);
+        $this->dirs[] = $project;
+        $this->files[] = $project . '/trivy-report.json';
+        $trivy = $this->fakeTrivy(__DIR__ . '/../fixtures/trivy/clean-report.json');
+
+        $requests = [];
+        $http = new MockHttpClient(static function (string $method, string $url) use (&$requests): MockResponse {
+            $requests[] = $method . ' ' . $url;
+
+            return match (true) {
+                str_ends_with($url, '/user') => new MockResponse(
+                    '{"id":7,"username":"rustine-bot","name":"Rustine Bot","commit_email":null}',
+                ),
+                'GET' === $method && str_ends_with($url, 'source_branch=security/rustine-yarn') => new MockResponse(
+                    '[{"iid":5,"title":"t","description":"d","web_url":"https://gitlab.example.com/mr/5",'
+                    . '"source_branch":"security/rustine-yarn","labels":[]}]',
+                ),
+                'GET' === $method => new MockResponse('[]'),
+                default => new MockResponse('{}'),
+            };
+        });
+
+        $this->withEnvironment(
+            ['GITLAB_TOKEN' => 'glpat-ok', 'RUSTINE_BRANCH' => null, 'CI_DEFAULT_BRANCH' => null],
+            function () use ($http, $trivy, $project): void {
+                $tester = $this->tester('run', $http);
+                $tester->execute([
+                    '--project'    => $project,
+                    '--report'     => $project . '/trivy-report.json',
+                    '--trivy-bin'  => $trivy,
+                    '--gitlab-url' => 'https://gitlab.example.com/api/v4',
+                    '--project-id' => '42',
+                    '--branch'     => 'main',
+                ]);
+
+                $this->assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+                $this->assertStringContainsString('merge request closed', $tester->getDisplay());
+                $this->assertStringContainsString('security/rustine-composer: nothing to fix', $tester->getDisplay());
+            },
+        );
+
+        $this->assertContains('POST https://gitlab.example.com/api/v4/projects/42/merge_requests/5/notes', $requests);
+        $this->assertContains('PUT https://gitlab.example.com/api/v4/projects/42/merge_requests/5', $requests);
     }
 
     #[Test]
@@ -737,6 +788,7 @@ final class CommandsTest extends TestCase
         $this->files = [...$this->files, $reportFile, $trivyReport];
         $http = new MockHttpClient([
             new MockResponse('{"id":7,"username":"rustine-bot","name":"Rustine Bot","commit_email":null}'),
+            new MockResponse('[]'),
             new MockResponse('[]'),
         ]);
 

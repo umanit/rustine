@@ -254,6 +254,33 @@ final class PlannerTest extends TestCase
     }
 
     #[Test]
+    public function everyProcessedEcosystemAndGroupGetsAPlanEvenWhenItIsEmpty(): void
+    {
+        $planner = new Planner();
+        $report = $this->report('yarn-report.json');
+        $this->assertSame(
+            ['security/rustine-composer (empty)', 'security/rustine-yarn'],
+            $this->branchNames($planner->withEmptyPlans($planner->plan($report))),
+        );
+
+        $groups = [SeverityGroup::CriticalHigh, SeverityGroup::Others];
+        $this->assertSame(
+            [
+                'security/rustine-composer-critical-high (empty)',
+                'security/rustine-composer-others (empty)',
+                'security/rustine-yarn-critical-high',
+                'security/rustine-yarn-others',
+            ],
+            $this->branchNames($planner->withEmptyPlans($planner->plan($report, $groups), $groups)),
+        );
+
+        $this->assertSame(
+            ['security/rustine-yarn (empty)'],
+            $this->branchNames($planner->withEmptyPlans([], null, Ecosystem::Yarn)),
+        );
+    }
+
+    #[Test]
     public function aBaseBranchOtherThanTheDefaultOneEndsTheBranchName(): void
     {
         $plans = new Planner()->plan($this->report('yarn-report.json'));
@@ -346,5 +373,18 @@ final class PlannerTest extends TestCase
                 ],
             ],
         ], \JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * @param list<GroupPlan> $plans
+     *
+     * @return list<string>
+     */
+    private function branchNames(array $plans): array
+    {
+        return array_map(
+            static fn(GroupPlan $p): string => $p->branchName() . ([] === $p->fixes ? ' (empty)' : ''),
+            $plans,
+        );
     }
 }

@@ -33,6 +33,7 @@ final readonly class RunSummary
             PlanAction::Refreshed => 'merge request texts refreshed',
             PlanAction::Unchanged => 'merge request already up to date',
             PlanAction::Closed => 'nothing fixable anymore, merge request closed',
+            PlanAction::Clear => 'nothing to fix, no merge request',
             PlanAction::NoFix => 'nothing fixable automatically, no merge request',
             PlanAction::SkippedLimit => 'skipped, too many open merge requests',
             PlanAction::SkippedClosed => 'skipped, the same merge request was closed recently',

@@ -14,6 +14,7 @@ use Rustine\GitLab\MergeRequest;
 use Rustine\I18n\TranslatorFactory;
 use Rustine\Plan\GroupPlan;
 use Rustine\Plan\PackageFixStatus;
+use Rustine\Plan\SeverityGroup;
 use Rustine\Progress\NullProgress;
 use Rustine\Progress\Progress;
 use Rustine\Report\MergeRequestRenderer;
@@ -26,6 +27,7 @@ use Rustine\Tests\Apply\Support\Fixtures;
 use Rustine\Tests\Git\Support\GitSandbox;
 use Rustine\Tests\Sync\Support\FakeGitLab;
 use Rustine\Tests\Sync\Support\FakePlanApplier;
+use Rustine\Trivy\Ecosystem;
 
 final class MergeRequestSynchronizerTest extends TestCase
 {
@@ -253,6 +255,30 @@ final class MergeRequestSynchronizerTest extends TestCase
         $this->assertSame([], $this->gitlab->open);
         $this->assertStringContainsString('closing this merge request', $this->gitlab->notes[1][0]);
         $this->assertTrue($outcome->needsManualAction(), 'the failed package is flagged for a human');
+    }
+
+    #[Test]
+    public function aCleanScanClosesTheOpenMergeRequestOfTheGroup(): void
+    {
+        $this->gitlab->addExisting(self::BRANCH);
+
+        $outcome = $this->sync(plan: new GroupPlan(Ecosystem::Yarn, SeverityGroup::Others, []));
+
+        $this->assertSame(PlanAction::Closed, $outcome->action);
+        $this->assertSame(['note 1', 'close 1'], $this->gitlab->writes);
+        $this->assertFalse($outcome->needsManualAction());
+        $this->assertSame(0, $this->applier->calls);
+    }
+
+    #[Test]
+    public function aCleanScanWithoutMergeRequestDoesNothing(): void
+    {
+        $outcome = $this->sync(plan: new GroupPlan(Ecosystem::Yarn, SeverityGroup::Others, []));
+
+        $this->assertSame(PlanAction::Clear, $outcome->action);
+        $this->assertSame([], $this->gitlab->writes);
+        $this->assertFalse($outcome->needsManualAction());
+        $this->assertNull($this->sandbox->remoteSha(self::BRANCH));
     }
 
     #[Test]

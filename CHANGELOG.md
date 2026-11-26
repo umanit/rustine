@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `run` now closes the open merge request of a group when the scan comes back clean. Until now it stopped at "Nothing to
+  fix" before looking at the merge requests, so fixing everything on the branch left the merge request open (the same
+  went for an ecosystem or a severity group whose last vulnerability was fixed while another one still had some). Every
+  processed ecosystem × group is now reconciled, with one extra lookup of its open merge request.
+
 ## [0.6.0] - 2026-11-26
 
 ### Added

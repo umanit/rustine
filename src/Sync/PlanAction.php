@@ -21,6 +21,9 @@ enum PlanAction: string
     /** Nothing is fixable anymore: the open merge request was closed. */
     case Closed = 'closed';
 
+    /** The scan found nothing for this group and there is no merge request: nothing to do. */
+    case Clear = 'clear';
+
     /** Nothing is fixable and there is no merge request: only the report mentions the manual items. */
     case NoFix = 'no-fix';
 

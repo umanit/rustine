@@ -72,6 +72,10 @@ final readonly class MergeRequestSynchronizer
         $this->progress->step('Looking for an open merge request');
         $existing = $this->gitlab->findOpenMergeRequest($branch);
 
+        if ([] === $plan->fixes) {
+            return $this->nothingLeft($plan, $existing);
+        }
+
         if ([] === $plan->fixable()) {
             return $this->nothingToFix($plan, $existing, $this->withoutFixes($plan));
         }
@@ -243,6 +247,21 @@ final readonly class MergeRequestSynchronizer
         }
 
         return new PlanOutcome($branch, PlanAction::Unchanged, $content, $existing->webUrl);
+    }
+
+    /**
+     * The scan found nothing at all for the group: its open merge request, if any, has no purpose anymore.
+     */
+    private function nothingLeft(GroupPlan $plan, ?MergeRequest $existing): PlanOutcome
+    {
+        if (!$existing instanceof MergeRequest) {
+            return new PlanOutcome($plan->branchName(), PlanAction::Clear);
+        }
+
+        $this->gitlab->addNote($existing->iid, $this->notes->closed());
+        $this->gitlab->closeMergeRequest($existing->iid);
+
+        return new PlanOutcome($plan->branchName(), PlanAction::Closed, null, $existing->webUrl);
     }
 
     private function nothingToFix(GroupPlan $plan, ?MergeRequest $existing, MergeRequestContent $content): PlanOutcome
