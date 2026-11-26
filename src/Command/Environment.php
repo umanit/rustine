@@ -5,17 +5,23 @@ declare(strict_types=1);
 namespace Rustine\Command;
 
 /**
- * Options that fall back to an environment variable, then to a default.
+ * Options that fall back to an environment variable, then to a default. Where a value from the configuration file can
+ * exist, it is passed apart: it wins over the variable, not over the option.
  */
 final class Environment
 {
     /**
-     * A switch: set by its option, or by a variable holding `1`, `true`, `yes` or `on`.
+     * A switch: set by its option, else the file (`false` there turns it off), or by a variable holding `1`, `true`,
+     * `yes` or `on`.
      */
-    public static function flag(bool $option, string $variable): bool
+    public static function flag(bool $option, string $variable, ?bool $file = null): bool
     {
         if ($option) {
             return true;
+        }
+
+        if (null !== $file) {
+            return $file;
         }
 
         $value = getenv($variable);
@@ -46,16 +52,26 @@ final class Environment
 
     /**
      * A repeatable option: its values, else the values of the variable split on `$separator` (a regular expression
-     * without delimiters; commas by default). Blanks and empty items are dropped.
+     * without delimiters; commas by default). Blanks and empty items are dropped. The list of the file, even empty,
+     * wins over the variable.
      *
-     * @param list<string> $option
+     * @param list<string>      $option
+     * @param list<string>|null $file
      *
      * @return list<string>
      */
-    public static function list(array $option, string $variable, string $separator = ','): array
-    {
+    public static function list(
+        array $option,
+        string $variable,
+        string $separator = ',',
+        ?array $file = null,
+    ): array {
         if ([] !== $option) {
             return $option;
+        }
+
+        if (null !== $file) {
+            return $file;
         }
 
         $value = getenv($variable);

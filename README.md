@@ -229,12 +229,43 @@ verified*. Add `--report-file=preview.md` to keep the output.
 
 ### Configuration of `run`
 
-Options take precedence over the variables, and the variables over the defaults. Repeatable options (`--group`,
-`--label`, `--assignee`, `--reviewer`, `--notify`) read their variable as values separated by commas
-(`RUSTINE_ASSIGNEE=alice,bob`), except `RUSTINE_TRIVY_ARG`, separated by spaces because Trivy arguments contain
-commas (`--severity=HIGH,CRITICAL`). `RUSTINE_MAX_OPEN_MERGE_REQUESTS` and `RUSTINE_CLOSED_GRACE_DAYS` must be
-non-negative integers. `RUSTINE_GROUP` and `RUSTINE_ECOSYSTEM` only apply to `run`; `RUSTINE_TRIVY_BIN` and
+Options take precedence over the configuration file (see below), the file over the variables, and the variables over
+the defaults. Repeatable options (`--group`, `--label`, `--assignee`, `--reviewer`, `--notify`) read their variable as
+values separated by commas (`RUSTINE_ASSIGNEE=alice,bob`), except `RUSTINE_TRIVY_ARG`, separated by spaces because Trivy
+arguments contain commas (`--severity=HIGH,CRITICAL`). `RUSTINE_MAX_OPEN_MERGE_REQUESTS` and `RUSTINE_CLOSED_GRACE_DAYS`
+must be non-negative integers. `RUSTINE_GROUP` and `RUSTINE_ECOSYSTEM` only apply to `run`; `RUSTINE_TRIVY_BIN` and
 `RUSTINE_TRIVY_ARG` also apply to `scan` and `apply`.
+
+#### Configuration file
+
+The non-sensitive settings of a project can live in a YAML file committed with it, which is handy when the pipeline that
+runs Rustine does not belong to the project (it cannot know its reviewers). Rustine reads `.rustine.yaml` at the root of
+`--project` when it exists; `--config=<path>` or `RUSTINE_CONFIG=<path>` designate another file (then it must exist).
+`run`, `scan` and `apply` accept it; `scan` and `apply` only use `include_dev`, `trivy_args` and (`apply`) `verify`.
+
+```yaml
+# .rustine.yaml
+assignee: [alice]
+reviewer: [bob, carol]
+notify: [my-group/security]
+labels: [security, deps]
+severity_label_format: 'severity::{severity}'
+locale: fr
+ecosystem: composer          # yarn or composer
+group: [others]              # critical-high or others
+max_open_merge_requests: 3
+closed_grace_days: 30
+include_dev: false
+verify: final                # each, final or none
+trivy_args: ['--ignorefile=.trivyignore']
+git_author_name: Rustine
+git_author_email: rustine@example.com
+```
+
+Every key matches the option of the same name (`labels` is `--label`, `trivy_args` is `--trivy-arg`); lists are real
+YAML lists, and an empty list overrides the variable. An unknown key or a value of the wrong type stops the command: a
+typo never goes unnoticed. Nothing sensitive or tied to the machine is read from the file: the token, the GitLab address
+and project, the binaries (`--*-bin`) and the remote stay in the options and the environment of the job.
 
 | Option                       | Variable                                              | Default / meaning                                                                                                                                                                                      |
 |------------------------------|-------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|

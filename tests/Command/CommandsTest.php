@@ -323,6 +323,70 @@ final class CommandsTest extends TestCase
     }
 
     #[Test]
+    public function scanReadsTheConfigurationFileBetweenTheOptionsAndTheEnvironment(): void
+    {
+        $config = $this->configFile("include_dev: true\ntrivy_args:\n  - --severity=HIGH\n");
+
+        $arguments = $this->scanArguments(['--config' => $config], ['RUSTINE_TRIVY_ARG' => '--skip-db-update']);
+        $this->assertContains('--include-dev-deps', $arguments);
+        $this->assertContains('--severity=HIGH', $arguments);
+        $this->assertNotContains('--skip-db-update', $arguments);
+
+        $arguments = $this->scanArguments(['--config' => $config, '--trivy-arg' => ['--skip-db-update']]);
+        $this->assertContains('--skip-db-update', $arguments);
+        $this->assertNotContains('--severity=HIGH', $arguments);
+
+        $off = $this->configFile("include_dev: false\n");
+        $this->assertNotContains(
+            '--include-dev-deps',
+            $this->scanArguments(['--config' => $off], ['RUSTINE_INCLUDE_DEV' => '1']),
+        );
+    }
+
+    #[Test]
+    public function theConfigurationFileCanBeGivenByAVariable(): void
+    {
+        $config = $this->configFile("trivy_args: [--severity=LOW]\n");
+
+        $this->assertContains('--severity=LOW', $this->scanArguments([], ['RUSTINE_CONFIG' => $config]));
+    }
+
+    #[Test]
+    public function runDryRunReadsTheLocaleOfTheConfigurationFile(): void
+    {
+        $config = $this->configFile("locale: fr\n");
+        $arguments = ['--report' => self::REPORT, '--group' => ['others'], '--dry-run' => true];
+
+        $tester = $this->tester('run');
+        $tester->execute([...$arguments, '--config' => $config]);
+        $fromFile = $tester->getDisplay();
+
+        $tester = $this->tester('run');
+        $tester->execute([...$arguments, '--config' => $config, '--locale' => 'en']);
+
+        $this->assertSame(Command::SUCCESS, $tester->getStatusCode());
+        $this->assertNotSame($fromFile, $tester->getDisplay());
+    }
+
+    #[Test]
+    public function aMissingOrInvalidConfigurationFileStopsTheRun(): void
+    {
+        $tester = $this->tester('run');
+        $tester->execute(['--report' => self::REPORT, '--dry-run' => true, '--config' => '/nonexistent/rustine.yaml']);
+
+        $this->assertSame(Command::FAILURE, $tester->getStatusCode());
+        $this->assertStringContainsString('does not exist', $tester->getDisplay());
+
+        $tester = $this->tester('run');
+        $tester->execute(
+            ['--report' => self::REPORT, '--dry-run' => true, '--config' => $this->configFile("reviewers: [a]\n")],
+        );
+
+        $this->assertSame(Command::FAILURE, $tester->getStatusCode());
+        $this->assertStringContainsString('"reviewers"', $tester->getDisplay());
+    }
+
+    #[Test]
     public function runDryRunPrintsTheMergeRequestThatWouldBeOpened(): void
     {
         $tester = $this->tester('run');
@@ -595,6 +659,15 @@ final class CommandsTest extends TestCase
         ]);
 
         $this->assertSame(Command::SUCCESS, $tester->getStatusCode());
+    }
+
+    private function configFile(string $yaml): string
+    {
+        $path = sys_get_temp_dir() . '/rustine-config-' . bin2hex(random_bytes(4)) . '.yaml';
+        file_put_contents($path, $yaml);
+        $this->files[] = $path;
+
+        return $path;
     }
 
     private function projectWithLockfile(string $yarnLock): string

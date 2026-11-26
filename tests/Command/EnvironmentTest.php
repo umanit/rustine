@@ -113,4 +113,24 @@ final class EnvironmentTest extends TestCase
 
         Environment::int(null, self::VARIABLE, 30);
     }
+
+    #[Test]
+    public function aListOfTheFileWinsOverTheVariableButNotOverTheOption(): void
+    {
+        putenv(self::VARIABLE . '=from-env');
+
+        $this->assertSame(['from-file'], Environment::list([], self::VARIABLE, ',', ['from-file']));
+        $this->assertSame([], Environment::list([], self::VARIABLE, ',', []));
+        $this->assertSame(['from-option'], Environment::list(['from-option'], self::VARIABLE, ',', ['from-file']));
+    }
+
+    #[Test]
+    public function aSwitchOfTheFileWinsOverTheVariableButNotOverTheOption(): void
+    {
+        putenv(self::VARIABLE . '=1');
+
+        $this->assertFalse(Environment::flag(false, self::VARIABLE, false));
+        $this->assertTrue(Environment::flag(true, self::VARIABLE, false));
+        $this->assertTrue(Environment::flag(false, self::VARIABLE));
+    }
 }

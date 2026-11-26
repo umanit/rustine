@@ -42,7 +42,7 @@ considered done. IDE (PHPStorm) warnings are informational only.
 
 | Directory   | Role                                                                                                                                                 |
 |-------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `Command/`  | Console commands (invokable, `#[AsCommand]` / `#[Option]` attributes)                                                                                |
+| `Command/`  | Console commands (invokable, `#[AsCommand]` / `#[Option]` attributes); `ConfigFile` (`.rustine.yaml`: option > file > env > default)                 |
 | `Trivy/`    | Running Trivy and parsing its JSON report into objects (`TrivyReport`, …)                                                                            |
 | `Version/`  | Selecting the smallest fixed version (same major preferred)                                                                                          |
 | `Plan/`     | Planning: grouping fixes by ecosystem and severity group                                                                                             |

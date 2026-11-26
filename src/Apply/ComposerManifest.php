@@ -14,7 +14,7 @@ final readonly class ComposerManifest
 
     /**
      * @param array<string, array{field: string, constraint: string}> $declared
-     * @param bool|array<string, bool>|null                            $allowPlugins `config.allow-plugins`
+     * @param bool|array<string, bool>|null                           $allowPlugins `config.allow-plugins`
      */
     private function __construct(
         private array $declared,

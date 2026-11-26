@@ -163,9 +163,27 @@ final readonly class RunCommand
             . ' token owner, then its GitLab private commit email)',
         )]
         ?string $gitAuthorEmail = null,
+        #[Option(description: ConfigFile::OPTION_DESCRIPTION)]
+        ?string $config = null,
     ): int {
+        try {
+            $file = ConfigFile::load($config, $project);
+        } catch (InvalidOptionException $invalidOptionException) {
+            $io->error($invalidOptionException->getMessage());
+
+            return Command::FAILURE;
+        }
+
+        if ($io->isVerbose() && null !== $file->path) {
+            $io->writeln('Configuration file: ' . $file->path);
+        }
+
         $factory = new TranslatorFactory();
-        $locale = Environment::string($locale, 'RUSTINE_LOCALE', TranslatorFactory::FALLBACK_LOCALE);
+        $locale = Environment::string(
+            $locale ?? $file->string('locale'),
+            'RUSTINE_LOCALE',
+            TranslatorFactory::FALLBACK_LOCALE,
+        );
         if (!\in_array($locale, $factory->availableLocales(), true)) {
             $io->error(
                 sprintf('Unknown locale "%s" (available: %s).', $locale, implode(', ', $factory->availableLocales())),
@@ -176,33 +194,52 @@ final readonly class RunCommand
         $translator = $factory->create($locale);
 
         $trivyBin = Environment::string($trivyBin, 'RUSTINE_TRIVY_BIN', 'trivy');
-        $trivyArg = Environment::list($trivyArg, 'RUSTINE_TRIVY_ARG', '\s+');
+        $trivyArg = Environment::list($trivyArg, 'RUSTINE_TRIVY_ARG', '\s+', $file->list('trivy_args'));
         $remote = Environment::string($remote, 'RUSTINE_REMOTE', 'origin');
-        $label = Environment::list($label, 'RUSTINE_LABEL');
+        $label = Environment::list($label, 'RUSTINE_LABEL', ',', $file->list('labels'));
         $severityLabelFormat = Environment::string(
-            $severityLabelFormat,
+            $severityLabelFormat ?? $file->string('severity_label_format'),
             'RUSTINE_SEVERITY_LABEL_FORMAT',
             'severity::{severity}',
         );
-        $assignee = Environment::list($assignee, 'RUSTINE_ASSIGNEE');
-        $reviewer = Environment::list($reviewer, 'RUSTINE_REVIEWER');
-        $gitAuthorName = Environment::optionalString($gitAuthorName, 'RUSTINE_GIT_AUTHOR_NAME');
-        $gitAuthorEmail = Environment::optionalString($gitAuthorEmail, 'RUSTINE_GIT_AUTHOR_EMAIL');
+        $assignee = Environment::list($assignee, 'RUSTINE_ASSIGNEE', ',', $file->list('assignee'));
+        $reviewer = Environment::list($reviewer, 'RUSTINE_REVIEWER', ',', $file->list('reviewer'));
+        $gitAuthorName = Environment::optionalString(
+            $gitAuthorName ?? $file->string('git_author_name'),
+            'RUSTINE_GIT_AUTHOR_NAME',
+        );
+        $gitAuthorEmail = Environment::optionalString(
+            $gitAuthorEmail ?? $file->string('git_author_email'),
+            'RUSTINE_GIT_AUTHOR_EMAIL',
+        );
 
         try {
-            $groups = Options::groups(Environment::list($group, 'RUSTINE_GROUP'));
-            $verifyMode = Options::verifyMode($verify);
-            $wanted = Options::ecosystem(Environment::optionalString($ecosystem, 'RUSTINE_ECOSYSTEM'));
-            $mentions = Options::mentions(Environment::list($notify, 'RUSTINE_NOTIFY'));
-            $maxOpenMergeRequests = Environment::int($maxOpenMergeRequests, 'RUSTINE_MAX_OPEN_MERGE_REQUESTS', null);
-            $closedGraceDays = Environment::int($closedGraceDays, 'RUSTINE_CLOSED_GRACE_DAYS', 30) ?? 30;
+            $groups = Options::groups(Environment::list($group, 'RUSTINE_GROUP', ',', $file->list('group')));
+            $verifyMode = Options::verifyMode($verify ?? $file->string('verify'));
+            $wanted = Options::ecosystem(
+                Environment::optionalString($ecosystem ?? $file->string('ecosystem'), 'RUSTINE_ECOSYSTEM'),
+            );
+            $mentions = Options::mentions(Environment::list($notify, 'RUSTINE_NOTIFY', ',', $file->list('notify')));
+            $maxOpenMergeRequests = Environment::int(
+                $maxOpenMergeRequests ?? $file->int('max_open_merge_requests'),
+                'RUSTINE_MAX_OPEN_MERGE_REQUESTS',
+                null,
+            );
+            $closedGraceDays = Environment::int(
+                $closedGraceDays ?? $file->int('closed_grace_days'),
+                'RUSTINE_CLOSED_GRACE_DAYS',
+                30,
+            ) ?? 30;
         } catch (InvalidOptionException $invalidOptionException) {
             $io->error($invalidOptionException->getMessage());
 
             return Command::FAILURE;
         }
 
-        $trivyArg = TrivyScanner::withDevDependencies($trivyArg, Environment::flag($includeDev, 'RUSTINE_INCLUDE_DEV'));
+        $trivyArg = TrivyScanner::withDevDependencies(
+            $trivyArg,
+            Environment::flag($includeDev, 'RUSTINE_INCLUDE_DEV', $file->bool('include_dev')),
+        );
 
         if ($dryRun) {
             return $this->preview($io, $translator, $mentions, $report, $groups, $wanted, $reportFile);

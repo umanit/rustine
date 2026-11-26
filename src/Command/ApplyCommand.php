@@ -76,10 +76,13 @@ final class ApplyCommand
         ?string $verify = null,
         #[Option(description: 'Only print the commands that would run; the project is left untouched')]
         bool $dryRun = false,
+        #[Option(description: ConfigFile::OPTION_DESCRIPTION)]
+        ?string $config = null,
     ): int {
         try {
+            $file = ConfigFile::load($config, $project);
             $groups = Options::exactlyOneGroup($group);
-            $verifyMode = Options::verifyMode($verify);
+            $verifyMode = Options::verifyMode($verify ?? $file->string('verify'));
             $wanted = Options::ecosystem($ecosystem);
         } catch (InvalidOptionException $invalidOptionException) {
             $io->error($invalidOptionException->getMessage());
@@ -131,8 +134,8 @@ final class ApplyCommand
             $projectDir,
             Environment::string($trivyBin, 'RUSTINE_TRIVY_BIN', 'trivy'),
             TrivyScanner::withDevDependencies(
-                Environment::list($trivyArg, 'RUSTINE_TRIVY_ARG', '\\s+'),
-                Environment::flag($includeDev, 'RUSTINE_INCLUDE_DEV'),
+                Environment::list($trivyArg, 'RUSTINE_TRIVY_ARG', '\\s+', $file->list('trivy_args')),
+                Environment::flag($includeDev, 'RUSTINE_INCLUDE_DEV', $file->bool('include_dev')),
             ),
             $tools->composer,
             $tools->yarn,

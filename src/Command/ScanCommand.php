@@ -32,14 +32,17 @@ final class ScanCommand
             . ' $RUSTINE_INCLUDE_DEV, then no',
         )]
         bool $includeDev = false,
+        #[Option(description: ConfigFile::OPTION_DESCRIPTION)]
+        ?string $config = null,
     ): int {
         try {
+            $file = ConfigFile::load($config, $project);
             new TrivyScanner(Environment::string($trivyBin, 'RUSTINE_TRIVY_BIN', 'trivy'))->scan(
                 $project,
                 $output,
                 TrivyScanner::withDevDependencies(
-                    Environment::list($trivyArg, 'RUSTINE_TRIVY_ARG', '\\s+'),
-                    Environment::flag($includeDev, 'RUSTINE_INCLUDE_DEV'),
+                    Environment::list($trivyArg, 'RUSTINE_TRIVY_ARG', '\\s+', $file->list('trivy_args')),
+                    Environment::flag($includeDev, 'RUSTINE_INCLUDE_DEV', $file->bool('include_dev')),
                 ),
                 static fn(string $buffer) => $io->getErrorStyle()->write($buffer),
             );
