@@ -78,6 +78,9 @@ of the Rustine branch (`security/rustine-yarn-feat-foo-bar`): each analyzed bran
 requests, which target it, and none overwrites the ones of the default branch. Outside GitLab CI, where
 `CI_DEFAULT_BRANCH` is not set, names never carry a slug.
 
+`--branch` does not check anything out: the scan reads the checkout, so clone or check out the branch to analyze before
+running `run`.
+
 "Same fixes" means the fingerprint written in the description of the merge request (packages, versions, strategies) is
 the one of the new run; a merge request with conflicts is rebuilt anyway. A merge request that someone closed by hand is
 not opened again as long as the new run would propose the very same fixes (same fingerprint) and the closing is less

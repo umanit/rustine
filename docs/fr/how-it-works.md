@@ -67,6 +67,8 @@ corriger) ne comptent pas : elles portent sa note. Pour faire taire une CVE déf
 
 Quand la branche analysée (`--branch`) n’est pas la branche par défaut du projet (`$CI_DEFAULT_BRANCH`), son slug termine le nom de la branche Rustine (`security/rustine-yarn-feat-foo-bar`) : chaque branche analysée a ses propres branches et merge requests, qui la ciblent, et aucune n’écrase celles de la branche par défaut. Hors CI GitLab, où `CI_DEFAULT_BRANCH` n’est pas définie, les noms ne portent jamais de slug.
 
+`--branch` ne change pas de branche : le scan lit le checkout, il faut donc cloner ou checkout la branche à analyser avant de lancer `run`.
+
 ## Stratégies de correction
 
 | Écosystème   | Tentatives, dans l’ordre                                                                                                                   |

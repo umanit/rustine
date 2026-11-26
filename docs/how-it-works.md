@@ -56,6 +56,8 @@ The branch name is stable, so a run is a reconciliation of what the branch shoul
 The branch is rebuilt from the default branch whenever it has to be pushed, so it carries exactly one Rustine commit.
 When the analyzed branch (`--branch`) is not the project’s default branch (`$CI_DEFAULT_BRANCH`), its slug ends the name of the Rustine branch (`security/rustine-yarn-feat-foo-bar`): each analyzed branch has its own branches and merge requests, which target it, and none overwrites the ones of the default branch. Outside GitLab CI, where `CI_DEFAULT_BRANCH` is not set, names never carry a slug.
 
+`--branch` does not check anything out: the scan reads the checkout, so clone or check out the branch to analyze before running `run`.
+
 "Same fixes" means the fingerprint written in the description of the merge request (packages, versions, strategies) is
 the one of the new run; a merge request with conflicts is rebuilt anyway. A merge request that someone closed by hand is
 not opened again as long as the new run would propose the very same fixes (same fingerprint) and the closing is less
