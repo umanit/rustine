@@ -113,6 +113,9 @@ composer global config allow-plugins.symfony/flex true && composer global requir
 Only Flex is then loaded, and no plugin of the project. A `vendor/symfony/flex` (`composer install --no-scripts`) works
 too, but loads every plugin of the project: they run with the same privileges as Rustine, which can read its
 environment, so only do it for a project whose plugins you trust as much as its CI.
+In both cases Flex must be allowed by `config.allow-plugins` (the global one for a global Flex, the one of
+`composer.json` for `vendor/`): a non-interactive Composer blocks a plugin that is installed but not allowed, which
+would silently lose the guarantee, so Rustine then stops with the same error.
 
 ### Safety guarantees
 

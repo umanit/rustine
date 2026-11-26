@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-26
+
 ### Changed
 
 - A Yarn project whose `package.json` points into the Composer vendor directory (`file:vendor/symfony/ux-…/assets`) no
@@ -14,6 +16,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fetched by Composer (at their locked version, without their dependencies, plugins or scripts, in a throwaway project)
   for the Yarn pass only, then removed. A local source outside the vendor directory, or not in `composer.lock`, is still
   refused.
+
+### Fixed
+
+- A Yarn alias (`string-width-cjs@npm:string-width@^4.2.0`) is now filed under its real package name, for Classic and
+  Berry lockfiles alike. Before, the check after an attempt could declare `string-width` fixed while the aliased
+  instance was still vulnerable.
+- The `npmAuthToken:` and `npmAuthIdent:` keys of `.yarnrc.yml` (YAML syntax) are masked in the output tails that end up
+  in a merge request.
+- For a project that sets `extra.symfony.require`, Flex now counts as available only if `config.allow-plugins` allows it
+  (`true`, an exact entry or a pattern) and, in `vendor/`, it is listed in `vendor/composer/installed.json`; a global
+  Flex also needs the global `allow-plugins` to allow it. Before, a Flex that was installed but not allowed was blocked
+  by a non-interactive Composer and the guarantee silently fell back.
 
 ## [0.3.0] - 2026-11-25
 
@@ -176,7 +190,8 @@ First release.
 - Merge request titles, descriptions, notes and commit messages in English and French (`--locale` or `RUSTINE_LOCALE`).
 - A single executable PHAR, built and published with its SHA-256 by the GitHub release workflow.
 
-[Unreleased]: https://github.com/umanit/rustine/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/umanit/rustine/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/umanit/rustine/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/umanit/rustine/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/umanit/rustine/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/umanit/rustine/releases/tag/v0.1.0
