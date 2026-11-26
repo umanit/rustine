@@ -66,7 +66,7 @@ final class GitAccessTest extends TestCase
     public function remoteCommandsGetTheCredentialsButNeverOnTheCommandLine(): void
     {
         $runner = new FakeRunner();
-        $git = new Git($runner, '/p', new GitAccess(self::TOKEN));
+        $git = new Git($runner, '/p', new GitAccess(self::TOKEN, inheritedConfigCount: 0));
 
         $git->run(['fetch', 'origin'], true);
         $git->run(['status']);

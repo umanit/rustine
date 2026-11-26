@@ -47,8 +47,9 @@ final readonly class FixApplier
                 '#\b([a-z][a-z0-9+.-]*://)[^/\s@]+@#i',
                 '#\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+#',
                 '#(_auth(?:Token)?|_password)\s*=\s*\S+#i',
+                '#(npmAuth(?:Token|Ident)\s*:)\s*\S+#i',
             ],
-            ['$1***@', '$1 ***', '$1=***'],
+            ['$1***@', '$1 ***', '$1=***', '$1 ***'],
             $text,
         );
 

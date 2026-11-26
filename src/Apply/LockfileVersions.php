@@ -132,7 +132,21 @@ final class LockfileVersions
         $specifier = trim(explode(',', substr($header, 0, -1))[0], " \t\"");
         // The name ends at the first `@` that is not the scope marker.
         $at = strpos($specifier, '@', 1);
+        if (false === $at) {
+            return null;
+        }
 
-        return false === $at ? null : substr($specifier, 0, $at);
+        // An alias (`string-width-cjs@npm:string-width@^4.2.0`) installs another package: its real name is the one
+        // after `npm:`.
+        $range = substr($specifier, $at + 1);
+        if (str_starts_with($range, 'npm:')) {
+            $target = substr($range, 4);
+            $targetAt = strpos($target, '@', 1);
+            if (false !== $targetAt) {
+                return substr($target, 0, $targetAt);
+            }
+        }
+
+        return substr($specifier, 0, $at);
     }
 }

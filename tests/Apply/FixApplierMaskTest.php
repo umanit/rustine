@@ -23,6 +23,7 @@ final class FixApplierMaskTest extends TestCase
         yield 'url with a token only' => ['fetch http://tok3n@host/pkg', 'fetch http://***@host/pkg'];
         yield 'authorization header' => ['Authorization: Bearer abc.def-123', 'Authorization: Bearer ***'];
         yield 'npm auth token' => ['//registry/:_authToken=NpmToken123', '//registry/:_authToken=***'];
+        yield 'yarn berry auth token' => ['    npmAuthToken: s3cr3t-value', '    npmAuthToken: ***'];
         yield 'nothing to hide' => [
             'https://registry.yarnpkg.com/braces/-/braces-3.0.2.tgz not found',
             'https://registry.yarnpkg.com/braces/-/braces-3.0.2.tgz not found',

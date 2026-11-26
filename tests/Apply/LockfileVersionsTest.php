@@ -67,6 +67,19 @@ final class LockfileVersionsTest extends TestCase
     }
 
     #[Test]
+    public function itFilesAliasesUnderTheirRealPackageName(): void
+    {
+        $classic = "\"string-width-cjs@npm:string-width@^4.2.0\":\n  version \"4.2.3\"\n";
+        $berry = "\"@scope/alias@npm:@real/pkg@^1.0.0\":\n  version: 1.4.0\n  resolution: \"@real/pkg@npm:1.4.0\"\n";
+
+        $this->assertSame(
+            ['string-width' => ['4.2.3']],
+            new LockfileVersions()->parse(Ecosystem::Yarn, $classic),
+        );
+        $this->assertSame(['@real/pkg' => ['1.4.0']], new LockfileVersions()->parse(Ecosystem::Yarn, $berry));
+    }
+
+    #[Test]
     public function itReadsYarnBerryLockfilesAndIgnoresTheWorkspaces(): void
     {
         $versions = new LockfileVersions()->parse(Ecosystem::Yarn, self::BERRY);
