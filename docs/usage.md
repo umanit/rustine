@@ -77,6 +77,7 @@ notify: [my-group/security]
 labels: [security, deps]
 severity_label_format: 'severity::{severity}'
 locale: fr
+branch: main                 # branch to analyze (default: the default branch)
 ecosystem: composer          # yarn or composer
 group: [others]              # critical-high or others
 max_open_merge_requests: 3
@@ -100,7 +101,7 @@ and project, the binaries (`--*-bin`) and the remote stay in the options and the
 | `--project`                  |                                                       | Project directory (default `.`)                                                                                                                                                                        |
 | `--gitlab-url`               | `CI_API_V4_URL`                                       | GitLab API root, or the address of the instance (`/api/v4` is added when missing)                                                                                                                      |
 | `--project-id`               | `CI_PROJECT_ID`                                       | Project id or path                                                                                                                                                                                     |
-| `--default-branch`           | `CI_DEFAULT_BRANCH`                                   | Branch the fixes start from and the merge requests target                                                                                                                                              |
+| `--branch`, `--default-branch`| `RUSTINE_BRANCH`, then `CI_DEFAULT_BRANCH`            | Branch to analyze: the fixes start from it and the merge requests target it (default: the default branch of the project)                                                                               |
 | *(no option, on purpose)*    | `RUSTINE_GITLAB_TOKEN` or `GITLAB_TOKEN`              | Access token                                                                                                                                                                                           |
 | `--locale`                   | `RUSTINE_LOCALE`                                      | Language of the texts written in the project (default `en`)                                                                                                                                            |
 | `--label`                    | `RUSTINE_LABEL`                                       | Label of every merge request (repeatable, default `security`)                                                                                                                                          |

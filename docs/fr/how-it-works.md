@@ -65,6 +65,8 @@ une date plus tardive, ouvrent une nouvelle merge request. Les merge requests qu
 corriger) ne comptent pas : elles portent sa note. Pour faire taire une CVE définitivement, la mettre dans un fichier
 `.trivyignore` et passer `--trivy-arg=--ignorefile=.trivyignore`.
 
+Quand la branche analysée (`--branch`) n’est pas la branche par défaut du projet (`$CI_DEFAULT_BRANCH`), son slug termine le nom de la branche Rustine (`security/rustine-yarn-feat-foo-bar`) : chaque branche analysée a ses propres branches et merge requests, qui la ciblent, et aucune n’écrase celles de la branche par défaut. Hors CI GitLab, où `CI_DEFAULT_BRANCH` n’est pas définie, les noms ne portent jamais de slug.
+
 ## Stratégies de correction
 
 | Écosystème   | Tentatives, dans l’ordre                                                                                                                   |

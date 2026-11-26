@@ -49,6 +49,14 @@
         "fr"
       ]
     },
+    "branch": {
+      "description": "Branch to analyze: the fixes start from it and the merge requests target it (--branch). Default: the default branch of the project ($CI_DEFAULT_BRANCH).",
+      "type": "string",
+      "examples": [
+        "main",
+        "release/1.x"
+      ]
+    },
     "ecosystem": {
       "description": "Ecosystem to process (--ecosystem). Default: both.",
       "type": "string",

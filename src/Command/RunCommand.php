@@ -15,6 +15,7 @@ use Rustine\GitLab\GitLabConfigException;
 use Rustine\GitLab\GitLabException;
 use Rustine\GitLab\HttpGitLabClient;
 use Rustine\I18n\TranslatorFactory;
+use Rustine\Plan\GroupPlan;
 use Rustine\Plan\Planner;
 use Rustine\Plan\SeverityGroup;
 use Rustine\Progress\ConsoleProgress;
@@ -113,9 +114,11 @@ final readonly class RunCommand
         #[Option(description: 'GitLab project id or path (default: $CI_PROJECT_ID)')]
         ?string $projectId = null,
         #[Option(
-            description: 'Default branch the fixes start from and the merge requests target (default:'
-            . ' $CI_DEFAULT_BRANCH)',
+            description: 'Branch to analyze: the fixes start from it and the merge requests target it (default:'
+            . ' $RUSTINE_BRANCH, then $CI_DEFAULT_BRANCH, the default branch of the project)',
         )]
+        ?string $branch = null,
+        #[Option(description: 'Alias of --branch, kept for compatibility')]
         ?string $defaultBranch = null,
         #[Option(description: 'Git remote to fetch from and push to (default: $RUSTINE_REMOTE, then origin)')]
         ?string $remote = null,
@@ -253,7 +256,15 @@ final readonly class RunCommand
         }
 
         try {
-            $config = GitLabConfig::resolve(getenv(), $gitlabUrl, $projectId, $defaultBranch);
+            $config = GitLabConfig::resolve(
+                getenv(),
+                $gitlabUrl,
+                $projectId,
+                Environment::optionalString(
+                    $branch ?? $defaultBranch ?? $file->string('branch'),
+                    'RUSTINE_BRANCH',
+                ),
+            );
         } catch (GitLabConfigException $gitLabConfigException) {
             $io->error($gitLabConfigException->getMessage());
 
@@ -316,6 +327,11 @@ final readonly class RunCommand
             $io->success('Nothing to fix: no merge request to open.');
 
             return Command::SUCCESS;
+        }
+
+        $projectDefault = getenv('CI_DEFAULT_BRANCH');
+        if (\is_string($projectDefault) && '' !== $projectDefault && $projectDefault !== $config->defaultBranch) {
+            $plans = array_map(static fn(GroupPlan $plan): GroupPlan => $plan->forBase($config->defaultBranch), $plans);
         }
 
         $progress = $io->isVerbose() ? new ConsoleProgress($io) : new NullProgress();

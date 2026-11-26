@@ -51,7 +51,7 @@ final readonly class GitLabConfig
                 $missing[] = 'the project (--project-id or CI_PROJECT_ID)';
             }
             if (null === $defaultBranch) {
-                $missing[] = 'the default branch (--default-branch or CI_DEFAULT_BRANCH)';
+                $missing[] = 'the default branch (--branch, RUSTINE_BRANCH or CI_DEFAULT_BRANCH)';
             }
             if (null === $token) {
                 $missing[] = 'the access token (RUSTINE_GITLAB_TOKEN or GITLAB_TOKEN)';

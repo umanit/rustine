@@ -19,15 +19,29 @@ final readonly class GroupPlan
         public Ecosystem $ecosystem,
         public ?SeverityGroup $group,
         public array $fixes,
+        public ?string $baseSlug = null,
     ) {
+    }
+
+    /**
+     * The same plan for a base branch other than the default one: its slug ends the name of the Rustine branch, so
+     * that every analyzed branch has its own branches and merge requests.
+     */
+    public function forBase(string $baseBranch): self
+    {
+        $slug = trim((string) preg_replace('/[^a-z0-9]+/', '-', strtolower($baseBranch)), '-');
+
+        return new self($this->ecosystem, $this->group, $this->fixes, '' === $slug ? null : $slug);
     }
 
     /** Stable branch name, the basis of MR idempotency. */
     public function branchName(): string
     {
-        return null === $this->group
+        $name = null === $this->group
             ? sprintf('security/rustine-%s', $this->ecosystem->value)
             : sprintf('security/rustine-%s-%s', $this->ecosystem->value, $this->group->value);
+
+        return null === $this->baseSlug ? $name : $name . '-' . $this->baseSlug;
     }
 
     /**

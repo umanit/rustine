@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Rustine\Tests\Command;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Rustine\Application;
+use Rustine\Command\ConfigFile;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\HttpClient\MockHttpClient;
@@ -40,6 +42,18 @@ final class CommandsTest extends TestCase
             @unlink($dir . '/composer.json');
             @rmdir($dir);
         }
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, array<string, string|null>, string|null}>
+     */
+    public static function branchSources(): iterable
+    {
+        yield '--branch' => [['--branch' => 'release/1.x'], [], null];
+        yield '--default-branch alias' => [['--default-branch' => 'release/1.x'], [], null];
+        yield 'RUSTINE_BRANCH' => [[], ['RUSTINE_BRANCH' => 'release/1.x'], null];
+        yield 'branch key of the file' => [[], [], "branch: release/1.x\n"];
+        yield 'CI_DEFAULT_BRANCH' => [[], ['CI_DEFAULT_BRANCH' => 'main'], null];
     }
 
     #[Test]
@@ -600,6 +614,118 @@ final class CommandsTest extends TestCase
             $this->assertStringContainsString('Cannot authenticate to GitLab', $tester->getDisplay());
             $this->assertStringNotContainsString('glpat-bad', $tester->getDisplay());
         });
+    }
+
+    /**
+     * @param array<string, mixed>       $options
+     * @param array<string, string|null> $environment
+     */
+    #[Test]
+    #[DataProvider('branchSources')]
+    public function runKnowsTheBranchToAnalyzeFromEachSource(
+        array $options,
+        array $environment,
+        ?string $configFile,
+    ): void {
+        $project = sys_get_temp_dir() . '/rustine-branch-' . bin2hex(random_bytes(4));
+        mkdir($project);
+        $this->dirs[] = $project;
+
+        if (null !== $configFile) {
+            file_put_contents($project . '/' . ConfigFile::DEFAULT_NAME, $configFile);
+            $this->files[] = $project . '/' . ConfigFile::DEFAULT_NAME;
+        }
+
+        $trivy = $this->fakeTrivy(__DIR__ . '/../fixtures/trivy/yarn-nofix-report.json');
+        $this->files[] = $project . '/trivy-report.json';
+        $http = new MockHttpClient([
+            new MockResponse('{"id":7,"username":"rustine-bot","name":"Rustine Bot","commit_email":null}'),
+            new MockResponse('[]'),
+        ]);
+
+        $this->withEnvironment(
+            [
+                'GITLAB_TOKEN'      => 'glpat-ok',
+                'RUSTINE_BRANCH'    => null,
+                'CI_DEFAULT_BRANCH' => null,
+                ...$environment,
+            ],
+            function () use ($http, $trivy, $project, $options): void {
+                $tester = $this->tester('run', $http);
+                $tester->execute([
+                    '--group'      => ['critical-high'],
+                    '--project'    => $project,
+                    '--report'     => $project . '/trivy-report.json',
+                    '--trivy-bin'  => $trivy,
+                    '--gitlab-url' => 'https://gitlab.example.com/api/v4',
+                    '--project-id' => '42',
+                    ...$options,
+                ]);
+
+                $this->assertSame(2, $tester->getStatusCode(), $tester->getDisplay());
+            },
+        );
+    }
+
+    #[Test]
+    public function runNamesTheBranchAfterTheAnalyzedBranchOnlyWhenItIsNotTheDefaultOne(): void
+    {
+        foreach (['release/1.x' => '-release-1-x', 'main' => ''] as $branch => $suffix) {
+            $project = sys_get_temp_dir() . '/rustine-slug-' . bin2hex(random_bytes(4));
+            mkdir($project);
+            $this->dirs[] = $project;
+            $this->files[] = $project . '/trivy-report.json';
+            $trivy = $this->fakeTrivy(__DIR__ . '/../fixtures/trivy/yarn-nofix-report.json');
+            $http = new MockHttpClient([
+                new MockResponse('{"id":7,"username":"rustine-bot","name":"Rustine Bot","commit_email":null}'),
+                new MockResponse('[]'),
+            ]);
+
+            $this->withEnvironment(
+                ['GITLAB_TOKEN' => 'glpat-ok', 'RUSTINE_BRANCH' => null, 'CI_DEFAULT_BRANCH' => 'main'],
+                function () use ($http, $trivy, $project, $branch, $suffix): void {
+                    $tester = $this->tester('run', $http);
+                    $tester->execute([
+                        '--group'      => ['critical-high'],
+                        '--project'    => $project,
+                        '--report'     => $project . '/trivy-report.json',
+                        '--trivy-bin'  => $trivy,
+                        '--gitlab-url' => 'https://gitlab.example.com/api/v4',
+                        '--project-id' => '42',
+                        '--branch'     => $branch,
+                    ]);
+
+                    $this->assertStringContainsString(
+                        'security/rustine-yarn-critical-high' . $suffix . ': nothing fixable',
+                        $tester->getDisplay(),
+                    );
+                },
+            );
+        }
+    }
+
+    #[Test]
+    public function runAsksForTheBranchWhenNoSourceGivesIt(): void
+    {
+        $this->withEnvironment(
+            [
+                'GITLAB_TOKEN'      => 'glpat-ok',
+                'RUSTINE_BRANCH'    => null,
+                'CI_DEFAULT_BRANCH' => null,
+            ],
+            function (): void {
+                $tester = $this->tester('run');
+                $tester->execute([
+                    '--group'      => ['others'],
+                    '--project'    => sys_get_temp_dir(),
+                    '--gitlab-url' => 'https://gitlab.example.com/api/v4',
+                    '--project-id' => '42',
+                ]);
+
+                $this->assertSame(Command::FAILURE, $tester->getStatusCode());
+                $this->assertStringContainsString('RUSTINE_BRANCH', $tester->getDisplay());
+            },
+        );
     }
 
     #[Test]

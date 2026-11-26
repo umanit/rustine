@@ -53,6 +53,7 @@ final class ConfigFileTest extends TestCase
             ConfigFile::DEFAULT_NAME,
             <<<'YAML'
                 reviewer: [alice, bob]
+                branch: release/1.x
                 locale: fr
                 closed_grace_days: 0
                 include_dev: false
@@ -64,6 +65,7 @@ final class ConfigFileTest extends TestCase
         $this->assertSame($dir . '/' . ConfigFile::DEFAULT_NAME, $config->path);
         $this->assertSame(['alice', 'bob'], $config->list('reviewer'));
         $this->assertSame('fr', $config->string('locale'));
+        $this->assertSame('release/1.x', $config->string('branch'));
         $this->assertSame(0, $config->int('closed_grace_days'));
         $this->assertFalse($config->bool('include_dev'));
         $this->assertNull($config->list('notify'));

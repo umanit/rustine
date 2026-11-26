@@ -254,6 +254,17 @@ final class PlannerTest extends TestCase
     }
 
     #[Test]
+    public function aBaseBranchOtherThanTheDefaultOneEndsTheBranchName(): void
+    {
+        $plans = new Planner()->plan($this->report('yarn-report.json'));
+
+        $this->assertSame('security/rustine-yarn-feat-foo-bar', $plans[0]->forBase('feat/foo-bar')->branchName());
+        $this->assertSame('security/rustine-yarn-release-1-x', $plans[0]->forBase('Release/1.x/')->branchName());
+        $this->assertSame('security/rustine-yarn', $plans[0]->forBase('///')->branchName());
+        $this->assertSame('security/rustine-yarn', $plans[0]->branchName());
+    }
+
+    #[Test]
     public function withoutGroupsEveryGroupIsInASinglePlanPerEcosystem(): void
     {
         $plans = new Planner()->plan($this->report('yarn-report.json'));

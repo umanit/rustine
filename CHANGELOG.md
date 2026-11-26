@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `run` can analyze a branch other than the default one: `--branch` (`--default-branch` stays as an alias),
+  `RUSTINE_BRANCH` or the `branch` key of `.rustine.yaml`. The fixes start from that branch and the merge requests
+  target it. Precedence: option, then file, then `RUSTINE_BRANCH`, then `CI_DEFAULT_BRANCH`: without any of them, the
+  default branch is still used. When the analyzed branch differs from `$CI_DEFAULT_BRANCH`, its slug ends the name of
+  the Rustine branch (`security/rustine-yarn-feat-foo-bar`), so that two analyzed branches never share a branch or a
+  merge request.
 - A JSON Schema of `.rustine.yaml` (`schema/rustine.schema.json`) gives editors completion, key descriptions and
   validation: add
   `# yaml-language-server: $schema=https://raw.githubusercontent.com/umanit/rustine/v0.6.0/schema/rustine.schema.json`
