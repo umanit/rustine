@@ -21,6 +21,24 @@ final class YarnLocalSources
      */
     public function missing(string $projectDir): array
     {
+        return array_keys($this->scan($projectDir));
+    }
+
+    /**
+     * Targets of the local sources that do not exist, made absolute.
+     *
+     * @return list<string> in the order of `package.json`, without duplicates
+     */
+    public function missingPaths(string $projectDir): array
+    {
+        return array_values(array_unique(array_values($this->scan($projectDir))));
+    }
+
+    /**
+     * @return array<string, string> absolute target by `name (spec)`
+     */
+    private function scan(string $projectDir): array
+    {
         $content = @file_get_contents($projectDir . '/package.json');
         $data = false === $content ? null : json_decode($content, true);
         if (!\is_array($data)) {
@@ -41,11 +59,11 @@ final class YarnLocalSources
 
                 $path = str_starts_with($m[1], '/') ? $m[1] : $projectDir . '/' . $m[1];
                 if (!file_exists($path)) {
-                    $missing[$name . ' (' . $spec . ')'] = true;
+                    $missing[$name . ' (' . $spec . ')'] ??= $path;
                 }
             }
         }
 
-        return array_map(strval(...), array_keys($missing));
+        return $missing;
     }
 }

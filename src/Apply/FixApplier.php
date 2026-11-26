@@ -186,8 +186,8 @@ final readonly class FixApplier
                 throw new UnsupportedProjectException(
                     sprintf(
                         'package.json depends on local sources that do not exist (%s): Yarn cannot resolve'
-                        . ' the project without them. Rustine installs nothing: make them available first, e.g. with'
-                        . ' `composer install --no-scripts` for a path in vendor/.',
+                        . ' the project without them. Rustine only fetches the packages of composer.lock that a path'
+                        . ' in the vendor directory points to: make the others available first.',
                         implode(', ', $missing),
                     ),
                 );

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- A Yarn project whose `package.json` points into the Composer vendor directory (`file:vendor/symfony/ux-…/assets`) no
+  longer needs a `composer install` before Rustine: the packages of `composer.lock` it points to, and only those, are
+  fetched by Composer (at their locked version, without their dependencies, plugins or scripts, in a throwaway project)
+  for the Yarn pass only, then removed. A local source outside the vendor directory, or not in `composer.lock`, is still
+  refused.
+
 ## [0.3.0] - 2026-11-25
 
 ### Added

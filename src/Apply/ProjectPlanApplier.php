@@ -15,6 +15,9 @@ use Rustine\Trivy\TrivyScanner;
 /**
  * Applies a plan to a real project: picks the strategy of the ecosystem, checks that the environment provides the
  * tools it needs (Rustine installs none), then runs {@see FixApplier}.
+ *
+ * For Yarn, the Composer packages that `package.json` points into (`file:vendor/symfony/ux-…/assets`) are fetched
+ * alone from `composer.lock` when they are missing, and removed afterwards (see {@see ComposerVendorSources}).
  */
 final readonly class ProjectPlanApplier implements PlanApplier
 {
@@ -113,7 +116,21 @@ final readonly class ProjectPlanApplier implements PlanApplier
             $this->progress,
         );
 
-        return new AppliedPlan($applier->apply($plan, $report), $tools);
+        $sources = new ComposerVendorSources($this->runner, $this->projectDir, $this->composerCommand);
+        $created = [];
+
+        try {
+            if (Ecosystem::Yarn === $plan->ecosystem && [] !== ($needed = $sources->needed())) {
+                $this->progress->step(
+                    'Fetching from composer.lock what package.json points into: ' . implode(', ', $needed),
+                );
+                $created = $sources->provide();
+            }
+
+            return new AppliedPlan($applier->apply($plan, $report), $tools);
+        } finally {
+            $sources->remove($created);
+        }
     }
 
     /**

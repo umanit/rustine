@@ -29,8 +29,10 @@ final class ProjectPlanApplierTest extends TestCase
 
     protected function tearDown(): void
     {
-        @unlink($this->dir . '/yarn.lock');
-        @unlink($this->dir . '/composer.json');
+        foreach (['yarn.lock', 'composer.json', 'composer.lock', 'package.json'] as $file) {
+            @unlink($this->dir . '/' . $file);
+        }
+
         @rmdir($this->dir);
     }
 
@@ -185,6 +187,80 @@ final class ProjectPlanApplierTest extends TestCase
         }
 
         $this->assertSame([['node', '--version']], $runner->commands, 'Nothing is installed, nothing else is run.');
+    }
+
+    #[Test]
+    public function aLockedPackageThatPackageJsonPointsIntoIsFetchedAloneBeforeYarnRuns(): void
+    {
+        $this->yarnProjectPointingInto('acme/ui');
+        $runner = $this->yarnRunner(composerInstallExit: 1);
+
+        try {
+            new ProjectPlanApplier($runner, $this->dir)->apply(Fixtures::plan(Fixtures::fix()), Fixtures::report());
+            self::fail('A package that cannot be fetched must stop the run.');
+        } catch (ToolingException $toolingException) {
+            $this->assertStringContainsString('Composer could not fetch acme/ui', $toolingException->getMessage());
+        }
+
+        $this->assertSame(
+            [
+                'node --version',
+                'yarn --version',
+                'composer --version --no-ansi',
+                'composer install --no-interaction --no-scripts --no-plugins --no-autoloader --no-progress --no-ansi',
+            ],
+            $runner->toolCommands(),
+            'only Composer runs, on a throwaway project, before any Yarn command',
+        );
+        $install = array_search('install', array_column($runner->commands, 1), true);
+        $this->assertIsInt($install);
+        $this->assertStringStartsWith(
+            sys_get_temp_dir() . '/rustine-vendor-',
+            $runner->envs[$install]['COMPOSER_VENDOR_DIR'] ?? '',
+        );
+    }
+
+    #[Test]
+    public function aLocalSourceThatComposerLockDoesNotHoldIsRefusedWithoutRunningComposer(): void
+    {
+        $this->yarnProjectPointingInto('acme/other');
+        $runner = $this->yarnRunner(composerInstallExit: 0);
+
+        try {
+            new ProjectPlanApplier($runner, $this->dir)->apply(Fixtures::plan(Fixtures::fix()), Fixtures::report());
+            self::fail('Yarn cannot resolve a missing local source.');
+        } catch (UnsupportedProjectException $unsupportedProjectException) {
+            $this->assertStringContainsString(
+                'local sources that do not exist',
+                $unsupportedProjectException->getMessage(),
+            );
+        }
+
+        $this->assertNotContains('composer', array_column($runner->commands, 0));
+    }
+
+    private function yarnProjectPointingInto(string $locked): void
+    {
+        file_put_contents($this->dir . '/yarn.lock', "__metadata:\n  version: 8\n");
+        file_put_contents($this->dir . '/package.json', '{"dependencies":{"@acme/ui":"file:vendor/acme/ui/assets"}}');
+        file_put_contents(
+            $this->dir . '/composer.lock',
+            '{"packages":[{"name":"' . $locked . '","version":"1.0.0","dist":{"type":"zip","url":"x"}}]}',
+        );
+    }
+
+    private function yarnRunner(int $composerInstallExit): FakeRunner
+    {
+        $runner = new FakeRunner();
+        $runner->handler = static fn(array $command): CommandResult => match ($command[1] ?? null) {
+            'install' => new CommandResult($composerInstallExit, 'boom'),
+            default => new CommandResult(
+                0,
+                'composer' === $command[0] ? "Composer version 2.8.1 2024-10-04\n" : "4.14.1\n",
+            ),
+        };
+
+        return $runner;
     }
 
     private function composerRunner(bool $globalFlex): FakeRunner

@@ -810,7 +810,7 @@ final class FixApplierTest extends TestCase
                 $unsupportedProjectException->getMessage(),
             );
             $this->assertStringContainsString(
-                'composer install --no-scripts',
+                'only fetches the packages of composer.lock',
                 $unsupportedProjectException->getMessage(),
             );
         }

@@ -8,8 +8,12 @@
 - Une entrée `resolutions` est refusée quand le paquet est installé dans plusieurs versions majeures (elle les
   écraserait toutes).
 - **Un projet Yarn dont le `package.json` pointe vers une source locale** (`file:`, `link:`, `portal:`) inexistante est
-  refusé avec une erreur explicite : Yarn ne peut pas la résoudre. C’est typique de Symfony UX, qui déclare
-  `file:vendor/symfony/ux-…/assets` : lancer `composer install --no-scripts` avant Rustine, qui n’installe rien.
+  refusé avec une erreur explicite : Yarn ne peut pas la résoudre. Sauf pour un chemin dans le répertoire vendor de
+  Composer, comme le déclare Symfony UX (`file:vendor/symfony/ux-…/assets`) : quand le paquet est dans `composer.lock`,
+  Rustine récupère ce seul paquet, à sa version verrouillée et sans ses dépendances (Composer sans plugins ni scripts,
+  dans un projet jetable), uniquement pour la passe Yarn, puis le supprime. Pas besoin de `composer install` avant
+  Rustine pour ça. Composer doit alors être dans le `PATH`, et les patchs appliqués par un plugin
+  (`cweagans/composer-patches`) ne le sont pas.
 - Un paquet déclaré avec une source git/URL/alias/locale est signalé, jamais corrigé.
 - Les montées de version majeure sont signalées, jamais appliquées.
 - Une merge request fermée à la main n’est laissée fermée que pendant `--closed-grace-days` jours (30 par défaut), et
