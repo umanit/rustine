@@ -14,11 +14,13 @@ final readonly class ComposerManifest
 
     /**
      * @param array<string, array{field: string, constraint: string}> $declared
+     * @param bool|array<string, bool>|null                            $allowPlugins `config.allow-plugins`
      */
     private function __construct(
         private array $declared,
         private ?string $symfonyRequire = null,
         private string $vendorDir = 'vendor',
+        private bool|array|null $allowPlugins = null,
     ) {
     }
 
@@ -56,7 +58,32 @@ final readonly class ComposerManifest
             \is_string(
                 $config['vendor-dir'] ?? null,
             ) && '' !== $config['vendor-dir'] ? $config['vendor-dir'] : 'vendor',
+            self::allowPluginsFrom($config['allow-plugins'] ?? null),
         );
+    }
+
+    /**
+     * @return bool|array<string, bool>|null
+     */
+    private static function allowPluginsFrom(mixed $value): bool|array|null
+    {
+        if (\is_bool($value)) {
+            return $value;
+        }
+
+        if (!\is_array($value)) {
+            return null;
+        }
+
+        $allowed = [];
+
+        foreach ($value as $pattern => $enabled) {
+            if (\is_string($pattern) && \is_bool($enabled)) {
+                $allowed[$pattern] = $enabled;
+            }
+        }
+
+        return $allowed;
     }
 
     /**
@@ -66,6 +93,22 @@ final readonly class ComposerManifest
     public function symfonyRequire(): ?string
     {
         return $this->symfonyRequire;
+    }
+
+    /**
+     * Whether `config.allow-plugins` lets the plugin run: `true`, or an entry (`vendor/*` patterns included) set to
+     * true. Composer blocks, without a prompt when not interactive, any plugin it does not allow.
+     */
+    public function allowsPlugin(string $package): bool
+    {
+        if (\is_bool($this->allowPlugins)) {
+            return $this->allowPlugins;
+        }
+
+        return array_any(
+            $this->allowPlugins ?? [],
+            static fn($allowed, $pattern) => true === $allowed && fnmatch((string) $pattern, $package),
+        );
     }
 
     /**

@@ -151,17 +151,21 @@ final readonly class ProjectPlanApplier implements PlanApplier
         }
 
         $vendor = $manifest->vendorDir();
-        if (is_dir((str_starts_with($vendor, '/') ? $vendor : $this->projectDir . '/' . $vendor) . '/symfony/flex')) {
+        if (
+            $manifest->allowsPlugin('symfony/flex')
+            && $this->isInstalledInVendor((str_starts_with($vendor, '/') ? $vendor : $this->projectDir . '/' . $vendor))
+        ) {
             return;
         }
 
-        // Exits with 0 only when Flex is installed in the global Composer home.
+        // Exits with 0 only when Flex is installed in the global Composer home, and the global configuration allows it.
+        $env = ['COMPOSER_NO_INTERACTION' => '1'];
         if (
             $this->runner->run(
                 [...$composer, 'global', 'show', 'symfony/flex', '--no-ansi'],
                 $this->projectDir,
-                ['COMPOSER_NO_INTERACTION' => '1'],
-            )->isSuccessful()
+                $env,
+            )->isSuccessful() && $this->globalConfigAllowsFlex($composer, $env)
         ) {
             return;
         }
@@ -169,7 +173,8 @@ final readonly class ProjectPlanApplier implements PlanApplier
         throw new ToolingException(
             sprintf(
                 'composer.json sets extra.symfony.require to "%s", which only Symfony Flex enforces, and Flex'
-                . ' is installed neither in %s/ nor globally: the update would move Symfony components to another'
+                . ' is installed and allowed (`allow-plugins`) neither in %s/ nor globally: the update would move'
+                . ' Symfony components to another'
                 . ' minor version. Rustine installs no tool: have the environment provide it, preferably globally so'
                 . ' that the plugins of the project are not loaded (`composer global config allow-plugins.symfony/flex'
                 . ' true && composer global require symfony/flex --no-scripts`), or run `composer install --no-scripts`'
@@ -178,6 +183,48 @@ final readonly class ProjectPlanApplier implements PlanApplier
                 $vendor,
             ),
         );
+    }
+
+    /**
+     * Flex is loaded from `vendor/composer/installed.json`: the directory alone does not prove it is installed.
+     */
+    private function isInstalledInVendor(string $vendorDir): bool
+    {
+        $content = @file_get_contents($vendorDir . '/composer/installed.json');
+        $data = false === $content ? null : json_decode($content, true);
+        $packages = \is_array($data) ? ($data['packages'] ?? $data) : [];
+
+        return array_any(
+            \is_array($packages) ? $packages : [],
+            static fn($package) => \is_array($package) && 'symfony/flex' === ($package['name'] ?? null),
+        );
+    }
+
+    /**
+     * @param non-empty-list<string> $composer
+     * @param array<string, string>  $env
+     */
+    private function globalConfigAllowsFlex(array $composer, array $env): bool
+    {
+        $result = $this->runner->run(
+            [...$composer, 'global', 'config', 'allow-plugins', '--no-ansi'],
+            $this->projectDir,
+            $env,
+        );
+        if (!$result->isSuccessful()) {
+            return false;
+        }
+
+        $value = trim($result->output);
+        $allowed = json_decode($value, true);
+        if (\is_array($allowed)) {
+            return array_any(
+                $allowed,
+                static fn($enabled, $pattern) => true === $enabled && fnmatch((string) $pattern, 'symfony/flex'),
+            );
+        }
+
+        return true === $allowed;
     }
 
     /**

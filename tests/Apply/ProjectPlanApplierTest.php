@@ -116,8 +116,11 @@ final class ProjectPlanApplierTest extends TestCase
     #[Test]
     public function aFlexInTheVendorDirectoryIsEnoughAndGlobalOnesAreNotAsked(): void
     {
-        file_put_contents($this->dir . '/composer.json', '{"extra":{"symfony":{"require":"6.4.*"}}}');
-        mkdir($this->dir . '/vendor/symfony/flex', 0o777, true);
+        file_put_contents(
+            $this->dir . '/composer.json',
+            '{"extra":{"symfony":{"require":"6.4.*"}},"config":{"allow-plugins":{"symfony/flex":true}}}',
+        );
+        $this->installFlex('vendor');
         $runner = $this->composerRunner(globalFlex: false);
 
         try {
@@ -130,6 +133,45 @@ final class ProjectPlanApplierTest extends TestCase
                 array_map(static fn(array $c): string => $c[1] ?? '', $runner->commands),
             );
         } finally {
+            $this->removeFlex('vendor');
+        }
+    }
+
+    #[Test]
+    public function aFlexThatComposerWouldBlockDoesNotCount(): void
+    {
+        // Installed, but `allow-plugins` does not list it: a non-interactive Composer would not load it.
+        file_put_contents(
+            $this->dir . '/composer.json',
+            '{"extra":{"symfony":{"require":"6.4.*"}},"config":{"allow-plugins":{"other/plugin":true}}}',
+        );
+        $this->installFlex('vendor');
+
+        try {
+            new ProjectPlanApplier($this->composerRunner(globalFlex: false), $this->dir)->tools(Ecosystem::Composer);
+            self::fail('A Flex that is not allowed would not run: Rustine must stop.');
+        } catch (ToolingException $toolingException) {
+            $this->assertStringContainsString('allow-plugins', $toolingException->getMessage());
+        } finally {
+            $this->removeFlex('vendor');
+        }
+    }
+
+    #[Test]
+    public function aVendorDirectoryWithoutAnInstalledFlexDoesNotCount(): void
+    {
+        file_put_contents(
+            $this->dir . '/composer.json',
+            '{"extra":{"symfony":{"require":"6.4.*"}},"config":{"allow-plugins":true}}',
+        );
+        mkdir($this->dir . '/vendor/symfony/flex', 0o777, true);
+
+        try {
+            new ProjectPlanApplier($this->composerRunner(globalFlex: false), $this->dir)->tools(Ecosystem::Composer);
+            self::fail('Flex is not in installed.json: Rustine must stop.');
+        } catch (ToolingException) {
+            $this->addToAssertionCount(1);
+        } finally {
             rmdir($this->dir . '/vendor/symfony/flex');
             rmdir($this->dir . '/vendor/symfony');
             rmdir($this->dir . '/vendor');
@@ -137,13 +179,37 @@ final class ProjectPlanApplierTest extends TestCase
     }
 
     #[Test]
+    public function aGlobalFlexBlockedByTheGlobalConfigurationDoesNotCount(): void
+    {
+        file_put_contents($this->dir . '/composer.json', '{"extra":{"symfony":{"require":"6.4.*"}}}');
+
+        $this->expectException(ToolingException::class);
+
+        $runner = $this->composerRunner(globalFlex: true, globalAllowPlugins: '{"foo/bar": true}');
+        new ProjectPlanApplier($runner, $this->dir)->tools(Ecosystem::Composer);
+    }
+
+    #[Test]
+    public function aGlobalAllowPluginsPatternCoversFlex(): void
+    {
+        file_put_contents($this->dir . '/composer.json', '{"extra":{"symfony":{"require":"6.4.*"}}}');
+
+        $tools = new ProjectPlanApplier(
+            $this->composerRunner(globalFlex: true, globalAllowPlugins: '{"symfony/*": true}'),
+            $this->dir,
+        )->tools(Ecosystem::Composer);
+
+        $this->assertSame('2.8.1', $tools->version('composer'));
+    }
+
+    #[Test]
     public function aVendorDirectoryOtherThanVendorIsLookedAt(): void
     {
         file_put_contents(
             $this->dir . '/composer.json',
-            '{"extra":{"symfony":{"require":"6.4.*"}},"config":{"vendor-dir":"lib"}}',
+            '{"extra":{"symfony":{"require":"6.4.*"}},"config":{"vendor-dir":"lib","allow-plugins":true}}',
         );
-        mkdir($this->dir . '/lib/symfony/flex', 0o777, true);
+        $this->installFlex('lib');
 
         try {
             $this->assertSame(
@@ -153,9 +219,7 @@ final class ProjectPlanApplierTest extends TestCase
                 )->version('composer'),
             );
         } finally {
-            rmdir($this->dir . '/lib/symfony/flex');
-            rmdir($this->dir . '/lib/symfony');
-            rmdir($this->dir . '/lib');
+            $this->removeFlex('lib');
         }
     }
 
@@ -239,6 +303,22 @@ final class ProjectPlanApplierTest extends TestCase
         $this->assertNotContains('composer', array_column($runner->commands, 0));
     }
 
+    private function installFlex(string $vendor): void
+    {
+        mkdir($this->dir . '/' . $vendor . '/composer', 0o777, true);
+        file_put_contents(
+            $this->dir . '/' . $vendor . '/composer/installed.json',
+            '{"packages":[{"name":"symfony/flex","version":"v2.4.0"}]}',
+        );
+    }
+
+    private function removeFlex(string $vendor): void
+    {
+        unlink($this->dir . '/' . $vendor . '/composer/installed.json');
+        rmdir($this->dir . '/' . $vendor . '/composer');
+        rmdir($this->dir . '/' . $vendor);
+    }
+
     private function yarnProjectPointingInto(string $locked): void
     {
         file_put_contents($this->dir . '/yarn.lock', "__metadata:\n  version: 8\n");
@@ -263,12 +343,14 @@ final class ProjectPlanApplierTest extends TestCase
         return $runner;
     }
 
-    private function composerRunner(bool $globalFlex): FakeRunner
+    private function composerRunner(bool $globalFlex, string $globalAllowPlugins = 'true'): FakeRunner
     {
         $runner = new FakeRunner();
-        $runner->handler = static fn(array $command): CommandResult => 'global' === ($command[1] ?? null)
-            ? new CommandResult($globalFlex ? 0 : 1, '')
-            : new CommandResult(0, "Composer version 2.8.1 2024-10-04 PHP version 8.4.1\n");
+        $runner->handler = static fn(array $command): CommandResult => match (true) {
+            'config' === ($command[2] ?? null) => new CommandResult(0, $globalAllowPlugins . "\n"),
+            'global' === ($command[1] ?? null) => new CommandResult($globalFlex ? 0 : 1, ''),
+            default => new CommandResult(0, "Composer version 2.8.1 2024-10-04 PHP version 8.4.1\n"),
+        };
 
         return $runner;
     }
