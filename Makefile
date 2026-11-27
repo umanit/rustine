@@ -1,4 +1,4 @@
-.PHONY: help tests static_analyze cs cs_fix rector rector_fix full_static_analyze phar docs docs_serve docs_serve_fr
+.PHONY: help tests static_analyze cs cs_fix rector rector_fix full_static_analyze phar docs docs_serve
 
 .DEFAULT_GOAL := help
 
@@ -28,22 +28,17 @@ full_static_analyze: cs rector static_analyze tests ## Runs cs, rector, static_a
 phar: ## Builds build/rustine.phar and smoke-tests it (VERSION=x.y.z optional)
 	php -d phar.readonly=0 tools/build-phar.php $(if $(VERSION),--version=$(VERSION))
 
-# Documentation (Zensical, English + French). Pages come from README.md.
+# Documentation (Zensical, English + one translation per locale of resources/translations/). Pages come from README.md.
 # Nothing is installed: `zensical` must be on the PATH.
 DOCS_TOOL = python3 tools/docs/docs_tool.py
 
-docs: ## Builds the documentation: English in site/, French in site/fr/ (strict)
+docs: ## Builds the documentation: English in site/, each translation in site/<locale>/ (strict)
 	$(DOCS_TOOL) check-tools
 	$(DOCS_TOOL) stage
 	zensical build --strict -f zensical.toml
-	zensical build --strict -f zensical.fr.toml
+	for locale in $$($(DOCS_TOOL) locales); do zensical build --strict -f zensical.$$locale.toml || exit 1; done
 
-docs_serve: ## Previews the English documentation on http://localhost:8000
+docs_serve: ## Previews the English documentation on http://localhost:8000 (LOCALE=fr [PORT=8001] for a translation)
 	$(DOCS_TOOL) check-tools
 	$(DOCS_TOOL) stage
-	zensical serve -f zensical.toml
-
-docs_serve_fr: ## Previews the French documentation on http://localhost:8001
-	$(DOCS_TOOL) check-tools
-	$(DOCS_TOOL) stage
-	zensical serve -f zensical.fr.toml -a localhost:8001
+	$(if $(LOCALE),zensical serve -f zensical.$(LOCALE).toml -a localhost:$(or $(PORT),8001),zensical serve -f zensical.toml)

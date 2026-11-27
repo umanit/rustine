@@ -43,7 +43,7 @@
               trivy
               glab
               jq
-              # Documentation site (make docs, docs_serve, docs_serve_fr).
+              # Documentation site (make docs, docs_serve).
               zensical
             ];
           };

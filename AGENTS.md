@@ -38,6 +38,12 @@ bin/rustine apply --project=. --report=trivy-report.json --group=others [--ecosy
 `make full_static_analyze` is the single source of truth: it must pass before a change is
 considered done. IDE (PHPStorm) warnings are informational only.
 
+## Agent skills
+
+`.agents/skills/build-docs/SKILL.md` explains how to regenerate the documentation site (Zensical, EN + FR) from
+`README.md`. It is plain Markdown that any agent can follow; `.claude/skills/build-docs` is a symlink to it for Claude
+Code.
+
 ## Architecture (`src/`, namespace `Rustine\`)
 
 | Directory   | Role                                                                                                                                                 |

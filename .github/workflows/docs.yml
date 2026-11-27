@@ -1,6 +1,6 @@
 name: Documentation
 
-# Builds the English and French documentation (Zensical) and publishes it on GitHub Pages.
+# Builds the English documentation and its translations (Zensical) and publishes it on GitHub Pages.
 # Only a version tag (vX.Y.Z) publishes: the site always documents the latest release, not the moving main branch.
 # Settings → Pages → Source must be set to "GitHub Actions", and the github-pages environment must accept `v*` tags.
 on:
@@ -36,17 +36,17 @@ jobs:
       - name: Check the pages are up to date with the README
         run: |
           python3 tools/docs/split_readme.py
-          git diff --exit-code -- docs zensical.toml zensical.fr.toml || {
+          git diff --exit-code -- docs 'zensical*.toml' || {
             echo "::error::docs/ is out of date with README.md: run the build-docs skill and commit the result."
             exit 1
           }
 
-      - name: Warn about outdated French pages
+      - name: Warn about outdated translations
         run: |
           stale="$(python3 tools/docs/docs_tool.py stale | tr '\n' ' ')"
-          if [ -n "$stale" ]; then echo "::warning::French pages to translate again: $stale"; fi
+          if [ -n "$stale" ]; then echo "::warning::Pages to translate again: $stale"; fi
 
-      - name: Build English (site/) then French (site/fr/)
+      - name: Build English (site/) then each translation (site/<locale>/)
         run: make docs
 
       - uses: actions/configure-pages@v5

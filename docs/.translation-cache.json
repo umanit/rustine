@@ -1,29 +1,31 @@
 {
-  "development": {
-    "source_sha256": "a16b78b8ac278c46dcddffd903de7da07ffa3993c2bead191a154eec1dd626d2"
-  },
-  "how-it-works": {
-    "source_sha256": "26540aaa0cee6cc2e398bd80f7dc4cfdd9c982e480dec90b2ca21d3e4d856ebe"
-  },
-  "index": {
-    "source_sha256": "1d6748f5e912803a8882395d48bfffcf87d61e47400e4c1b98c0c64bda527271"
-  },
-  "installation": {
-    "source_sha256": "612222680c894a0e92a622a9ed4ca832edac3ddcb79729912992afcaca594a7d"
-  },
-  "known-limitations": {
-    "source_sha256": "fe3dafec6d7e869c9709dc305df4edd80025c489f9b27cdb2d036b5e0222672f"
-  },
-  "languages": {
-    "source_sha256": "9f5bc711decfcf04e69bbbcb8055d7690535d106293acba0e26a8e6a8a2a5fa1"
-  },
-  "license": {
-    "source_sha256": "cddd9750522bda650b7d3a8acdfb27f5da18fa7a673a3357b94d958672fcd252"
-  },
-  "requirements": {
-    "source_sha256": "48e1b26dd150646774eaeb045457400f4c1fa431c7e78539d3b6ff11ce24661b"
-  },
-  "usage": {
-    "source_sha256": "a1b984f3d8656cc2b14a9168c82723226a92d931ae8e461d2d7238467cb1bc5c"
+  "fr": {
+    "development": {
+      "source_sha256": "a16b78b8ac278c46dcddffd903de7da07ffa3993c2bead191a154eec1dd626d2"
+    },
+    "how-it-works": {
+      "source_sha256": "26540aaa0cee6cc2e398bd80f7dc4cfdd9c982e480dec90b2ca21d3e4d856ebe"
+    },
+    "index": {
+      "source_sha256": "1d6748f5e912803a8882395d48bfffcf87d61e47400e4c1b98c0c64bda527271"
+    },
+    "installation": {
+      "source_sha256": "612222680c894a0e92a622a9ed4ca832edac3ddcb79729912992afcaca594a7d"
+    },
+    "known-limitations": {
+      "source_sha256": "fe3dafec6d7e869c9709dc305df4edd80025c489f9b27cdb2d036b5e0222672f"
+    },
+    "languages": {
+      "source_sha256": "9f5bc711decfcf04e69bbbcb8055d7690535d106293acba0e26a8e6a8a2a5fa1"
+    },
+    "license": {
+      "source_sha256": "cddd9750522bda650b7d3a8acdfb27f5da18fa7a673a3357b94d958672fcd252"
+    },
+    "requirements": {
+      "source_sha256": "48e1b26dd150646774eaeb045457400f4c1fa431c7e78539d3b6ff11ce24661b"
+    },
+    "usage": {
+      "source_sha256": "a1b984f3d8656cc2b14a9168c82723226a92d931ae8e461d2d7238467cb1bc5c"
+    }
   }
 }
