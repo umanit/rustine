@@ -260,7 +260,7 @@ The URL is pinned to a release tag, so the schema always matches the version you
 change the tag when you upgrade Rustine.
 
 ```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/umanit/rustine/v0.6.2/schema/rustine.schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/umanit/rustine/v0.7.0/schema/rustine.schema.json
 assignee: [alice]
 reviewer: [bob, carol]
 notify: [my-group/security]

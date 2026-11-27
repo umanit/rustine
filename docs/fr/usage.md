@@ -72,7 +72,7 @@ L’URL est figée sur un tag de release, donc le schéma correspond toujours à
 à partir de `v0.6.0`) : changez le tag quand vous mettez Rustine à jour.
 
 ```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/umanit/rustine/v0.6.2/schema/rustine.schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/umanit/rustine/v0.7.0/schema/rustine.schema.json
 assignee: [alice]
 reviewer: [bob, carol]
 notify: [my-group/security]
