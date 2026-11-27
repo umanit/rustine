@@ -3,7 +3,7 @@
     "source_sha256": "a16b78b8ac278c46dcddffd903de7da07ffa3993c2bead191a154eec1dd626d2"
   },
   "how-it-works": {
-    "source_sha256": "4da9d4b4400a69b61090e0c93f324832559f32bc8a2c2299a3233fd631bc5c91"
+    "source_sha256": "26540aaa0cee6cc2e398bd80f7dc4cfdd9c982e480dec90b2ca21d3e4d856ebe"
   },
   "index": {
     "source_sha256": "1d6748f5e912803a8882395d48bfffcf87d61e47400e4c1b98c0c64bda527271"
@@ -24,6 +24,6 @@
     "source_sha256": "48e1b26dd150646774eaeb045457400f4c1fa431c7e78539d3b6ff11ce24661b"
   },
   "usage": {
-    "source_sha256": "5c77224ce39c7b609870a15115c4c33545be2430ca8572f2303b3b43ea135918"
+    "source_sha256": "a1b984f3d8656cc2b14a9168c82723226a92d931ae8e461d2d7238467cb1bc5c"
   }
 }
