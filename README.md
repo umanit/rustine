@@ -260,13 +260,14 @@ The URL is pinned to a release tag, so the schema always matches the version you
 change the tag when you upgrade Rustine.
 
 ```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/umanit/rustine/v0.6.0/schema/rustine.schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/umanit/rustine/v0.6.2/schema/rustine.schema.json
 assignee: [alice]
 reviewer: [bob, carol]
 notify: [my-group/security]
 labels: [security, deps]
 severity_label_format: 'severity::{severity}'
 locale: fr
+emoji: true                  # false = no emoji in the section headings (--no-emoji)
 branch: main                 # branch to analyze (default: the default branch)
 ecosystem: composer          # yarn or composer
 group: [others]              # critical-high or others
@@ -279,10 +280,11 @@ git_author_name: Rustine
 git_author_email: rustine@example.com
 ```
 
-Every key matches the option of the same name (`labels` is `--label`, `trivy_args` is `--trivy-arg`); lists are real
-YAML lists, and an empty list overrides the variable. An unknown key or a value of the wrong type stops the command: a
-typo never goes unnoticed. Nothing sensitive or tied to the machine is read from the file: the token, the GitLab address
-and project, the binaries (`--*-bin`) and the remote stay in the options and the environment of the job.
+Every key matches the option of the same name (`labels` is `--label`, `trivy_args` is `--trivy-arg`; `emoji: false` is
+`--no-emoji`); lists are real YAML lists, and an empty list overrides the variable. An unknown key or a value of the
+wrong type stops the command: a typo never goes unnoticed. Nothing sensitive or tied to the machine is read from the
+file: the token, the GitLab address and project, the binaries (`--*-bin`) and the remote stay in the options and the
+environment of the job.
 
 | Option                         | Variable                                              | Default / meaning                                                                                                                                                                                      |
 |--------------------------------|-------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -294,6 +296,7 @@ and project, the binaries (`--*-bin`) and the remote stay in the options and the
 | `--branch`, `--default-branch` | `RUSTINE_BRANCH`, then `CI_DEFAULT_BRANCH`            | Branch to analyze: the fixes start from it and the merge requests target it (default: the default branch of the project)                                                                               |
 | *(no option, on purpose)*      | `RUSTINE_GITLAB_TOKEN` or `GITLAB_TOKEN`              | Access token                                                                                                                                                                                           |
 | `--locale`                     | `RUSTINE_LOCALE`                                      | Language of the texts written in the project (default `en`)                                                                                                                                            |
+| `--no-emoji`                   | `RUSTINE_NO_EMOJI`                                    | Do not prefix the section headings of the merge request with an emoji (on by default; `emoji: false` in the file)                                                                                      |
 | `--label`                      | `RUSTINE_LABEL`                                       | Label of every merge request (repeatable, default `security`)                                                                                                                                          |
 | `--severity-label-format`      | `RUSTINE_SEVERITY_LABEL_FORMAT`                       | Default `severity::{severity}` → `severity::high`                                                                                                                                                      |
 | `--assignee`, `--reviewer`     | `RUSTINE_ASSIGNEE`, `RUSTINE_REVIEWER`                | Usernames, applied when a merge request is **created**                                                                                                                                                 |

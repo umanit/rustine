@@ -365,6 +365,23 @@ final class MergeRequestRendererTest extends TestCase
         $this->assertSame($none->fingerprint, $en->fingerprint);
     }
 
+    #[Test]
+    public function theEmojiOfTheHeadingsCanBeLeftOut(): void
+    {
+        $plan = $this->yarnPlan(SeverityGroup::CriticalHigh);
+        $plain = new MergeRequestRenderer(new TranslatorFactory()->create('en'), '1.2.3', [], false)->render($plan);
+
+        $this->assertStringContainsString("\n## Fixes\n", $plain->description);
+        $this->assertStringContainsString("\n## Needs manual attention\n", $plain->description);
+        $this->assertStringContainsString("\n## Tooling\n", $plain->description);
+        $this->assertDoesNotMatchRegularExpression(
+            '/^## [^\p{L}]/mu',
+            $plain->description,
+            'No heading starts with a symbol.',
+        );
+        $this->assertSame($this->renderer('en')->render($plan)->fingerprint, $plain->fingerprint);
+    }
+
     private function renderer(string $locale): MergeRequestRenderer
     {
         return new MergeRequestRenderer(new TranslatorFactory()->create($locale), '1.2.3');

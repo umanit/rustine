@@ -366,6 +366,24 @@ final class CommandsTest extends TestCase
     }
 
     #[Test]
+    public function runDryRunPrefixesTheHeadingsWithEmojiUnlessOptedOut(): void
+    {
+        $this->assertStringContainsString('## 🔧 Fixes', $this->dryRunDisplay([]));
+        $this->assertStringContainsString('## Fixes', $this->dryRunDisplay(['--no-emoji' => true]));
+        $this->assertStringNotContainsString('🔧', $this->dryRunDisplay(['--no-emoji' => true]));
+        $this->assertStringNotContainsString('🔧', $this->dryRunDisplay([], ['RUSTINE_NO_EMOJI' => '1']));
+        $this->assertStringNotContainsString(
+            '🔧',
+            $this->dryRunDisplay(['--config' => $this->configFile("emoji: false\n")]),
+        );
+        $this->assertStringContainsString(
+            '🔧',
+            $this->dryRunDisplay(['--config' => $this->configFile("emoji: true\n")], ['RUSTINE_NO_EMOJI' => '1']),
+            'The file wins over the variable.',
+        );
+    }
+
+    #[Test]
     public function runDryRunReadsTheLocaleOfTheConfigurationFile(): void
     {
         $config = $this->configFile("locale: fr\n");
@@ -915,6 +933,27 @@ final class CommandsTest extends TestCase
         $this->files[] = $script;
 
         return $script;
+    }
+
+    /**
+     * @param array<string, mixed>       $extra options added to a `run --dry-run`
+     * @param array<string, string|null> $variables
+     */
+    private function dryRunDisplay(array $extra, array $variables = []): string
+    {
+        $out = '';
+        $this->withEnvironment($variables, function () use ($extra, &$out): void {
+            $tester = $this->tester('run');
+            $tester->execute([
+                '--report'  => self::REPORT,
+                '--group'   => ['others'],
+                '--dry-run' => true,
+                ...$extra,
+            ]);
+            $out = $tester->getDisplay();
+        });
+
+        return $out;
     }
 
     /**

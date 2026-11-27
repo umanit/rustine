@@ -29,17 +29,29 @@ final readonly class MergeRequestRenderer
     /** Marks the descriptions written by Rustine and carries the fingerprint used for idempotency. */
     public const string MARKER = 'rustine:v1';
 
+    /** Emoji of each section heading, added by {@see heading()} and never part of the translations. */
+    private const array SECTION_EMOJIS = [
+        'fixed'        => '🔧',
+        'lock'         => '📦',
+        'attention'    => '⚠️',
+        'debt'         => '🧹',
+        'verification' => '🔍',
+        'tooling'      => '🛠️',
+    ];
+
     /** Rows of the lockfile table: a refresh may move hundreds of packages, GitLab limits a description to 1 MB. */
     private const int MAX_LOCK_ROWS = 200;
 
     /**
      * @param list<string> $notify usernames (or groups) mentioned in the description, so that GitLab notifies them
      *                             without assigning the merge request to them
+     * @param bool         $emoji  prefix the section headings with their emoji (opt-out: they are not translated)
      */
     public function __construct(
         private TranslatorInterface $translator,
         private string $version,
         private array $notify = [],
+        private bool $emoji = true,
     ) {
     }
 
@@ -83,10 +95,10 @@ final readonly class MergeRequestRenderer
         }
         $sections[] = $this->summary($rows, !$result instanceof ApplyResult);
         if ([] !== $rows) {
-            $sections[] = '## ' . $this->t('section.fixed') . "\n\n" . $this->table($rows);
+            $sections[] = $this->heading('fixed') . "\n\n" . $this->table($rows);
         }
         if ($result instanceof ApplyResult && [] !== $result->lockChanges) {
-            $sections[] = '## ' . $this->t('section.lock') . "\n\n"
+            $sections[] = $this->heading('lock') . "\n\n"
                 . $this->lockChanges(
                     $plan,
                     $rows,
@@ -94,16 +106,16 @@ final readonly class MergeRequestRenderer
                 );
         }
         if ([] !== $attention) {
-            $sections[] = '## ' . $this->t('section.attention') . "\n\n" . implode("\n", $attention);
+            $sections[] = $this->heading('attention') . "\n\n" . implode("\n", $attention);
         }
         $debt = $this->debt($rows);
         if ([] !== $debt) {
-            $sections[] = '## ' . $this->t('section.debt') . "\n\n" . implode("\n", $debt);
+            $sections[] = $this->heading('debt') . "\n\n" . implode("\n", $debt);
         }
         if ($result instanceof ApplyResult && ([] !== $rows || null !== $result->finalCheckError)) {
-            $sections[] = '## ' . $this->t('section.verification') . "\n\n" . $this->verification($result);
+            $sections[] = $this->heading('verification') . "\n\n" . $this->verification($result);
         }
-        $sections[] = '## ' . $this->t('section.tooling') . "\n\n" . ($tools instanceof ToolVersions
+        $sections[] = $this->heading('tooling') . "\n\n" . ($tools instanceof ToolVersions
                 ? $this->t('tooling.used', ['tools' => '`' . $tools->describe() . '`'])
                 : $this->t('tooling.none'));
         if ([] !== $this->notify) {
@@ -504,6 +516,11 @@ final readonly class MergeRequestRenderer
         sort($lines);
 
         return substr(hash('sha256', implode("\n", $lines)), 0, 16);
+    }
+
+    private function heading(string $section): string
+    {
+        return '## ' . ($this->emoji ? self::SECTION_EMOJIS[$section] . ' ' : '') . $this->t('section.' . $section);
     }
 
     /**

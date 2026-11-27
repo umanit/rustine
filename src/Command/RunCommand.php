@@ -72,6 +72,11 @@ final readonly class RunCommand
         #[Option(description: 'Language of the merge request and commit texts (default: $RUSTINE_LOCALE, then en)')]
         ?string $locale = null,
         #[Option(
+            description: 'Do not prefix the section headings of the merge request with an emoji (default:'
+            . ' $RUSTINE_NO_EMOJI, then emoji are shown)',
+        )]
+        bool $noEmoji = false,
+        #[Option(
             description: 'Write the merge request description(s) and the status of each group to this Markdown file',
         )]
         ?string $reportFile = null,
@@ -198,6 +203,12 @@ final readonly class RunCommand
         }
         $translator = $factory->create($locale);
 
+        $emoji = !Environment::flag(
+            $noEmoji,
+            'RUSTINE_NO_EMOJI',
+            null === $file->bool('emoji') ? null : !$file->bool('emoji'),
+        );
+
         $trivyBin = Environment::string($trivyBin, 'RUSTINE_TRIVY_BIN', 'trivy');
         $trivyArg = Environment::list($trivyArg, 'RUSTINE_TRIVY_ARG', '\s+', $file->list('trivy_args'));
         $remote = Environment::string($remote, 'RUSTINE_REMOTE', 'origin');
@@ -247,7 +258,7 @@ final readonly class RunCommand
         );
 
         if ($dryRun) {
-            return $this->preview($io, $translator, $mentions, $report, $groups, $wanted, $reportFile);
+            return $this->preview($io, $translator, $mentions, $emoji, $report, $groups, $wanted, $reportFile);
         }
 
         $projectDir = realpath($project);
@@ -357,7 +368,7 @@ final readonly class RunCommand
                 $verifyMode,
                 $progress,
             ),
-            new MergeRequestRenderer($translator, Application::VERSION, $mentions),
+            new MergeRequestRenderer($translator, Application::VERSION, $mentions, $emoji),
             new NoteRenderer($translator),
             new SyncSettings(
                 $config->defaultBranch,
@@ -415,12 +426,14 @@ final readonly class RunCommand
 
     /**
      * @param list<string>        $mentions usernames mentioned in the descriptions
+     * @param bool                $emoji    whether the section headings get their emoji
      * @param list<SeverityGroup> $groups   every group when empty
      */
     private function preview(
         SymfonyStyle $io,
         TranslatorInterface $translator,
         array $mentions,
+        bool $emoji,
         string $report,
         array $groups,
         ?Ecosystem $wanted,
@@ -441,7 +454,7 @@ final readonly class RunCommand
             return Command::SUCCESS;
         }
 
-        $renderer = new MergeRequestRenderer($translator, Application::VERSION, $mentions);
+        $renderer = new MergeRequestRenderer($translator, Application::VERSION, $mentions, $emoji);
         $files = [];
 
         foreach ($plans as $plan) {

@@ -12,12 +12,12 @@ summary:
   planned: "Packages to fix: {packages} · CVEs to fix: {cves}"
 
 section:
-  fixed: "🔧 Fixes"
-  lock: "📦 Lockfile changes"
-  attention: "⚠️ Needs manual attention"
-  debt: "🧹 Technical debt"
-  verification: "🔍 Verification"
-  tooling: "🛠️ Tooling"
+  fixed: "Fixes"
+  lock: "Lockfile changes"
+  attention: "Needs manual attention"
+  debt: "Technical debt"
+  verification: "Verification"
+  tooling: "Tooling"
 
 table:
   package: "Package"

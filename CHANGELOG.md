@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `run` can leave the emoji out of the section headings of the merge request description: `--no-emoji`,
+  `RUSTINE_NO_EMOJI` or `emoji: false` in `.rustine.yaml`. They stay on by default.
+
+### Changed
+
+- The emoji of the section headings are no longer part of the translations: Rustine adds them itself, so a new language
+  does not have to copy them.
+
 ## [0.6.1] - 2026-11-26
 
 ### Fixed

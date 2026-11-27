@@ -36,6 +36,7 @@ final readonly class ConfigFile
         'labels'                  => self::LIST,
         'severity_label_format'   => self::STRING,
         'locale'                  => self::STRING,
+        'emoji'                   => self::BOOL,
         'branch'                  => self::STRING,
         'ecosystem'               => self::STRING,
         'group'                   => self::LIST,

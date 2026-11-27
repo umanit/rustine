@@ -12,12 +12,12 @@ summary:
   planned: "Paquets à corriger : {packages} · CVE à corriger : {cves}"
 
 section:
-  fixed: "🔧 Corrections"
-  lock: "📦 Changements du lockfile"
-  attention: "⚠️ Action manuelle requise"
-  debt: "🧹 Dette technique"
-  verification: "🔍 Vérification"
-  tooling: "🛠️ Outillage"
+  fixed: "Corrections"
+  lock: "Changements du lockfile"
+  attention: "Action manuelle requise"
+  debt: "Dette technique"
+  verification: "Vérification"
+  tooling: "Outillage"
 
 table:
   package: "Paquet"

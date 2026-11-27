@@ -72,13 +72,14 @@ L’URL est figée sur un tag de release, donc le schéma correspond toujours à
 à partir de `v0.6.0`) : changez le tag quand vous mettez Rustine à jour.
 
 ```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/umanit/rustine/v0.6.0/schema/rustine.schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/umanit/rustine/v0.6.2/schema/rustine.schema.json
 assignee: [alice]
 reviewer: [bob, carol]
 notify: [my-group/security]
 labels: [security, deps]
 severity_label_format: 'severity::{severity}'
 locale: fr
+emoji: true                  # false = no emoji in the section headings (--no-emoji)
 branch: main                 # branch to analyze (default: the default branch)
 ecosystem: composer          # yarn or composer
 group: [others]              # critical-high or others
@@ -91,8 +92,8 @@ git_author_name: Rustine
 git_author_email: rustine@example.com
 ```
 
-Chaque clé correspond à l’option du même nom (`labels` est `--label`, `trivy_args` est `--trivy-arg`) ; les listes sont de
-vraies listes YAML, et une liste vide l’emporte sur la variable. Une clé inconnue ou une valeur du mauvais type arrête la
+Chaque clé correspond à l’option du même nom (`labels` est `--label`, `trivy_args` est `--trivy-arg` ; `emoji: false` est
+`--no-emoji`) ; les listes sont de vraies listes YAML, et une liste vide l’emporte sur la variable. Une clé inconnue ou une valeur du mauvais type arrête la
 commande : une faute de frappe ne passe jamais inaperçue. Rien de sensible ni de lié à la machine n’est lu dans le
 fichier : le token, l’adresse et le projet GitLab, les binaires (`--*-bin`) et le remote restent dans les options et
 l’environnement du job.
@@ -107,6 +108,7 @@ l’environnement du job.
 | `--branch`, `--default-branch`| `RUSTINE_BRANCH`, puis `CI_DEFAULT_BRANCH`| Branche à analyser : les corrections en partent et les merge requests la ciblent (défaut : la branche par défaut du projet)                                                                                    |
 | *(pas d’option, volontairement)* | `RUSTINE_GITLAB_TOKEN` ou `GITLAB_TOKEN` | Token d’accès                                                                                                                                                                                              |
 | `--locale`                   | `RUSTINE_LOCALE`                         | Langue des textes écrits dans le projet (défaut `en`)                                                                                                                                                          |
+| `--no-emoji`                 | `RUSTINE_NO_EMOJI`                       | Ne pas préfixer d’un emoji les titres de section de la merge request (activé par défaut ; `emoji: false` dans le fichier)                                                                                      |
 | `--label`                    | `RUSTINE_LABEL` | Label de chaque merge request (répétable, défaut `security`)                                                                                                                                                   |
 | `--severity-label-format`    | `RUSTINE_SEVERITY_LABEL_FORMAT` | Défaut `severity::{severity}` → `severity::high`                                                                                                                                                               |
 | `--assignee`, `--reviewer`   | `RUSTINE_ASSIGNEE`, `RUSTINE_REVIEWER` | Noms d’utilisateur, appliqués quand une merge request est **créée**                                                                                                                                            |

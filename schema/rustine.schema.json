@@ -41,6 +41,10 @@
         "severity::{severity}"
       ]
     },
+    "emoji": {
+      "description": "Prefix the section headings of the merge request description with an emoji (--no-emoji turns it off). Default: true.",
+      "type": "boolean"
+    },
     "locale": {
       "description": "Language of the texts written in the project: merge requests and commits (--locale). Default: en.",
       "type": "string",
